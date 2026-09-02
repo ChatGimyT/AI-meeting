@@ -6,7 +6,8 @@ import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const file = path.join(ROOT, 'dist', 'ai-editorial-boardroom.json');
+const fileArg = (process.argv.find((a) => a.startsWith('--file=')) || '').split('=')[1];
+const file = path.resolve(ROOT, fileArg || 'dist/ai-editorial-boardroom.json');
 const wf = JSON.parse(fs.readFileSync(file, 'utf8'));
 const errs = [], warns = [];
 
@@ -72,7 +73,11 @@ wf.nodes.forEach((n) => {
 /* 6) اعتماد النموذج اللغوي */
 const llm = wf.nodes.filter((n) => n.type === 'n8n-nodes-base.httpRequest' && n.name.startsWith('🧠'));
 llm.forEach((n) => {
-  if (!n.credentials || !n.credentials.httpHeaderAuth) errs.push(n.name + ': missing httpHeaderAuth credential slot');
+  if (!n.credentials || !Object.keys(n.credentials).length) errs.push(n.name + ': missing credential slot');
+  const credType = Object.keys(n.credentials || {})[0];
+  if (credType && credType !== 'httpHeaderAuth' && n.parameters.authentication !== 'predefinedCredentialType') {
+    errs.push(n.name + ': credential ' + credType + ' needs authentication=predefinedCredentialType');
+  }
   if (n.parameters.url !== '={{ $json.url }}') errs.push(n.name + ': url must come from the item');
 });
 

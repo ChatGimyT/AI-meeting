@@ -153,6 +153,8 @@ s.decision = shipped ? 'published' : (s.gate.route === 'exhausted' ? 'shipped_wi
 const payload = {
   run_id: s.run_id,
   profile: cfg.id,
+  content_kind: cfg.content_kind || 'article',
+  content_mode: (cfg.rules && cfg.rules.mode) || 'article',
   status: s.decision,
   ready_to_publish: shipped,
   rounds_used: s.round,

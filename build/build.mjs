@@ -12,9 +12,26 @@ import { nodes, connections } from './blueprint.mjs';
 const ROOT     = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SRC      = path.join(ROOT, 'src');
 const DIST     = path.join(ROOT, 'dist');
-const OUT_FILE = path.join(DIST, 'ai-editorial-boardroom.json');
 
-const WF_NAME = 'AI Editorial Boardroom — محرك كتابة المحتوى بطاولة اجتماعات';
+
+/* ---------- خيارات سطر الأوامر ---------- */
+const argv = process.argv.slice(2);
+const arg = (k, d) => {
+  const hit = argv.find((a) => a.startsWith('--' + k + '='));
+  return hit ? hit.slice(k.length + 3) : d;
+};
+
+const VARIANT   = arg('variant', 'default');
+const OUT       = arg('out', VARIANT === 'default'
+                  ? 'dist/ai-editorial-boardroom.json'
+                  : 'dist/ai-editorial-boardroom-' + VARIANT + '.json');
+const CRED_TYPE = arg('credential-type', 'httpHeaderAuth');
+const CRED_ID   = arg('credential-id', 'REPLACE_ME');
+const CRED_NAME = arg('credential-name', 'LLM API Key');
+const DEF_PROF  = arg('default-profile', 'rabeh_article_ar');
+const WF_NAME   = arg('name', VARIANT === 'default'
+                  ? 'AI Editorial Boardroom — محرك كتابة المحتوى بطاولة اجتماعات'
+                  : 'AI Editorial Boardroom — ' + VARIANT);
 
 /* uuid ثابت من الاسم حتى تبقى الفروق في git نظيفة */
 const uid = (seed) => {
@@ -71,7 +88,26 @@ for (const n of nodes) {
     position: n.pos
   };
   if (n.webhookId) node.webhookId = n.webhookId;
-  if (n.credentials) node.credentials = n.credentials;
+
+  /* ---- ربط اعتماد النموذج اللغوي ---- */
+  if (n.credentials && n.credentials.httpHeaderAuth) {
+    if (CRED_TYPE === 'httpHeaderAuth') {
+      node.credentials = { httpHeaderAuth: { id: CRED_ID, name: CRED_NAME } };
+    } else {
+      /* اعتماد جاهز في n8n (مثال: deepSeekApi) بدل Header Auth العام */
+      node.credentials = { [CRED_TYPE]: { id: CRED_ID, name: CRED_NAME } };
+      node.parameters.authentication = 'predefinedCredentialType';
+      node.parameters.nodeCredentialType = CRED_TYPE;
+      delete node.parameters.genericAuthType;
+    }
+  }
+
+  /* ---- الملف التعريفي الافتراضي في عقدة الطلب ---- */
+  if (n.name === '📥 Brief — EDIT ME' && DEF_PROF !== 'rabeh_article_ar') {
+    const b = JSON.parse(node.parameters.jsonOutput);
+    b.profile_id = DEF_PROF;
+    node.parameters.jsonOutput = JSON.stringify(b, null, 2);
+  }
   if (n.retryOnFail) { node.retryOnFail = true; node.maxTries = n.maxTries || 3; node.waitBetweenTries = n.waitBetweenTries || 5000; }
   if (n.onError) node.onError = n.onError;
   if (n.note) { node.notes = n.note; node.notesInFlow = true; }
@@ -113,13 +149,16 @@ const workflow = {
   tags: []
 };
 
-fs.mkdirSync(DIST, { recursive: true });
+const OUT_FILE = path.join(ROOT, OUT);
+fs.mkdirSync(path.dirname(OUT_FILE), { recursive: true });
 fs.writeFileSync(OUT_FILE, JSON.stringify(workflow, null, 2), 'utf8');
 
 /* 6) تقرير */
 const personaCount = Object.values(PROFILES).reduce((n, p) => n + Object.keys(p.roster || {}).length, 0);
 const kb = (fs.statSync(OUT_FILE).size / 1024).toFixed(0);
-console.log('✅ تم البناء: ' + path.relative(ROOT, OUT_FILE));
+console.log('✅ تم البناء: ' + path.relative(ROOT, OUT_FILE) + (VARIANT !== 'default' ? '   [' + VARIANT + ']' : ''));
+console.log('   الاعتماد: ' + CRED_TYPE + ' → id=' + CRED_ID + ' name="' + CRED_NAME + '"');
+console.log('   الملف الافتراضي في الطلب: ' + DEF_PROF);
 console.log('   العقد: ' + out.length + ' (كود: ' + codeNodes + ' | نداءات نموذج: ' + llmNodes + ')');
 console.log('   الملفات التعريفية: ' + Object.keys(PROFILES).join(', '));
 console.log('   الشخصيات المعرَّفة: ' + personaCount);

@@ -8,8 +8,16 @@
     "build": "node build/build.mjs",
     "validate": "node tools/validate.mjs",
     "sim": "node tools/simulate.mjs",
-    "test": "node build/build.mjs && node tools/validate.mjs && node tools/test.mjs"
+    "test": "node build/build.mjs && node tools/check-stages.mjs && node tools/validate.mjs && node tools/test.mjs",
+    "build:deepseek": "node build/build.mjs --variant=deepseek --credential-type=deepSeekApi --credential-id=UtZ5Hq48pibn5oXX --credential-name=\"DeepSeek account\" --default-profile=rabeh_article_ar_deepseek --name=\"AI Editorial Boardroom — DeepSeek\"",
+    "build:all": "npm run build && npm run build:deepseek",
+    "grade": "node tools/grade.mjs",
+    "compare": "node tools/compare.mjs",
+    "bench": "node tools/bench.mjs",
+    "check": "node tools/check-stages.mjs"
   },
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "license": "MIT"
 }

@@ -181,8 +181,7 @@ if (R.mode !== 'social') {
     let run = 0, worst = 0;
     A.blocks.forEach(function (b) {
       if (b.type === 'paragraph') { run++; worst = Math.max(worst, run); }
-      else if (b.type === 'list' || b.type === 'table') run = 0;
-      else if (b.type === 'heading' && b.level <= 2) run = 0;
+      else run = 0;   /* أي عنوان أو قائمة أو جدول يكسر التتابع البصري */
     });
     chk('visual_rhythm', worst <= R.max_consecutive_paragraphs_without_list,
       'أطول تتابع فقرات بلا قائمة أو جدول = ' + worst + ' (الحد ' + R.max_consecutive_paragraphs_without_list + ')', 'medium');

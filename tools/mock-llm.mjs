@@ -197,6 +197,103 @@ function buildPosts() {
   ].join('\n');
 }
 
+
+/* ---------- مولّد قسم واحد (وضع الكتابة المُجزَّأة) ---------- */
+function buildSectionFor(meta) {
+  const key = meta.section_key;
+  const budget = meta.word_budget || 200;
+  const quota = meta.keyword_quota || 0;
+  const L = ['<<<SECTION>>>'];
+
+  if (key === '__front__') {
+    L.push('---');
+    L.push('title: ما هي ' + KW + '؟ دليل عملي للسوق السعودي');
+    L.push('meta_title: ' + KW + ' 2026: دليل الحملة المناسبة');
+    L.push('meta_description: تعرّف على ' + KW + ' وكيف تختار الحملة المناسبة لنشاطك في السعودية، مع خطوات عملية وأخطاء يجب تجنبها.');
+    L.push('slug: google-adwords-ads');
+    L.push('primary_keyword: ' + KW);
+    L.push('secondary_keywords: اعلانات جوجل، حملات جوجل الاعلانية، اسعار اعلانات جوجل');
+    L.push('article_type: commercial');
+    L.push('---');
+    L.push('');
+    L.push('# ما هي ' + KW + '؟ دليل عملي للسوق السعودي');
+    L.push('');
+    L.push(KW + ' هي منظومة الحملات المدفوعة داخل Google Ads التي تعرض نشاطك أمام من يبحث عن خدمتك في اللحظة نفسها. ' + para(60, 1));
+  } else if (key === '__faq__') {
+    L.push('## الأسئلة الشائعة (FAQ)');
+    L.push('');
+    for (let i = 0; i < 6; i++) {
+      L.push('### سؤال رقم ' + (i + 1) + ' عن حملات جوجل؟');
+      L.push('إجابة مباشرة ومختصرة توضح النقطة المطلوبة دون إسهاب أو تكرار.');
+      L.push('');
+    }
+  } else {
+    const n = Number(String(key).replace('s', '')) || 1;
+    L.push('## ' + meta.section_heading);
+    L.push('');
+    L.push(para(50, n + 2));
+    L.push('');
+    let left = Math.max(60, budget - 50);
+    let i = n + 5, k = 0;
+    while (left > 0) {
+      const chunk = Math.min(110, left);
+      L.push(para(chunk, i++));
+      L.push('');
+      left -= chunk;
+      if (++k % 2 === 0 && left > 0) {
+        L.push('- نقطة تنفيذية: راجع بنية الحساب قبل زيادة الإنفاق.');
+        L.push('- نقطة تنفيذية: استبعد الكلمات غير المرتبطة بنية الشراء.');
+        L.push('');
+        left -= 16;
+      }
+    }
+    if (n === 1) {
+      L.push('يمكنك التوسع في [' + LINKS[0].anchor + '](' + LINKS[0].url + ') لاختيار النوع الأنسب لنشاطك.');
+      L.push('');
+    }
+    if (n === 2) {
+      L.push('| نوع الحملة | أين تظهر | الهدف الأنسب |');
+      L.push('|---|---|---|');
+      L.push('| البحث | نتائج جوجل | التحويل المباشر |');
+      L.push('| التسوق | تبويب Shopping | مبيعات المتاجر |');
+      L.push('');
+      L.push('راجع [' + LINKS[1].anchor + '](' + LINKS[1].url + ') قبل إطلاق أول حملة.');
+      L.push('');
+    }
+    if (n === 3) { L.push('سجّل المعلنون زيادة متوسطها 27% في التحويلات بحسب [Google Ads Help](' + EV[0].url + ').'); L.push(''); }
+    if (n === 4) { L.push('وتفصيل ذلك تجده في [' + LINKS[2].anchor + '](' + LINKS[2].url + ').'); L.push(''); }
+    if (n === 5) { L.push('بلغت نسبة انتشار الإنترنت في السعودية 99.0% وفق [DataReportal](' + EV[1].url + ').'); L.push(''); }
+    if (n === 6) {
+      L.push('وتبقى اسعار اعلانات جوجل خاضعة للمنافسة على الكلمة.');
+      L.push('');
+      L.push('خطوتك التالية: أرسل رابط موقعك ومتوسط إنفاقك الشهري لتحصل على تحليل مجاني يوضح الحملات التي يجب إيقافها قبل زيادة الميزانية.');
+      L.push('');
+    }
+  }
+  /* قصّ الزائد للوصول إلى الميزانية المطلوبة (يحاكي كاتبًا منضبطًا) */
+  if (key !== '__front__' && key !== '__faq__') {
+    const wc = (t) => t.replace(/[|#>*`-]/g, ' ').split(/\s+/).filter(Boolean).length;
+    while (wc(L.join(' ')) > budget * 1.05 && L.length > 5) {
+      let idx = -1;
+      for (let j = L.length - 1; j >= 3; j--) {
+        if (L[j].trim() && !/^[-|#]/.test(L[j].trim()) && !/\]\(http/.test(L[j])) { idx = j; break; }
+      }
+      if (idx < 0) break;
+      const parts = L[idx].split('، ');
+      if (parts.length > 2) L[idx] = parts.slice(0, -1).join('، ') + '.';
+      else L.splice(idx, 1);
+    }
+  }
+  /* الالتزام بحصة الكلمة المفتاحية المخصصة لهذا القسم */
+  const body0 = L.join('\n');
+  let have = (body0.split(KW).length - 1);
+  const extra = [];
+  while (have < quota) { extra.push('تظل ' + KW + ' الأسرع للوصول إلى عميل يبحث عنك الآن.'); have++; }
+  if (extra.length) { L.push(extra.join(' ')); L.push(''); }
+  L.push('<<<END_SECTION>>>');
+  return L.join('\n');
+}
+
 /* ---------- الموزّع ---------- */
 export function makeMock() {
   const seen = {};
@@ -207,7 +304,14 @@ export function makeMock() {
 
     if (id === 'brief_architect') return S({
       h1: 'ما هي ' + KW + '؟',
-      outline: [{ level: 2, heading: 'ما هي ' + KW + '؟', purpose: 'تعريف', word_budget: 300, format: 'paragraph', source_needed: true }],
+      outline: [
+        { level: 2, heading: 'ما هي ' + KW + ' وكيف تعمل؟', purpose: 'تعريف وأنواع', word_budget: 320, format: 'list', source_needed: false },
+        { level: 2, heading: 'كيف تتم المحاسبة في حملات جوجل؟', purpose: 'التكلفة', word_budget: 300, format: 'table', source_needed: false },
+        { level: 2, heading: 'لماذا تتصدر اعلانات جوجل وسائل التسويق؟', purpose: 'القيمة', word_budget: 300, format: 'paragraph', source_needed: true },
+        { level: 2, heading: 'الكلمات المفتاحية سر نجاح حملتك', purpose: 'الخطوات', word_budget: 300, format: 'steps', source_needed: false },
+        { level: 2, heading: 'طرق الاستهداف داخل حملات جوجل الاعلانية', purpose: 'الاستهداف', word_budget: 300, format: 'list', source_needed: true },
+        { level: 2, heading: 'كيف تساعدك شركة رابح في إدارة حملاتك؟', purpose: 'التحويل', word_budget: 260, format: 'paragraph', source_needed: false }
+      ],
       keyword_map: { primary: { phrase: KW, target_count: 8, placements: ['المقدمة', 'أول H2'] }, secondary: [], semantic_variants: ['Google Ads'] },
       internal_link_map: LINKS.map((l, i) => ({ anchor: l.anchor, url: l.url, section: 'قسم ' + i })),
       claims_needing_sources: [{ claim: 'زيادة التحويلات مع Performance Max', section: 'المميزات', why: 'رقم' }],
@@ -242,7 +346,8 @@ export function makeMock() {
       approved: EV, rejected: [], stale: [], must_remove_from_article: [], verdict: 'pass'
     });
 
-    const social = $LAST.profile === 'social_posts_ar';
+    if (meta.section_key) return MD(buildSectionFor(meta));   /* وضع الكتابة المُجزَّأة */
+    const social = $LAST.profile === 'social_posts_ar' || $LAST.profile === 'social_posts_deepseek';
     if (social && (id === 'lead_writer' || id === 'narrative_editor' || id === 'reviser')) return MD(buildPosts());
     if (id === 'lead_writer')      return MD(buildArticle({ short: true }));   /* الدورة 1: قصير عمدًا */
     if (id === 'narrative_editor') return MD($LAST.article);

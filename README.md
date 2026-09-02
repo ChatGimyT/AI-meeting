@@ -6,7 +6,9 @@
 مجلس تحرير يحسم، ورشة كتابة تنفّذ، لجنة نقد من ٩ أعضاء تهاجم، فريق استشهادات يبحث فعليًا على الإنترنت،
 ومفتش آلي يقيس ولا يجامل — والمقال **يلف على الطاولة أكثر من مرة** حتى يستوفي كل المعايير أو يُسلَّم مع تقرير تحفّظات.
 
-> الملف الجاهز للاستيراد: **[`dist/ai-editorial-boardroom.json`](dist/ai-editorial-boardroom.json)**
+> **الملفات الجاهزة للاستيراد:**
+> - [`dist/ai-editorial-boardroom.json`](dist/ai-editorial-boardroom.json) — النسخة العامة (Anthropic افتراضيًا، وتعمل مع أي مزوّد)
+> - [`dist/ai-editorial-boardroom-deepseek.json`](dist/ai-editorial-boardroom-deepseek.json) — **نسخة DeepSeek**، مربوطة مسبقًا بالكريدينشال ومضبوطة على الكتابة قسمًا بقسم
 
 ---
 
@@ -33,6 +35,15 @@
 4. عدّل عقدة **`📥 Brief — EDIT ME`** ثم اضغط **Execute Workflow**.
 
 تفاصيل أوفى: [`docs/SETUP.md`](docs/SETUP.md)
+
+### تشغيل على DeepSeek
+
+استورد `dist/ai-editorial-boardroom-deepseek.json` — الكريدينشال مربوط مسبقًا (`UtZ5Hq48pibn5oXX`)
+والملف التعريفي الافتراضي `rabeh_article_ar_deepseek`.
+
+هذه النسخة تختلف جوهريًا لأن سقف مخرجات DeepSeek 8192 توكن، ومقال عربي من ٢٠٠٠ كلمة يقترب منه:
+**الكتابة تصير قسمًا بقسم** بدل نداء واحد، مع أهداف رقمية لكل قسم وقائمة عناصر محمية من الحذف.
+التفاصيل والقياس في [`docs/QUALITY-PLAN.md`](docs/QUALITY-PLAN.md).
 
 ---
 
@@ -145,6 +156,8 @@ export default {
 | `rabeh_article_ar` | مقال SEO عربي جديد (١٨٠٠–٢٠٠٠ كلمة) |
 | `rabeh_refresh_ar` | **تحديث** مقالة منشورة دون إعادة كتابتها (٢٠٠٠–٢٦٠٠ كلمة + تقرير تحديث) |
 | `social_posts_ar` | حزمة بوستات سوشيال ميديا بحدود أحرف وهاشتاجات لكل منصة |
+| `rabeh_article_ar_deepseek` | نفس الأول مضبوطًا على DeepSeek (كتابة مُجزَّأة + أهداف لكل قسم) |
+| `social_posts_deepseek` | بوستات على DeepSeek |
 
 دليل التوسعة خطوة بخطوة: [`docs/EXTENDING.md`](docs/EXTENDING.md)
 
@@ -155,11 +168,20 @@ export default {
 <div dir="ltr">
 
 ```bash
-npm run build      # يجمّع dist/ai-editorial-boardroom.json من المصادر
+npm run build:all  # يجمّع نسختي dist (العامة + DeepSeek)
 npm run validate   # فحص بنيوي للملف قبل الاستيراد
-npm run sim        # محاكاة كاملة بنموذج وهمي (بلا تكلفة API)
-npm test           # build + validate + محاكاة الملفات الثلاثة
+npm test           # بناء + فحص + محاكاة الملفات التعريفية الخمسة (بلا تكلفة API)
+
+# ── قياس الجودة ──
+npm run grade   -- --article=x.md --brief=benchmark/briefs/google-ads-ar.json
+npm run compare -- --gold=benchmark/gold/google-ads-ar.md --candidate=x.md --brief=...
+npm run bench   -- --profile=rabeh_article_ar_deepseek --judge     # يحتاج مفتاح API
 ```
+
+**قياس الجودة**: يوجد مقال مرجعي مكتوب يدويًا وفق المعايير نفسها بخمسة مصادر حقيقية
+(`benchmark/gold/`) يحقق **100%** على الفحص الآلي، ومقال ضعيف نموذجي (`benchmark/samples/`)
+يحقق **55%** — فيصير الفارق بين «جيد» و«رديء» رقمًا لا انطباعًا.
+البروتوكول كاملًا في [`docs/QUALITY-PLAN.md`](docs/QUALITY-PLAN.md).
 
 </div>
 
@@ -167,6 +189,7 @@ npm test           # build + validate + محاكاة الملفات الثلاث
 فيتحقق من تدفق البيانات ودورة التعديل ومنطق البوابة **قبل أن تدفع دولارًا واحدًا لـ API**.
 
 بنية المشروع وقرارات التصميم: [`docs/PLAN.md`](docs/PLAN.md)
+خطة الجودة وبروتوكول التكرار: [`docs/QUALITY-PLAN.md`](docs/QUALITY-PLAN.md)
 
 ---
 

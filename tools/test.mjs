@@ -5,17 +5,20 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const profiles = ['rabeh_article_ar', 'rabeh_refresh_ar', 'social_posts_ar'];
+const profiles = ['rabeh_article_ar', 'rabeh_refresh_ar', 'social_posts_ar',
+                  'rabeh_article_ar_deepseek', 'social_posts_deepseek'];
 let failed = 0;
 
 for (const p of profiles) {
-  process.stdout.write('▶ ' + p.padEnd(20) + ' … ');
+  process.stdout.write('▶ ' + p.padEnd(26) + ' … ');
   try {
     const out = execFileSync('node', [path.join(ROOT, 'tools', 'simulate.mjs'), '--profile=' + p],
       { encoding: 'utf8', cwd: ROOT });
     const rounds = (out.match(/الدورات المستهلكة \.+ (\d+)/) || [])[1];
     const status = (out.match(/الحالة \.+ (\S+)/) || [])[1];
-    console.log('نجح ✅  (الحالة: ' + status + ' | دورات: ' + rounds + ')');
+    const calls  = (out.match(/نداءات النموذج \.+ (\d+)/) || [])[1];
+    const words  = (out.match(/عدد كلمات المقال \.+ (\d+)/) || [])[1];
+    console.log('نجح ✅  (' + status + ' | دورات: ' + rounds + ' | نداءات: ' + calls + ' | كلمات: ' + words + ')');
   } catch (e) {
     failed++;
     console.log('فشل ❌');

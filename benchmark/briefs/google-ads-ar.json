@@ -1,0 +1,36 @@
+{
+  "profile_id": "rabeh_article_ar",
+  "title": "ما هي اعلانات جوجل ادوردز؟ دليل عملي للسوق السعودي",
+  "goal": "جذب عملاء لخدمة إدارة إعلانات جوجل وتحويل الزائر إلى عميل محتمل",
+  "article_type": "commercial",
+  "target_market": "السعودية",
+  "primary_keyword": "اعلانات جوجل ادوردز",
+  "primary_keyword_count": 8,
+  "secondary_keywords": ["اعلانات جوجل", "حملات جوجل الاعلانية", "اسعار اعلانات جوجل"],
+  "semantic_keywords": ["Google Ads", "شبكة البحث", "الكلمات المفتاحية", "تكلفة النقرة", "العائد على الإنفاق الإعلاني"],
+  "headings": [
+    "H2: ما هي اعلانات جوجل ادوردز وكيف تعمل اليوم؟",
+    "H2: كيف تتم المحاسبة وما الذي يحدد سعر النقرة؟",
+    "H2: لماذا تتصدر اعلانات جوجل قنوات التسويق في السعودية؟",
+    "H2: الكلمات المفتاحية: أين تُهدر ميزانيتك فعليًا؟",
+    "H2: طرق الاستهداف داخل حملات جوجل الاعلانية",
+    "H2: كيف تختار من يدير حسابك؟ معايير قبل التوقيع",
+    "H2: كيف تعمل رابح على حسابك؟",
+    "H2: الأسئلة الشائعة (FAQ)"
+  ],
+  "internal_links": [
+    { "anchor": "أنواع إعلانات جوجل", "url": "https://www.rabeh.org/ar/blog-show/انواع-اعلانات-جوجل" },
+    { "anchor": "طريقة عمل اعلان على جوجل", "url": "https://www.rabeh.org/ar/blog-show/طريقة-عمل-اعلان-على-جوجل" },
+    { "anchor": "ادارة حملات جوجل الاعلانية", "url": "https://www.rabeh.org/ar/blog-show/ادارة-حملات-جوجل-الاعلانية" }
+  ],
+  "mandatory_citations": [
+    "Google Ads Help — «Multiply conversions with Performance Max»: https://support.google.com/google-ads/answer/11189316 — المعلنون الذين اعتمدوا Performance Max سجلوا زيادة متوسطها 27% في التحويلات أو قيمتها بتكلفة اكتساب أو عائد إنفاق مشابه.",
+    "Google Ads Help — «About AI Max for Search campaigns»: https://support.google.com/google-ads/answer/15910366 — المعلنون الذين يفعّلون AI Max يحققون عادة 14% تحويلات أو قيمة تحويل أعلى بتكلفة اكتساب أو عائد إنفاق مشابه (بيانات جوجل الداخلية 2025، لغير قطاع التجزئة).",
+    "DataReportal — «Digital 2026: Saudi Arabia»: https://datareportal.com/reports/digital-2026-saudi-arabia — 34.4 مليون مستخدم للإنترنت في السعودية بنهاية 2025 بنسبة انتشار 99.0%.",
+    "GASTAT — «ICT Access and Usage Statistics by Households and Individuals 2025»: https://www.stats.gov.sa/en/w/ict-access-and-usage-statistics-by-households-and-individuals-2025 — 96.8% من الأفراد (15–74 سنة) يستخدمون الإنترنت يوميًا على الأقل.",
+    "Google Ads Help — «Get negative keyword ideas using the search terms report»: https://support.google.com/google-ads/answer/7102466 — استخدام تقرير مصطلحات البحث لاستخراج الكلمات السلبية ومنع ظهور الإعلان لعمليات بحث غير ذات صلة."
+  ],
+  "cluster_role": "Pillar",
+  "allow_auto_headings": false,
+  "notes": "مقال مرجعي — يُستخدم كمعيار جودة للمقارنة."
+}

@@ -18,10 +18,36 @@
 | المزوّد | Name | Value |
 |---|---|---|
 | Anthropic *(الافتراضي)* | `x-api-key` | `sk-ant-...` |
-| OpenAI | `Authorization` | `Bearer sk-...` |
+| OpenAI / DeepSeek | `Authorization` | `Bearer sk-...` |
 | OpenRouter / Azure / محلي | حسب المزوّد | حسب المزوّد |
 
 ثم افتح أي عقدة `🧠 LLM · …` واختر الـ Credential — سيقترحها n8n على باقي العقد.
+
+### DeepSeek (النسخة الجاهزة)
+
+استورد `dist/ai-editorial-boardroom-deepseek.json`. هذه النسخة:
+
+- مربوطة مسبقًا بالكريدينشال `UtZ5Hq48pibn5oXX` باسم `DeepSeek account` ونوع `deepSeekApi`.
+- ملفها التعريفي الافتراضي `rabeh_article_ar_deepseek`.
+- تكتب المقال **قسمًا بقسم** لأن سقف مخرجات DeepSeek 8192 توكن.
+
+**إن كان الكريدينشال عندك من نوع Header Auth لا DeepSeek**، أعد البناء بسطر واحد:
+
+<div dir="ltr">
+
+```bash
+npm run build -- --variant=deepseek --credential-type=httpHeaderAuth \
+  --credential-id=UtZ5Hq48pibn5oXX --credential-name="DeepSeek account" \
+  --default-profile=rabeh_article_ar_deepseek
+```
+
+</div>
+
+أو افتح أي عقدة `🧠 LLM · …` في n8n وبدّل الاعتماد يدويًا؛ n8n سيقترحه على باقي العقد.
+
+> ملاحظة: مُعرِّف الكريدينشال مأخوذ من الرابط الذي أرسلته
+> (`/projects/z2YgyCs6QEctHLNH/credentials/UtZ5Hq48pibn5oXX`). المفتاح نفسه يبقى داخل n8n
+> ولا يظهر في أي ملف من هذا المستودع.
 
 ### لغير Anthropic
 افتح عقدة `📚 Profiles Registry` وعدّل داخل `PROFILES.rabeh_article_ar.llm`:

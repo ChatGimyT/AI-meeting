@@ -169,6 +169,31 @@ chk('question_headings', badQ.length === 0,
 
 ---
 
+## نموذج بسقف مخرجات منخفض
+
+النماذج الاقتصادية (DeepSeek وأمثالها) تقصّ المقال عند سقف مخرجاتها. فعّل الوضع المُجزَّأ:
+
+<div dir="ltr">
+
+```js
+llm: {
+  provider: 'deepseek',
+  url: 'https://api.deepseek.com/chat/completions',
+  model: 'deepseek-chat',
+  max_output_tokens: 8192,     // سقف المزوّد — يقصّ أي طلب أكبر تلقائيًا
+  temperature_scale: 2.2,      // سُلَّم حرارة مختلف عن Anthropic
+  json_mode: true,             // response_format: json_object لشخصيات المراجعة
+  enable_tools: false,
+  chunked_writing: true        // ← نداء لكل قسم بدل نداء واحد للمقال
+}
+```
+
+</div>
+
+لا تتغيّر بنية الـ workflow ولا عدد العقد: عقدة الأجندة تُخرج عنصرًا لكل قسم،
+وn8n يُنفّذ عقدة النداء مرة لكل عنصر. الدوال المعنية في `src/lib/helpers.js`:
+`sectionPlan` · `sectionTargets` · `collectSections` · `applySections` · `protectedBlock`.
+
 ## نوع محتوى مختلف كليًا
 
 ملف `social_posts_ar` هو الدليل العملي: نفس المحرك، نفس ٥٤ عقدة، ولا سطر واحد تغيّر في الرسم البياني.

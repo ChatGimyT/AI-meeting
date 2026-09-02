@@ -9,12 +9,22 @@ const H = {
   /* ---------- 1. LLM request building ---------- */
 
   buildBody(persona, userText, llm) {
-    const model       = persona.model       || llm.model;
-    const temperature = persona.temperature != null ? persona.temperature : (llm.temperature != null ? llm.temperature : 0.4);
-    const maxTokens   = persona.max_tokens  || llm.max_tokens || 8000;
+    const model = persona.model || llm.model;
+    let temperature = persona.temperature != null ? persona.temperature
+                    : (llm.temperature != null ? llm.temperature : 0.4);
+    /* بعض المزوّدين يفرضون سقفًا أدنى للحرارة أو يتجاهلونها */
+    if (llm.temperature_scale) temperature = Math.min(2, +(temperature * llm.temperature_scale).toFixed(2));
+    if (llm.max_temperature != null) temperature = Math.min(temperature, llm.max_temperature);
 
-    if (llm.provider === 'openai') {
-      return {
+    /* سقف مخرجات المزوّد يقصّ أي طلب أكبر منه (DeepSeek = 8192) */
+    let maxTokens = persona.max_tokens || llm.max_tokens || 8000;
+    if (llm.max_output_tokens) maxTokens = Math.min(maxTokens, llm.max_output_tokens);
+
+    const wantsJson = (persona.output_mode || 'json') === 'json';
+
+    /* ---- المزوّدون المتوافقون مع OpenAI: openai · deepseek · openrouter · محلي ---- */
+    if (llm.provider && llm.provider !== 'anthropic') {
+      const body = {
         model,
         temperature,
         max_tokens: maxTokens,
@@ -23,9 +33,13 @@ const H = {
           { role: 'user',   content: userText }
         ]
       };
+      /* وضع JSON الصارم يرفع موثوقية النماذج الأضعف بدرجة كبيرة */
+      if (wantsJson && llm.json_mode !== false) body.response_format = { type: 'json_object' };
+      if (llm.extra_body) Object.assign(body, llm.extra_body);
+      return body;
     }
 
-    // default: anthropic messages API
+    /* ---- Anthropic Messages API ---- */
     const body = {
       model,
       max_tokens: maxTokens,
@@ -484,5 +498,347 @@ H.mechanicalBlock = function (state) {
   (m.checks || []).forEach(function (c) {
     L.push((c.pass ? '  ✅ ' : '  ❌ ') + c.id + ': ' + c.detail);
   });
+  return L.join('\n');
+};
+
+/* ---------- 8. Chunked (section-wise) workshop mode ---------- */
+
+/** true if the provider cut the answer off at the token ceiling. */
+H.truncated = function (resp, text) {
+  if (resp) {
+    if (resp.stop_reason === 'max_tokens') return true;
+    if (resp.choices && resp.choices[0] && resp.choices[0].finish_reason === 'length') return true;
+  }
+  if (text && text.indexOf('<<<ARTICLE>>>') !== -1 && text.indexOf('<<<END_ARTICLE>>>') === -1) return true;
+  return false;
+};
+
+H.grabSection = function (text) {
+  if (!text) return '';
+  const s = String(text);
+  const m = s.match(/<<<SECTION>>>([\s\S]*?)<<<END_SECTION>>>/);
+  if (m) return m[1].trim();
+  const open = s.indexOf('<<<SECTION>>>');
+  if (open >= 0) return s.slice(open + 13).trim();
+  const fence = s.match(/```(?:markdown|md)?\s*([\s\S]*?)```/i);
+  if (fence) return fence[1].trim();
+  return s.trim();
+};
+
+/** Split an article into the head block plus one chunk per H2. */
+H.splitSections = function (md) {
+  const raw = String(md || '');
+  const lines = raw.split('\n');
+  const out = [];
+  let cur = { key: '__front__', heading: '', lines: [] };
+  let inFence = false;
+  for (const line of lines) {
+    if (/^\s*```/.test(line)) inFence = !inFence;
+    const h2 = !inFence && line.match(/^\s{0,3}##\s+(?!#)(.*)$/);
+    if (h2) {
+      out.push(cur);
+      cur = { key: '', heading: h2[1].trim(), lines: [line] };
+    } else {
+      cur.lines.push(line);
+    }
+  }
+  out.push(cur);
+  let n = 0;
+  return out
+    .map(function (sec) {
+      const body = sec.lines.join('\n').trim();
+      if (!sec.key) {
+        if (/faq|الأسئلة\s*الشائعة/i.test(sec.heading)) sec.key = '__faq__';
+        else if (/المصادر|sources/i.test(sec.heading)) sec.key = '__sources__';
+        else sec.key = 's' + (++n);
+      }
+      return { key: sec.key, heading: sec.heading, md: body, words: H.words(body) };
+    })
+    .filter(function (sec, i) { return i === 0 ? sec.md.length > 0 : true; });
+};
+
+H.joinSections = function (sections) {
+  return sections
+    .filter(function (s) { return s && s.md && s.md.trim(); })
+    .map(function (s) { return s.md.trim(); })
+    .join('\n\n');
+};
+
+/** Build the writing plan: head block, one chunk per outline H2, FAQ, sources. */
+H.sectionPlan = function (state, cfg) {
+  const R = cfg.rules || {};
+  const outline = (state.blueprint && state.blueprint.outline) || [];
+  const heads = outline.filter(function (o) { return !o.level || o.level === 2; });
+  const total = (R.word_count && R.word_count.max) ? Math.round((R.word_count.min + R.word_count.max) / 2) : 1900;
+
+  const frontWords = (R.intro_words && R.intro_words.max) || 100;
+  const faqWords = 40 * ((R.min_faq || 5) + 1);
+  let bodyBudget = Math.max(400, total - frontWords - faqWords);
+  const declared = heads.reduce(function (n, h) { return n + (Number(h.word_budget) || 0); }, 0);
+
+  const plan = [{
+    key: '__front__', order: 0, heading: '(الترويسة + H1 + المقدمة)',
+    purpose: 'ترويسة الميتا ثم H1 ثم مقدمة تبدأ بإجابة مباشرة',
+    word_budget: frontWords, format: 'paragraph', must_include: []
+  }];
+
+  heads.forEach(function (h, i) {
+    const share = declared > 0 ? (Number(h.word_budget) || 0) / declared : 1 / Math.max(1, heads.length);
+    plan.push({
+      key: 's' + (i + 1), order: i + 1,
+      heading: h.heading || ('قسم ' + (i + 1)),
+      purpose: h.purpose || '',
+      word_budget: Math.max(120, Math.round(bodyBudget * share)),
+      format: h.format || 'paragraph',
+      must_include: h.must_include || [],
+      source_needed: !!h.source_needed
+    });
+  });
+
+  plan.push({
+    key: '__faq__', order: plan.length,
+    heading: 'الأسئلة الشائعة (FAQ)',
+    purpose: 'أسئلة حقيقية يسألها الباحث بإجابات مباشرة قصيرة صالحة لـ FAQ Schema',
+    word_budget: faqWords, format: 'faq',
+    must_include: (state.blueprint && state.blueprint.faq_questions) || []
+  });
+
+  if (R.auto_sources_section !== false) {
+    plan.push({ key: '__sources__', order: plan.length, heading: 'المصادر المستخدمة',
+                purpose: 'تُبنى آليًا من الأدلة المستشهد بها فعليًا', word_budget: 0, format: 'auto', must_include: [] });
+  }
+
+  /* حصة الكلمة المفتاحية لكل قسم — لأن كاتب القسم لا يرى بقية المقال */
+  const wantKw = state.brief.primary_keyword_count || 0;
+  if (wantKw > 0) {
+    const body = plan.filter(function (p) { return p.key !== '__faq__' && p.key !== '__sources__'; });
+    let left = wantKw;
+    body.forEach(function (p, i) {
+      const q = Math.max(1, Math.round(left / (body.length - i)));
+      p.keyword_quota = Math.min(q, left);
+      left -= p.keyword_quota;
+    });
+  }
+  plan.forEach(function (p) { if (p.keyword_quota == null) p.keyword_quota = 0; });
+  return plan;
+};
+
+/** Rebuild the sources block from evidence that is actually cited in the body. */
+H.buildSourcesSection = function (state) {
+  const body = state.article || '';
+  const used = (state.evidence.approved || []).filter(function (e) {
+    return e.url && body.indexOf(String(e.url).replace(/\/+$/, '')) !== -1;
+  });
+  if (!used.length) return '';
+  const L = ['## المصادر المستخدمة', ''];
+  used.forEach(function (e) {
+    L.push('- ' + (e.citation_line ||
+      ((e.publisher || '') + ' — «' + (e.page_title || '') + '»: ' + e.url +
+       ' — المعلومة المستخدمة: ' + (e.figure || ''))));
+  });
+  return L.join('\n');
+};
+
+/** Per-section word table — makes length control concrete instead of vague. */
+H.sectionTable = function (state) {
+  const secs = H.splitSections(state.article || '');
+  if (!secs.length) return '';
+  const L = ['### توزيع الكلمات الحالي على الأقسام', '', '| القسم | الكلمات |', '|---|---|'];
+  secs.forEach(function (s) {
+    L.push('| ' + (s.heading || '(الترويسة والمقدمة)').replace(/\|/g, '/') + ' | ' + s.words + ' |');
+  });
+  L.push('| **الإجمالي** | **' + H.words(state.article) + '** |');
+  return L.join('\n');
+};
+
+/** Section-wise mode is on when the profile asks for it. */
+H.chunked = function (cfg) { return !!(cfg.llm && cfg.llm.chunked_writing); };
+
+/** Read one fan-out response per section and merge it into state.sections. */
+H.collectSections = function (calls, responses) {
+  const parts = [];
+  calls.forEach(function (c, i) {
+    const meta = (c.json && c.json.meta) || {};
+    const raw  = responses[i] ? responses[i].json : null;
+    const text = H.readText(raw);
+    parts.push({
+      key: meta.section_key,
+      order: meta.order,
+      heading: meta.section_heading || '',
+      md: H.grabSection(text),
+      err: H.apiError(raw),
+      truncated: H.truncated(raw, text)
+    });
+  });
+  parts.sort(function (a, b) { return a.order - b.order; });
+  return parts;
+};
+
+/**
+ * Merge freshly written sections into the state.
+ * A failed or suspiciously short section keeps its previous text instead of
+ * silently shrinking the article.
+ */
+H.applySections = function (state, parts, cfg, opts) {
+  const o = opts || {};
+  const prev = {};
+  (state.sections || []).forEach(function (s) { prev[s.key] = s; });
+  const kept = [], failed = [];
+
+  parts.forEach(function (p) {
+    const old = prev[p.key];
+    const oldWords = old ? H.words(old.md) : 0;
+    const newWords = H.words(p.md);
+    const tooShort = o.floor && oldWords > 0 && newWords < oldWords * o.floor;
+    if (p.err || !p.md || tooShort) {
+      failed.push(p.key + (p.err ? ' (' + p.err + ')' : tooShort ? ' (انكمش من ' + oldWords + ' إلى ' + newWords + ' كلمة)' : ' (فارغ)'));
+      if (old) kept.push(old);
+      else kept.push({ key: p.key, heading: p.heading, md: '## ' + (p.heading || p.key) + '\n\n(تعذّر إنتاج هذا القسم)' });
+    } else {
+      kept.push({ key: p.key, heading: p.heading || (old && old.heading) || '', md: p.md });
+    }
+  });
+
+  /* أقسام لم تُطلب في هذه التمريرة تبقى كما هي */
+  (state.sections || []).forEach(function (s) {
+    if (!kept.some(function (k) { return k.key === s.key; })) kept.push(s);
+  });
+
+  const orderOf = {};
+  (state.section_plan || []).forEach(function (p) { orderOf[p.key] = p.order; });
+  kept.sort(function (a, b) {
+    const oa = orderOf[a.key] != null ? orderOf[a.key] : 999;
+    const ob = orderOf[b.key] != null ? orderOf[b.key] : 999;
+    return oa - ob;
+  });
+
+  state.sections = kept.filter(function (s) { return s.key !== '__sources__'; });
+  state.article = H.joinSections(state.sections);
+
+  if (!cfg.rules || cfg.rules.auto_sources_section !== false) {
+    const src = H.buildSourcesSection(state);
+    if (src) {
+      state.sections = state.sections.concat([{ key: '__sources__', heading: 'المصادر المستخدمة', md: src }]);
+      state.article = H.joinSections(state.sections);
+    }
+  }
+  return { failed: failed, truncated: parts.filter(function (p) { return p.truncated; }).map(function (p) { return p.key; }) };
+};
+
+/** Context a section-writer needs: what comes right before and right after. */
+H.neighbourBlock = function (state, key) {
+  const secs = state.sections || [];
+  const i = secs.findIndex(function (s) { return s.key === key; });
+  if (i < 0) return '';
+  const tail = i > 0 ? H.clip(secs[i - 1].md.split('\n').slice(-6).join('\n'), 700) : '(هذا أول قسم)';
+  const head = i < secs.length - 1 ? H.clip(secs[i + 1].md.split('\n').slice(0, 6).join('\n'), 700) : '(هذا آخر قسم)';
+  return ['### نهاية القسم السابق (للانتقال فقط — لا تعد كتابته)', tail, '',
+          '### بداية القسم التالي (للانتقال فقط — لا تعد كتابته)', head].join('\n');
+};
+
+H.SECTION_SHAPE = `
+### شكل المخرجات
+أعد **هذا القسم وحده** بصيغة Markdown محصورًا حرفيًا بين العلامتين، ولا تكتب أي شيء خارجهما،
+ولا تكتب أقسامًا أخرى، ولا تكرر عنوان قسم سابق أو لاحق:
+
+<<<SECTION>>>
+## عنوان القسم كما هو محدد
+... محتوى القسم ...
+<<<END_SECTION>>>
+`;
+
+/**
+ * Per-section numeric targets.
+ * In section-wise mode no writer sees the whole article, so nobody owns the
+ * global word count or keyword count. This turns the global target into a
+ * concrete per-section instruction ("you are at 180 words, land on 240").
+ */
+H.sectionTargets = function (state, cfg) {
+  const R = cfg.rules || {};
+  const secs = (state.sections || []).filter(function (s) { return s.key !== '__sources__'; });
+  if (!secs.length) return {};
+
+  const kw = state.brief.primary_keyword || '';
+  const cur = secs.map(function (s) {
+    return { key: s.key, words: H.words(s.md), kw: kw ? H.countPhrase(s.md, kw) : 0 };
+  });
+  const totalWords = cur.reduce(function (n, s) { return n + s.words; }, 0);
+  const totalKw = cur.reduce(function (n, s) { return n + s.kw; }, 0);
+
+  /* الهدف الإجمالي = منتصف النطاق المطلوب */
+  const wantWords = R.word_count ? Math.round((R.word_count.min + R.word_count.max) / 2) : totalWords;
+  const wantKw = state.brief.primary_keyword_count || 0;
+
+  /* أقسام قابلة للتمدد: لا الترويسة (مقيّدة بطول المقدمة) ولا FAQ */
+  const flex = cur.filter(function (s) { return s.key !== '__front__' && s.key !== '__faq__'; });
+  const flexWords = flex.reduce(function (n, s) { return n + s.words; }, 0) || 1;
+  const deltaWords = wantWords - totalWords;
+
+  const out = {};
+  cur.forEach(function (s) {
+    const isFlex = s.key !== '__front__' && s.key !== '__faq__';
+    const share = isFlex ? s.words / flexWords : 0;
+    const target = Math.max(60, Math.round(s.words + deltaWords * share));
+    out[s.key] = {
+      current_words: s.words,
+      target_words: isFlex ? target : s.words,
+      current_kw: s.kw,
+      target_kw: 0,
+      total_words: totalWords,
+      want_words: wantWords,
+      total_kw: totalKw,
+      want_kw: wantKw
+    };
+  });
+
+  /* حصة الكلمة المفتاحية: الترويسة تأخذ واحدة، والباقي يوزَّع على أقسام المحتوى */
+  if (wantKw > 0 && kw) {
+    let left = wantKw;
+    if (out.__front__) { out.__front__.target_kw = Math.min(2, left); left -= out.__front__.target_kw; }
+    const bodyKeys = flex.map(function (s) { return s.key; });
+    bodyKeys.forEach(function (k, i) {
+      const remainingSlots = bodyKeys.length - i;
+      const q = Math.max(0, Math.round(left / remainingSlots));
+      out[k].target_kw = q;
+      left -= q;
+    });
+    if (out.__faq__) out.__faq__.target_kw = 0;
+  }
+  return out;
+};
+
+/** One line the section writer can act on without seeing the rest of the article. */
+H.targetLine = function (t, kw) {
+  if (!t) return '';
+  const L = [];
+  const dw = t.target_words - t.current_words;
+  L.push('- طول قسمك: **' + t.current_words + '** كلمة → المطلوب **' + t.target_words + '** كلمة (±10%)' +
+         (Math.abs(dw) >= 15 ? (dw > 0 ? '  ⇒ **أضف ~' + dw + ' كلمة من محتوى حقيقي، لا حشو**' : '  ⇒ **احذف ~' + Math.abs(dw) + ' كلمة من الحشو**') : '  ⇒ الطول مناسب'));
+  if (kw && t.want_kw) {
+    const dk = t.target_kw - t.current_kw;
+    L.push('- تكرار «' + kw + '» في قسمك: **' + t.current_kw + '** → المطلوب **' + t.target_kw + '**' +
+           (dk > 0 ? '  ⇒ أضفها ' + dk + ' مرة بصياغتها الحرفية وبطبيعية' : dk < 0 ? '  ⇒ استبدل ' + Math.abs(dk) + ' منها بمرادف دلالي' : '  ⇒ مضبوط'));
+  }
+  L.push('- (للسياق: إجمالي المقال الآن ' + t.total_words + ' كلمة والمطلوب ' + t.want_words +
+         (t.want_kw ? ' | إجمالي تكرار الكلمة ' + t.total_kw + ' والمطلوب ' + t.want_kw : '') + ')');
+  return L.join('\n');
+};
+
+/**
+ * What must survive an edit of this section, spelled out.
+ * A section editor told to cut 130 words will otherwise delete the paragraph
+ * that happened to carry an internal link or a citation.
+ */
+H.protectedBlock = function (md) {
+  const links = [];
+  const re = /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g;
+  let m;
+  while ((m = re.exec(String(md || ''))) !== null) links.push('[' + m[1] + '](' + m[2] + ')');
+  const heading = (String(md || '').match(/^\s{0,3}#{1,3}\s+(.*)$/m) || [])[1];
+  const L = ['### عناصر لا يجوز حذفها أو تغييرها في هذا القسم'];
+  if (heading) L.push('- نص العنوان: «' + heading + '»');
+  if (links.length) links.forEach(function (l) { L.push('- الرابط كما هو: ' + l); });
+  else L.push('- (لا روابط في هذا القسم — ولا تُضِف روابط جديدة)');
+  L.push('- أي رقم أو نسبة موجودة والمصدر المرافق لها');
   return L.join('\n');
 };

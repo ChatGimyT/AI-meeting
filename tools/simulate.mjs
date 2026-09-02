@@ -14,7 +14,73 @@ import { makeMock, $LAST } from './mock-llm.mjs';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const wf = JSON.parse(fs.readFileSync(path.join(ROOT, 'dist', 'ai-editorial-boardroom.json'), 'utf8'));
 const VERBOSE = process.argv.includes('-v');
+const LIVE    = process.argv.includes('--live');
 const profileArg = (process.argv.find((a) => a.startsWith('--profile=')) || '').split('=')[1];
+const briefArg   = (process.argv.find((a) => a.startsWith('--brief=')) || '').split('=')[1];
+const outArg     = (process.argv.find((a) => a.startsWith('--out=')) || '').split('=')[1];
+const concArg    = Number((process.argv.find((a) => a.startsWith('--concurrency=')) || '').split('=')[1]) || 4;
+
+/* ---------- نداء حقيقي للمزوّد (وضع --live) ---------- */
+const API_KEY = process.env.LLM_API_KEY || process.env.DEEPSEEK_API_KEY || process.env.ANTHROPIC_API_KEY || '';
+const usage = { calls: 0, in_tokens: 0, out_tokens: 0, retries: 0, failures: 0, ms: 0 };
+
+async function liveCall(item) {
+  const j = item.json;
+  const provider = j.provider || 'anthropic';
+  const headers = { 'content-type': 'application/json' };
+  if (provider === 'anthropic') {
+    headers['x-api-key'] = API_KEY;
+    headers['anthropic-version'] = j.anthropic_version || '2023-06-01';
+  } else {
+    headers['authorization'] = 'Bearer ' + API_KEY;
+  }
+  let lastErr = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const t0 = Date.now();
+    try {
+      const res = await fetch(j.url, { method: 'POST', headers, body: JSON.stringify(j.body) });
+      const text = await res.text();
+      usage.ms += Date.now() - t0;
+      let data;
+      try { data = JSON.parse(text); } catch (e) { data = { error: { message: 'non-json response: ' + text.slice(0, 300) } }; }
+      if (!res.ok && attempt < 2 && (res.status === 429 || res.status >= 500)) {
+        usage.retries++;
+        await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+        lastErr = data; continue;
+      }
+      usage.calls++;
+      const u = data.usage || {};
+      usage.in_tokens  += u.input_tokens  || u.prompt_tokens || 0;
+      usage.out_tokens += u.output_tokens || u.completion_tokens || 0;
+      if (data.error) usage.failures++;
+      return { json: data };
+    } catch (e) {
+      usage.ms += Date.now() - t0;
+      lastErr = { error: { message: String(e.message || e) } };
+      if (attempt < 2) { usage.retries++; await new Promise((r) => setTimeout(r, 2000 * (attempt + 1))); }
+    }
+  }
+  usage.calls++; usage.failures++;
+  return { json: lastErr || { error: { message: 'unknown failure' } } };
+}
+
+async function mapLimit(items, limit, fn) {
+  const out = new Array(items.length);
+  let i = 0;
+  async function worker() {
+    while (i < items.length) { const k = i++; out[k] = await fn(items[k], k); }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return out;
+}
+
+async function liveHead(url) {
+  try {
+    const res = await fetch(url, { method: 'HEAD', redirect: 'follow',
+      signal: AbortSignal.timeout(15000) });
+    return { json: { statusCode: res.status } };
+  } catch (e) { return { json: { statusCode: 0, error: String(e.message || e) } }; }
+}
 
 const byName = Object.fromEntries(wf.nodes.map((n) => [n.name, n]));
 const runs = {};                       /* آخر مخرجات كل عقدة */
@@ -51,7 +117,7 @@ function evalIf(node, items) {
   }
 }
 
-function runNode(node, items) {
+async function runNode(node, items) {
   switch (node.type) {
     case 'n8n-nodes-base.code':
       return { outputs: [runCode(node, items)] };
@@ -60,17 +126,28 @@ function runNode(node, items) {
       const raw = node.parameters.jsonOutput;
       if (typeof raw === 'string' && raw.startsWith('=')) return { outputs: [items] };
       const parsed = JSON.parse(raw);
-      const preset = profileArg && PRESETS[profileArg];
-      return { outputs: [[{ json: preset ? preset : parsed }]] };
+      let brief = parsed;
+      if (briefArg) brief = JSON.parse(fs.readFileSync(path.resolve(ROOT, briefArg), 'utf8'));
+      else if (profileArg) brief = PRESETS[profileArg] || Object.assign({}, parsed, { profile_id: profileArg });
+      if (profileArg) brief.profile_id = profileArg;
+      return { outputs: [[{ json: brief }]] };
     }
 
     case 'n8n-nodes-base.httpRequest': {
       if (node.name === '🌐 HTTP · Link Check') {
+        if (LIVE) {
+          const r = await mapLimit(items, 6, (it) => liveHead(it.json.url));
+          return { outputs: [r] };
+        }
         return { outputs: [items.map(() => ({ json: { statusCode: 200, body: '' } }))] };
       }
       const st = items[0] && items[0].json.state;
       $LAST.article = (st && st.article) || '';
       llmCalls += items.length;
+      if (LIVE) {
+        const r = await mapLimit(items, concArg, (it) => liveCall(it));
+        return { outputs: [r] };
+      }
       return { outputs: [items.map((it) => ({ json: mock(it.json.meta) }))] };
     }
 
@@ -144,7 +221,7 @@ while (queue.length) {
   const t0 = Date.now();
   let res;
   try {
-    res = runNode(node, items);
+    res = await runNode(node, items);
   } catch (e) {
     console.error('\n❌ فشل في العقدة: ' + name + '\n   ' + e.message + '\n');
     console.error(e.stack.split('\n').slice(0, 6).join('\n'));
@@ -192,6 +269,27 @@ line('الفحص الآلي', pack.mechanical.pass ? 'ناجح ✅' : 'راسب 
 line('JSON-LD', pack.json_ld ? pack.json_ld['@graph'].map((g) => g['@type']).join(' + ') : '—');
 line('بنود محضر الاجتماع', (pack.meeting_minutes_markdown.match(/^### /gm) || []).length);
 line('طول تقرير التدقيق', pack.audit_report_markdown.length + ' حرفًا');
+if (LIVE) {
+  console.log('');
+  line('نداءات فعلية', usage.calls + (usage.retries ? ' (+' + usage.retries + ' إعادة محاولة)' : ''));
+  line('نداءات فاشلة', usage.failures);
+  line('توكنات دخل/خرج', usage.in_tokens + ' / ' + usage.out_tokens);
+  line('زمن النداءات', (usage.ms / 1000).toFixed(0) + ' ثانية');
+}
+
+/* ---------- حفظ نواتج التشغيلة ---------- */
+const outDir = outArg
+  ? path.resolve(ROOT, outArg)
+  : (LIVE ? path.join(ROOT, 'runs', pack.profile + '-' + new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)) : null);
+if (outDir) {
+  fs.mkdirSync(outDir, { recursive: true });
+  fs.writeFileSync(path.join(outDir, 'article.md'), pack.article_markdown, 'utf8');
+  fs.writeFileSync(path.join(outDir, 'audit.md'), pack.audit_report_markdown, 'utf8');
+  fs.writeFileSync(path.join(outDir, 'minutes.md'), pack.meeting_minutes_markdown, 'utf8');
+  fs.writeFileSync(path.join(outDir, 'pack.json'), JSON.stringify(pack, null, 2), 'utf8');
+  if (LIVE) fs.writeFileSync(path.join(outDir, 'usage.json'), JSON.stringify(usage, null, 2), 'utf8');
+  console.log('\n  📁 النواتج: ' + path.relative(ROOT, outDir) + '/  (article.md · audit.md · minutes.md · pack.json)');
+}
 
 console.log('\n  فحوص المفتش الآلي (النسخة النهائية):');
 pack.mechanical.checks.forEach((c) => {
@@ -202,7 +300,7 @@ if (pack.warnings.length) { console.log('\n  تنبيهات:'); pack.warnings.fo
 if (pack.errors.length)   { console.log('\n  أخطاء تقنية:'); pack.errors.forEach((e) => console.log('    • [' + e.stage + '] ' + e.message)); }
 
 /* ---------- تأكيدات ---------- */
-const isArticle = pack.profile !== 'social_posts_ar';
+const isArticle = (pack.content_mode || 'article') !== 'social';
 const assertions = [
   ['وصلت إلى حزمة النشر', !!pack],
   ['دارت الجلسة أكثر من دورة واحدة', pack.rounds_used >= 2],

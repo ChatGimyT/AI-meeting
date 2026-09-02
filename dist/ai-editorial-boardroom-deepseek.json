@@ -1,5 +1,5 @@
 {
-  "name": "AI Editorial Boardroom — محرك كتابة المحتوى بطاولة اجتماعات",
+  "name": "AI Editorial Boardroom — DeepSeek",
   "nodes": [
     {
       "parameters": {},
@@ -15,7 +15,7 @@
     {
       "parameters": {
         "mode": "raw",
-        "jsonOutput": "{\n  \"profile_id\": \"rabeh_article_ar\",\n  \"title\": \"ما هي إعلانات جوجل ادوردز؟ دليل 2026 للسوق السعودي\",\n  \"goal\": \"جذب عملاء لخدمة إدارة إعلانات جوجل وتحويل الزائر إلى عميل محتمل\",\n  \"article_type\": \"commercial\",\n  \"target_market\": \"السعودية\",\n  \"primary_keyword\": \"اعلانات جوجل ادوردز\",\n  \"primary_keyword_count\": 8,\n  \"secondary_keywords\": [\n    \"اعلانات جوجل\",\n    \"حملات جوجل الاعلانية\",\n    \"اسعار اعلانات جوجل\"\n  ],\n  \"semantic_keywords\": [\n    \"Google Ads\",\n    \"شبكة البحث\",\n    \"الكلمات المفتاحية\",\n    \"تكلفة النقرة\"\n  ],\n  \"headings\": [\n    \"H2: ما هي إعلانات جوجل ادوردز؟\",\n    \"H2: كيف تتم المحاسبة في إعلانات جوجل؟\",\n    \"H2: لماذا تعتبر إعلانات جوجل الأهم في التسويق الإلكتروني؟\",\n    \"H2: الكلمات المفتاحية سر نجاح حملتك\",\n    \"H2: طرق الاستهداف داخل جوجل ادوردز\",\n    \"H2: كيف تساعدك شركة رابح في إدارة حملاتك؟\",\n    \"H2: الأسئلة الشائعة (FAQ)\"\n  ],\n  \"internal_links\": [\n    {\n      \"anchor\": \"أنواع إعلانات جوجل\",\n      \"url\": \"https://www.rabeh.org/ar/blog-show/انواع-اعلانات-جوجل\"\n    },\n    {\n      \"anchor\": \"طريقة عمل اعلان على جوجل\",\n      \"url\": \"https://www.rabeh.org/ar/blog-show/طريقة-عمل-اعلان-على-جوجل\"\n    },\n    {\n      \"anchor\": \"ادارة حملات جوجل الاعلانية\",\n      \"url\": \"https://www.rabeh.org/ar/blog-show/ادارة-حملات-جوجل-الاعلانية\"\n    }\n  ],\n  \"mandatory_citations\": [],\n  \"cluster_role\": \"Pillar\",\n  \"allow_auto_headings\": true,\n  \"notes\": \"\"\n}"
+        "jsonOutput": "{\n  \"profile_id\": \"rabeh_article_ar_deepseek\",\n  \"title\": \"ما هي إعلانات جوجل ادوردز؟ دليل 2026 للسوق السعودي\",\n  \"goal\": \"جذب عملاء لخدمة إدارة إعلانات جوجل وتحويل الزائر إلى عميل محتمل\",\n  \"article_type\": \"commercial\",\n  \"target_market\": \"السعودية\",\n  \"primary_keyword\": \"اعلانات جوجل ادوردز\",\n  \"primary_keyword_count\": 8,\n  \"secondary_keywords\": [\n    \"اعلانات جوجل\",\n    \"حملات جوجل الاعلانية\",\n    \"اسعار اعلانات جوجل\"\n  ],\n  \"semantic_keywords\": [\n    \"Google Ads\",\n    \"شبكة البحث\",\n    \"الكلمات المفتاحية\",\n    \"تكلفة النقرة\"\n  ],\n  \"headings\": [\n    \"H2: ما هي إعلانات جوجل ادوردز؟\",\n    \"H2: كيف تتم المحاسبة في إعلانات جوجل؟\",\n    \"H2: لماذا تعتبر إعلانات جوجل الأهم في التسويق الإلكتروني؟\",\n    \"H2: الكلمات المفتاحية سر نجاح حملتك\",\n    \"H2: طرق الاستهداف داخل جوجل ادوردز\",\n    \"H2: كيف تساعدك شركة رابح في إدارة حملاتك؟\",\n    \"H2: الأسئلة الشائعة (FAQ)\"\n  ],\n  \"internal_links\": [\n    {\n      \"anchor\": \"أنواع إعلانات جوجل\",\n      \"url\": \"https://www.rabeh.org/ar/blog-show/انواع-اعلانات-جوجل\"\n    },\n    {\n      \"anchor\": \"طريقة عمل اعلان على جوجل\",\n      \"url\": \"https://www.rabeh.org/ar/blog-show/طريقة-عمل-اعلان-على-جوجل\"\n    },\n    {\n      \"anchor\": \"ادارة حملات جوجل الاعلانية\",\n      \"url\": \"https://www.rabeh.org/ar/blog-show/ادارة-حملات-جوجل-الاعلانية\"\n    }\n  ],\n  \"mandatory_citations\": [],\n  \"cluster_role\": \"Pillar\",\n  \"allow_auto_headings\": true,\n  \"notes\": \"\"\n}"
       },
       "id": "fb38adeb-1f4f-45b5-bd1b-f9ad893b5105",
       "name": "📥 Brief — EDIT ME",
@@ -270,8 +270,7 @@
       "parameters": {
         "method": "POST",
         "url": "={{ $json.url }}",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "authentication": "predefinedCredentialType",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -296,7 +295,8 @@
               "responseFormat": "json"
             }
           }
-        }
+        },
+        "nodeCredentialType": "deepSeekApi"
       },
       "id": "e3ae5ff3-c0a6-4e87-a4de-d04435163a7c",
       "name": "🧠 LLM · Kickoff Panel",
@@ -307,9 +307,9 @@
         60
       ],
       "credentials": {
-        "httpHeaderAuth": {
-          "id": "REPLACE_ME",
-          "name": "LLM API Key"
+        "deepSeekApi": {
+          "id": "UtZ5Hq48pibn5oXX",
+          "name": "DeepSeek account"
         }
       },
       "retryOnFail": true,
@@ -339,8 +339,7 @@
       "parameters": {
         "method": "POST",
         "url": "={{ $json.url }}",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "authentication": "predefinedCredentialType",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -365,7 +364,8 @@
               "responseFormat": "json"
             }
           }
-        }
+        },
+        "nodeCredentialType": "deepSeekApi"
       },
       "id": "41ec1292-fc01-458a-a70a-3194d4d50492",
       "name": "🧠 LLM · Chair Blueprint",
@@ -376,9 +376,9 @@
         60
       ],
       "credentials": {
-        "httpHeaderAuth": {
-          "id": "REPLACE_ME",
-          "name": "LLM API Key"
+        "deepSeekApi": {
+          "id": "UtZ5Hq48pibn5oXX",
+          "name": "DeepSeek account"
         }
       },
       "retryOnFail": true,
@@ -406,8 +406,7 @@
       "parameters": {
         "method": "POST",
         "url": "={{ $json.url }}",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "authentication": "predefinedCredentialType",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -432,7 +431,8 @@
               "responseFormat": "json"
             }
           }
-        }
+        },
+        "nodeCredentialType": "deepSeekApi"
       },
       "id": "daa17435-1a3a-42df-8b0a-adf7edeeaa3f",
       "name": "🧠 LLM · Research (web search)",
@@ -443,9 +443,9 @@
         60
       ],
       "credentials": {
-        "httpHeaderAuth": {
-          "id": "REPLACE_ME",
-          "name": "LLM API Key"
+        "deepSeekApi": {
+          "id": "UtZ5Hq48pibn5oXX",
+          "name": "DeepSeek account"
         }
       },
       "retryOnFail": true,
@@ -568,8 +568,7 @@
       "parameters": {
         "method": "POST",
         "url": "={{ $json.url }}",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "authentication": "predefinedCredentialType",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -594,7 +593,8 @@
               "responseFormat": "json"
             }
           }
-        }
+        },
+        "nodeCredentialType": "deepSeekApi"
       },
       "id": "738dfe4d-d3ec-4ed4-9b1b-067780e18716",
       "name": "🧠 LLM · Fact-checker",
@@ -605,9 +605,9 @@
         60
       ],
       "credentials": {
-        "httpHeaderAuth": {
-          "id": "REPLACE_ME",
-          "name": "LLM API Key"
+        "deepSeekApi": {
+          "id": "UtZ5Hq48pibn5oXX",
+          "name": "DeepSeek account"
         }
       },
       "retryOnFail": true,
@@ -651,8 +651,7 @@
       "parameters": {
         "method": "POST",
         "url": "={{ $json.url }}",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "authentication": "predefinedCredentialType",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -677,7 +676,8 @@
               "responseFormat": "json"
             }
           }
-        }
+        },
+        "nodeCredentialType": "deepSeekApi"
       },
       "id": "959132fe-816b-474d-bf9e-9ae791dbc4dc",
       "name": "🧠 LLM · Lead Writer",
@@ -688,9 +688,9 @@
         60
       ],
       "credentials": {
-        "httpHeaderAuth": {
-          "id": "REPLACE_ME",
-          "name": "LLM API Key"
+        "deepSeekApi": {
+          "id": "UtZ5Hq48pibn5oXX",
+          "name": "DeepSeek account"
         }
       },
       "retryOnFail": true,
@@ -716,8 +716,7 @@
       "parameters": {
         "method": "POST",
         "url": "={{ $json.url }}",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "authentication": "predefinedCredentialType",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -742,7 +741,8 @@
               "responseFormat": "json"
             }
           }
-        }
+        },
+        "nodeCredentialType": "deepSeekApi"
       },
       "id": "edaac3b6-2248-47d4-94fd-858a64f4e995",
       "name": "🧠 LLM · Narrative Editor",
@@ -753,9 +753,9 @@
         60
       ],
       "credentials": {
-        "httpHeaderAuth": {
-          "id": "REPLACE_ME",
-          "name": "LLM API Key"
+        "deepSeekApi": {
+          "id": "UtZ5Hq48pibn5oXX",
+          "name": "DeepSeek account"
         }
       },
       "retryOnFail": true,
@@ -781,8 +781,7 @@
       "parameters": {
         "method": "POST",
         "url": "={{ $json.url }}",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "authentication": "predefinedCredentialType",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -807,7 +806,8 @@
               "responseFormat": "json"
             }
           }
-        }
+        },
+        "nodeCredentialType": "deepSeekApi"
       },
       "id": "49af5532-ca2d-439b-880e-b957e2447928",
       "name": "🧠 LLM · Language Editor",
@@ -818,9 +818,9 @@
         60
       ],
       "credentials": {
-        "httpHeaderAuth": {
-          "id": "REPLACE_ME",
-          "name": "LLM API Key"
+        "deepSeekApi": {
+          "id": "UtZ5Hq48pibn5oXX",
+          "name": "DeepSeek account"
         }
       },
       "retryOnFail": true,
@@ -878,8 +878,7 @@
       "parameters": {
         "method": "POST",
         "url": "={{ $json.url }}",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "authentication": "predefinedCredentialType",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -904,7 +903,8 @@
               "responseFormat": "json"
             }
           }
-        }
+        },
+        "nodeCredentialType": "deepSeekApi"
       },
       "id": "f9bef330-b5cb-4afa-9d41-60c89c871386",
       "name": "🧠 LLM · Review Panel",
@@ -915,9 +915,9 @@
         60
       ],
       "credentials": {
-        "httpHeaderAuth": {
-          "id": "REPLACE_ME",
-          "name": "LLM API Key"
+        "deepSeekApi": {
+          "id": "UtZ5Hq48pibn5oXX",
+          "name": "DeepSeek account"
         }
       },
       "retryOnFail": true,
@@ -947,8 +947,7 @@
       "parameters": {
         "method": "POST",
         "url": "={{ $json.url }}",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "authentication": "predefinedCredentialType",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -973,7 +972,8 @@
               "responseFormat": "json"
             }
           }
-        }
+        },
+        "nodeCredentialType": "deepSeekApi"
       },
       "id": "23fcbb5a-37cd-4053-b07c-0ab2de28293e",
       "name": "🧠 LLM · Chair",
@@ -984,9 +984,9 @@
         60
       ],
       "credentials": {
-        "httpHeaderAuth": {
-          "id": "REPLACE_ME",
-          "name": "LLM API Key"
+        "deepSeekApi": {
+          "id": "UtZ5Hq48pibn5oXX",
+          "name": "DeepSeek account"
         }
       },
       "retryOnFail": true,
@@ -1146,8 +1146,7 @@
       "parameters": {
         "method": "POST",
         "url": "={{ $json.url }}",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "authentication": "predefinedCredentialType",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -1172,7 +1171,8 @@
               "responseFormat": "json"
             }
           }
-        }
+        },
+        "nodeCredentialType": "deepSeekApi"
       },
       "id": "9bfb0722-e206-4ad9-94af-6c6a4964a429",
       "name": "🧠 LLM · Reviser",
@@ -1183,9 +1183,9 @@
         300
       ],
       "credentials": {
-        "httpHeaderAuth": {
-          "id": "REPLACE_ME",
-          "name": "LLM API Key"
+        "deepSeekApi": {
+          "id": "UtZ5Hq48pibn5oXX",
+          "name": "DeepSeek account"
         }
       },
       "retryOnFail": true,
@@ -1243,8 +1243,7 @@
       "parameters": {
         "method": "POST",
         "url": "={{ $json.url }}",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "authentication": "predefinedCredentialType",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -1269,7 +1268,8 @@
               "responseFormat": "json"
             }
           }
-        }
+        },
+        "nodeCredentialType": "deepSeekApi"
       },
       "id": "12cd1762-1864-4656-a915-2e4a5779a5d2",
       "name": "🧠 LLM · Final Auditor",
@@ -1280,9 +1280,9 @@
         60
       ],
       "credentials": {
-        "httpHeaderAuth": {
-          "id": "REPLACE_ME",
-          "name": "LLM API Key"
+        "deepSeekApi": {
+          "id": "UtZ5Hq48pibn5oXX",
+          "name": "DeepSeek account"
         }
       },
       "retryOnFail": true,
