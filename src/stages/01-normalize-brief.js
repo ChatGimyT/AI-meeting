@@ -3,12 +3,20 @@
  * يُخرج: عنصر واحد فيه brief موحّد.
  * ──────────────────────────────────────────────────────────── */
 const raw = $input.first().json || {};
-const src = raw.body && typeof raw.body === 'object' ? raw.body : raw;
+const src = (raw.brief && typeof raw.brief === 'object') ? raw.brief
+          : (raw.body && typeof raw.body === 'object') ? raw.body
+          : raw;
 
 function arr(v) {
   if (v == null || v === '') return [];
   if (Array.isArray(v)) return v.filter(function (x) { return x !== null && x !== undefined && String(x).trim() !== ''; });
   return String(v).split(/[\n،,;|]+/).map(function (x) { return x.trim(); }).filter(Boolean);
+}
+
+/* حقول يفصلها السطر وحده (عناوين، استشهادات) — قد تحتوي فواصل داخل نصها */
+function lines(v) {
+  if (Array.isArray(v)) return v.map(function (x) { return String(x).trim(); }).filter(Boolean);
+  return String(v == null ? '' : v).split(/\r?\n/).map(function (x) { return x.trim(); }).filter(Boolean);
 }
 
 function links(v) {
@@ -24,7 +32,8 @@ function links(v) {
       return { anchor: (l.anchor || l.text || '').trim(), url: (l.url || l.href || '').trim() };
     }).filter(function (l) { return l.url; });
   }
-  return arr(v).map(function (line) {
+  /* الروابط تُفصل بأسطر فقط — لأن «|» نفسها فاصل بين نص الأنكور والرابط */
+  return String(v || '').split(/\r?\n/).map(function (x) { return x.trim(); }).filter(Boolean).map(function (line) {
     const m = line.match(/^\s*(.*?)\s*(?:\||=>|->|::)\s*(https?:\/\/\S+)\s*$/);
     if (m) return { anchor: m[1], url: m[2] };
     const md = line.match(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/);
@@ -48,9 +57,9 @@ const brief = {
   primary_keyword_count: Number(src.primary_keyword_count || src['تكرار الكلمة'] || 0) || 0,
   secondary_keywords:  arr(src.secondary_keywords || src['الكلمات الثانوية']),
   semantic_keywords:   arr(src.semantic_keywords || src['الكلمات المرتبطة']),
-  headings:            arr(src.headings || src['العناوين الداخلية']),
+  headings:            lines(src.headings || src['العناوين الداخلية']),
   internal_links:      links(src.internal_links || src['الروابط الداخلية']),
-  mandatory_citations: arr(src.mandatory_citations || src['استشهادات إلزامية']),
+  mandatory_citations: lines(src.mandatory_citations || src['استشهادات إلزامية']),
   cluster_role:        (src.cluster_role || src['نوع المقالة'] || '').trim(),
   pillar_url:          (src.pillar_url || '').trim(),
   existing_article:    src.existing_article || src['المقالة الحالية'] || '',
@@ -59,7 +68,8 @@ const brief = {
   notes:               (src.notes || src['ملاحظات'] || '').trim(),
   allow_auto_headings: src.allow_auto_headings !== false && src.allow_auto_headings !== 'false',
   overrides:           (typeof src.overrides === 'object' && src.overrides) || null,
-  delivery:            src.delivery || (raw.headers ? 'webhook' : 'inline')
+  delivery:            src.delivery || (raw.headers ? 'webhook' : 'inline'),
+  sheet_row:           src.sheet_row != null ? src.sheet_row : (raw.row_number != null ? raw.row_number : null)
 };
 
 return [{ json: { brief: brief } }];

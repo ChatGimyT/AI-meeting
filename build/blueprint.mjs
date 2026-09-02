@@ -39,6 +39,20 @@ const code = (name, stage, pos, note) => ({
   parameters: { mode: 'runOnceForAllItems', jsCode: '__STAGE__' }
 });
 
+const SHEET_DOC = '1_LWkR3yYKsKQP9jcjPdi96D8lzTCWYmz5TF3FOsZZGw';
+const SHEET_TAB = 'الورقة1';
+const docRL  = () => ({ __rl: true, value: SHEET_DOC, mode: 'id' });
+const tabRL  = () => ({ __rl: true, value: SHEET_TAB, mode: 'name', cachedResultName: SHEET_TAB });
+
+/** عقدة شيت جوجل */
+const sheets = (name, pos, params, note) => ({
+  name, pos, note,
+  type: 'n8n-nodes-base.googleSheets', typeVersion: 4.5,
+  retryOnFail: true, maxTries: 3, waitBetweenTries: 3000,
+  credentials: { googleSheetsOAuth2Api: { id: 'REPLACE_ME', name: 'Google Sheets account' } },
+  parameters: Object.assign({ documentId: docRL(), sheetName: tabRL() }, params)
+});
+
 const sticky = (content, pos, w, h, color) => ({
   name: 'note_' + pos.join('_'),
   type: 'n8n-nodes-base.stickyNote', typeVersion: 1,
@@ -107,6 +121,23 @@ export const nodes = [
       options: {}
     } },
 
+  { name: '⏱️ Sheet Poll', type: 'n8n-nodes-base.scheduleTrigger', typeVersion: 1.2, pos: [-1120, 620],
+    note: 'يفحص الشيت كل دقيقة بحثًا عن صف مُعلَّم بـ ✅ في عمود «تشغيل».',
+    parameters: { rule: { interval: [{ field: 'minutes', minutesInterval: 1 }] } } },
+
+  sheets('📊 Read Sheet Rows', [-900, 620], { options: {} }, 'يقرأ كل صفوف الورقة1.'),
+
+  code('🎯 Pick Pending Row', '23-pick-pending-row', [-680, 620],
+       'يلتقط أول صف مُعلَّم ولم يُنفَّذ، ويحوّله إلى طلب. بلا صفوف = لا تنفيذ.'),
+
+  code('🟡 Mark Row Running', '24-mark-running', [-680, 820]),
+
+  sheets('📝 Sheets: Mark Running', [-460, 820],
+    { operation: 'update',
+      columns: { mappingMode: 'autoMapInputData', matchingColumns: ['row_number'], value: {}, schema: [] },
+      options: {} },
+    'يكتب «⏳ قيد التنفيذ» في الصف فورًا.'),
+
   { name: '🔌 Webhook Intake', type: 'n8n-nodes-base.webhook', typeVersion: 2, pos: [-880, 400],
     webhookId: 'b2e1d3c5-7a4f-4e82-9c3b-2f7a8c01d222',
     note: 'واجهة API لدمج المحرك في أي نظام آخر.',
@@ -122,9 +153,8 @@ export const nodes = [
       conditions: [{ id: 'c-intake', leftValue: '={{ $json.intake_ok }}', rightValue: '',
         operator: { type: 'boolean', operation: 'true', singleValue: true } }], combinator: 'and' }, options: {} } },
 
-  { name: '⛔ Intake Rejected', type: 'n8n-nodes-base.set', typeVersion: 3.4, pos: [460, 300],
-    note: 'الطلب ناقص — لا تبدأ الجلسة.',
-    parameters: { mode: 'raw', jsonOutput: '={{ JSON.stringify({ status: "intake_rejected", missing: $json.state.intake_missing, warnings: $json.state.warnings }) }}' } },
+  code('⛔ Intake Rejected', '26-intake-rejected', [460, 300],
+       'الطلب ناقص — لا تُستهلك أي نداءات API، والسبب يُكتب في الشيت.'),
 
   /* ═══ 3. جلسة الإحاطة ═══ */
   code('🗓️ Agenda: Kickoff', '04-agenda-kickoff', [460, 60], 'الاستراتيجية + هندسة الإحاطة معًا.'),
@@ -194,16 +224,30 @@ export const nodes = [
   llm('🧠 LLM · Final Auditor', [6400, 60]),
   code('📦 Publish Pack', '22-publish-pack', [6620, 60], 'المقال + الميتا + Schema + التقارير + محضر الاجتماع.'),
 
-  { name: '🚦 Webhook Reply?', type: 'n8n-nodes-base.if', typeVersion: 2.2, pos: [6840, 60],
+  code('📐 Compare vs Reference', '25-compare-vs-reference', [6840, 60],
+       'يقيس الناتج مقابل المقال المرجعي: الفحوص + بصمة الأسلوب.'),
+
+  { name: '🚦 From Sheet?', type: 'n8n-nodes-base.if', typeVersion: 2.2, pos: [7060, 60],
+    parameters: { conditions: { options: { caseSensitive: true, leftValue: '', typeValidation: 'loose', version: 2 },
+      conditions: [{ id: 'c-sheet', leftValue: '={{ $json.row_number }}', rightValue: '',
+        operator: { type: 'number', operation: 'exists', singleValue: true } }], combinator: 'and' }, options: {} } },
+
+  sheets('📝 Sheets: Write Results', [7280, -60],
+    { operation: 'update',
+      columns: { mappingMode: 'autoMapInputData', matchingColumns: ['row_number'], value: {}, schema: [] },
+      options: {} },
+    'يكتب المقال والتقارير والمقارنة في الصف نفسه.'),
+
+  { name: '🚦 Webhook Reply?', type: 'n8n-nodes-base.if', typeVersion: 2.2, pos: [7280, 200],
     parameters: { conditions: { options: { caseSensitive: true, leftValue: '', typeValidation: 'loose', version: 2 },
       conditions: [{ id: 'c-hook', leftValue: '={{ $(\'🧾 Normalize Brief\').first().json.brief.delivery }}', rightValue: 'webhook',
         operator: { type: 'string', operation: 'equals' } }], combinator: 'and' }, options: {} } },
 
-  { name: '📤 Respond to Webhook', type: 'n8n-nodes-base.respondToWebhook', typeVersion: 1.1, pos: [7060, -40],
+  { name: '📤 Respond to Webhook', type: 'n8n-nodes-base.respondToWebhook', typeVersion: 1.1, pos: [7500, 140],
     onError: 'continueRegularOutput',
     parameters: { respondWith: 'json', responseBody: '={{ JSON.stringify($json) }}', options: {} } },
 
-  { name: '✅ Done', type: 'n8n-nodes-base.noOp', typeVersion: 1, pos: [7060, 180], parameters: {} },
+  { name: '✅ Done', type: 'n8n-nodes-base.noOp', typeVersion: 1, pos: [7500, 300], parameters: {} },
 
   /* ═══ ملاحظات على اللوحة ═══ */
   sticky([
@@ -307,6 +351,10 @@ export const connections = {
   '📥 Brief — EDIT ME':     [['🧾 Normalize Brief']],
   '📨 Form Intake':         [['🧾 Normalize Brief']],
   '🔌 Webhook Intake':      [['🧾 Normalize Brief']],
+  '⏱️ Sheet Poll':          [['📊 Read Sheet Rows']],
+  '📊 Read Sheet Rows':     [['🎯 Pick Pending Row']],
+  '🎯 Pick Pending Row':    [['🧾 Normalize Brief', '🟡 Mark Row Running']],
+  '🟡 Mark Row Running':    [['📝 Sheets: Mark Running']],
   '🧾 Normalize Brief':     [['📚 Profiles Registry']],
   '📚 Profiles Registry':   [['⚙️ Open Session']],
   '⚙️ Open Session':        [['🚦 Intake Complete?']],
@@ -356,6 +404,10 @@ export const connections = {
 
   '🗓️ Agenda: Final Audit': [['🧠 LLM · Final Auditor']],
   '🧠 LLM · Final Auditor': [['📦 Publish Pack']],
-  '📦 Publish Pack':        [['🚦 Webhook Reply?']],
+  '📦 Publish Pack':        [['📐 Compare vs Reference']],
+  '📐 Compare vs Reference':[['🚦 From Sheet?']],
+  '⛔ Intake Rejected':     [['🚦 From Sheet?']],
+  '🚦 From Sheet?':         [['📝 Sheets: Write Results'], ['🚦 Webhook Reply?']],
+  '📝 Sheets: Write Results': [['🚦 Webhook Reply?']],
   '🚦 Webhook Reply?':      [['📤 Respond to Webhook'], ['✅ Done']]
 };

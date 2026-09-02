@@ -6,6 +6,8 @@
 
 /* __PROFILES__ */
 
+/* __SHEET__ */
+
 /* حلّ سلسلة الوراثة (extends) */
 const resolved = {};
 function resolve(id, seen) {
@@ -27,4 +29,4 @@ function resolve(id, seen) {
 }
 Object.keys(PROFILES).forEach(function (id) { resolve(id); });
 
-return [{ json: { profiles: resolved, brief: $input.first().json.brief } }];
+return [{ json: { profiles: resolved, sheet: SHEET, brief: $input.first().json.brief } }];

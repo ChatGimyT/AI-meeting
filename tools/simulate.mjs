@@ -86,7 +86,26 @@ const byName = Object.fromEntries(wf.nodes.map((n) => [n.name, n]));
 const runs = {};                       /* آخر مخرجات كل عقدة */
 const mock = makeMock();
 const trace = [];
+const sheetWrites = [];
 let llmCalls = 0;
+
+/* صف تجريبي يحاكي ما يملأه المستخدم في الورقة1 */
+const SHEET_ROWS = () => {
+  const base = JSON.parse(byName['📥 Brief — EDIT ME'].parameters.jsonOutput);
+  const pid = profileArg || base.profile_id;
+  return [
+    { row_number: 2, 'تشغيل': 'TRUE', 'الحالة': '', 'الملف التعريفي': pid,
+      'عنوان المقال': base.title, 'الهدف': base.goal, 'نوع المقال': 'تجاري',
+      'السوق المستهدف': 'السعودية', 'الكلمة المفتاحية الرئيسية': base.primary_keyword,
+      'تكرار الكلمة': base.primary_keyword_count,
+      'الكلمات الثانوية': (base.secondary_keywords || []).join('\n'),
+      'الكلمات المرتبطة': (base.semantic_keywords || []).join('\n'),
+      'العناوين الداخلية': (base.headings || []).join('\n'),
+      'الروابط الداخلية': (base.internal_links || []).map((l) => l.anchor + ' | ' + l.url).join('\n'),
+      'استشهادات إلزامية': '', 'دور المقالة': 'Pillar', 'المقالة الحالية': '', 'ملاحظات': '' },
+    { row_number: 3, 'تشغيل': '', 'الحالة': '', 'عنوان المقال': 'صف غير مُعلَّم — يجب تجاهله' }
+  ];
+};
 
 const $ = (name) => {
   const items = runs[name];
@@ -113,6 +132,7 @@ function evalIf(node, items) {
     case '🚦 Intake Complete?': return !!j.intake_ok;
     case '🚦 Has Links?':       return j.skip_links === false;
     case '🚦 Webhook Reply?':   return $('🧾 Normalize Brief').first().json.brief.delivery === 'webhook';
+    case '🚦 From Sheet?':      return j.row_number != null;
     default: throw new Error('No evaluator for IF node ' + node.name);
   }
 }
@@ -170,13 +190,26 @@ async function runNode(node, items) {
     case 'n8n-nodes-base.respondToWebhook':
       return { outputs: [items] };
 
+    case 'n8n-nodes-base.scheduleTrigger':
+      return { outputs: [items] };
+
+    case 'n8n-nodes-base.googleSheets': {
+      if (node.name === '📊 Read Sheet Rows') {
+        const b = SHEET_ROWS();
+        return { outputs: [b.map((r) => ({ json: r }))] };
+      }
+      sheetWrites.push({ node: node.name, rows: items.map((i) => i.json) });
+      return { outputs: [items] };
+    }
+
     default:
       throw new Error('Unsupported node type in simulator: ' + node.type + ' (' + node.name + ')');
   }
 }
 
 /* ---------- محرك التنفيذ ---------- */
-const startName = '📥 Brief — EDIT ME';
+const SHEET_MODE = process.argv.includes('--sheet');
+const startName = SHEET_MODE ? '📊 Read Sheet Rows' : '📥 Brief — EDIT ME';
 const PRESETS = {
   social_posts_ar: {
     profile_id: 'social_posts_ar',
@@ -269,6 +302,23 @@ line('الفحص الآلي', pack.mechanical.pass ? 'ناجح ✅' : 'راسب 
 line('JSON-LD', pack.json_ld ? pack.json_ld['@graph'].map((g) => g['@type']).join(' + ') : '—');
 line('بنود محضر الاجتماع', (pack.meeting_minutes_markdown.match(/^### /gm) || []).length);
 line('طول تقرير التدقيق', pack.audit_report_markdown.length + ' حرفًا');
+if (sheetWrites.length) {
+  console.log('\n  📊 كتابات الشيت:');
+  sheetWrites.forEach((w) => {
+    w.rows.forEach((r) => {
+      const keys = Object.keys(r).filter((k) => k !== 'row_number' && String(r[k] || '').length);
+      console.log('    ' + w.node + ' → صف ' + r.row_number + ' | ' + keys.length + ' عمودًا | الحالة: ' + (r['الحالة'] || '—'));
+    });
+  });
+}
+if (pack.comparison) {
+  const c = pack.comparison;
+  console.log('\n  📐 مقابل المرجع (' + c.reference_name + '):');
+  console.log('    الدرجة الآلية: ' + c.deterministic_score + '% مقابل ' + c.reference_score + '%');
+  console.log('    تطابق البصمة: ' + c.style_match_pct + '%');
+  c.metrics.filter((m) => !m.ok).forEach((m) =>
+    console.log('    ⚠️  ' + m.metric + ': مرجع ' + m.reference + ' · مرشّح ' + m.candidate + ' (' + (m.delta > 0 ? '+' : '') + m.delta + ')'));
+}
 if (LIVE) {
   console.log('');
   line('نداءات فعلية', usage.calls + (usage.retries ? ' (+' + usage.retries + ' إعادة محاولة)' : ''));

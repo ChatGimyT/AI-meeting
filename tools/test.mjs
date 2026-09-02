@@ -9,15 +9,21 @@ const profiles = ['rabeh_article_ar', 'rabeh_refresh_ar', 'social_posts_ar',
                   'rabeh_article_ar_deepseek', 'social_posts_deepseek'];
 let failed = 0;
 
-for (const p of profiles) {
-  process.stdout.write('▶ ' + p.padEnd(26) + ' … ');
+const cases = profiles.map((p) => ({ label: p, args: ['--profile=' + p] }))
+  .concat([{ label: 'sheet → rabeh_article_ar_deepseek', args: ['--sheet', '--profile=rabeh_article_ar_deepseek'] }]);
+
+for (const c of cases) {
+  const p = c.label;
+  process.stdout.write('▶ ' + p.padEnd(34) + ' … ');
   try {
-    const out = execFileSync('node', [path.join(ROOT, 'tools', 'simulate.mjs'), '--profile=' + p],
+    const out = execFileSync('node', [path.join(ROOT, 'tools', 'simulate.mjs')].concat(c.args),
       { encoding: 'utf8', cwd: ROOT });
     const rounds = (out.match(/الدورات المستهلكة \.+ (\d+)/) || [])[1];
     const status = (out.match(/الحالة \.+ (\S+)/) || [])[1];
     const calls  = (out.match(/نداءات النموذج \.+ (\d+)/) || [])[1];
     const words  = (out.match(/عدد كلمات المقال \.+ (\d+)/) || [])[1];
+    const sheetOk = !c.args.includes('--sheet') || /Sheets: Write Results/.test(out);
+    if (!sheetOk) throw Object.assign(new Error('sheet write missing'), { stdout: out + '\n❌ لم تُكتب النتائج في الشيت' });
     console.log('نجح ✅  (' + status + ' | دورات: ' + rounds + ' | نداءات: ' + calls + ' | كلمات: ' + words + ')');
   } catch (e) {
     failed++;
@@ -26,5 +32,5 @@ for (const p of profiles) {
   }
 }
 console.log('');
-if (failed) { console.error('❌ فشل ' + failed + ' من ' + profiles.length + ' ملفات.\n'); process.exit(1); }
-console.log('✅ كل الملفات التعريفية تعمل من البداية للنهاية.\n');
+if (failed) { console.error('❌ فشل ' + failed + ' من ' + cases.length + ' حالة.\n'); process.exit(1); }
+console.log('✅ كل الحالات تعمل من البداية للنهاية (' + cases.length + ' حالة).\n');

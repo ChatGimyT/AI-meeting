@@ -5,16 +5,18 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "build": "node build/build.mjs",
+    "build": "node build/build.mjs --sheets-credential-type=googleSheetsOAuth2Api --sheets-credential-id=zqpCaDcnpV6T6BqM --sheets-credential-name=\"Google Sheets account\"",
     "validate": "node tools/validate.mjs",
     "sim": "node tools/simulate.mjs",
     "test": "node build/build.mjs && node tools/check-stages.mjs && node tools/validate.mjs && node tools/test.mjs",
-    "build:deepseek": "node build/build.mjs --variant=deepseek --credential-type=deepSeekApi --credential-id=UtZ5Hq48pibn5oXX --credential-name=\"DeepSeek account\" --default-profile=rabeh_article_ar_deepseek --name=\"AI Editorial Boardroom — DeepSeek\"",
+    "build:deepseek": "node build/build.mjs --variant=deepseek --credential-type=deepSeekApi --credential-id=UtZ5Hq48pibn5oXX --credential-name=\"DeepSeek account\" --default-profile=rabeh_article_ar_deepseek --name=\"AI Editorial Boardroom — DeepSeek\" --sheets-credential-type=googleSheetsOAuth2Api --sheets-credential-id=zqpCaDcnpV6T6BqM --sheets-credential-name=\"Google Sheets account\"",
     "build:all": "npm run build && npm run build:deepseek",
     "grade": "node tools/grade.mjs",
     "compare": "node tools/compare.mjs",
     "bench": "node tools/bench.mjs",
-    "check": "node tools/check-stages.mjs"
+    "check": "node tools/check-stages.mjs",
+    "ping": "node tools/ping.mjs",
+    "sheet:template": "node tools/sheet-template.mjs --csv > benchmark/sheet-template.csv && node tools/sheet-template.mjs > benchmark/sheet-template.tsv"
   },
   "engines": {
     "node": ">=18"

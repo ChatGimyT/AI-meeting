@@ -25,6 +25,27 @@
 
 ---
 
+## المدخلات من شيت جوجل — «زرار» التشغيل
+
+الشيت هو لوحة التحكم: تملأ صفًا، تعلّم ✅ في عمود **تشغيل**، فيلتقطه المحرك خلال دقيقة
+ويكتب المقال والتقارير و**المقارنة بالمقال المرجعي** في الصف نفسه.
+
+<div dir="ltr">
+
+```
+الورقة1 ──✅ تشغيل──▶ ⏱️ Sheet Poll ──▶ 🎯 Pick Pending Row ──▶ [ ورشة التحرير كاملة ]
+                                                                        │
+   الحالة · الدرجة · المخالفات · المقال · التقرير · المحضر ◀── 📝 Sheets: Write Results
+```
+
+</div>
+
+التجهيز مرة واحدة: استورد [`benchmark/sheet-template.csv`](benchmark/sheet-template.csv)
+عبر **File → Import → Replace current sheet**، ثم حوّل عمود «تشغيل» إلى Checkbox.
+الدليل الكامل: [`docs/SHEET.md`](docs/SHEET.md)
+
+---
+
 ## التشغيل في ٣ دقائق
 
 1. **استورد الملف** في n8n: `Workflows → … → Import from File` واختر `dist/ai-editorial-boardroom.json`.
@@ -178,6 +199,10 @@ npm run compare -- --gold=benchmark/gold/google-ads-ar.md --candidate=x.md --bri
 npm run bench   -- --profile=rabeh_article_ar_deepseek --judge     # يحتاج مفتاح API
 ```
 
+**المقارنة داخل n8n**: عقدة `📐 Compare vs Reference` تقيس كل مقال ناتج مقابل المقال المرجعي
+(الفحوص الرقمية + بصمة الأسلوب: طول الفقرة، تنوع المفردات، أدوات الربط، جمل «نحن/نقدم»،
+كثافة الأرقام، العبارات الآلية المكشوفة) وتكتب الجدول في الشيت — بلا حاجة إلى الطرفية.
+
 **قياس الجودة**: يوجد مقال مرجعي مكتوب يدويًا وفق المعايير نفسها بخمسة مصادر حقيقية
 (`benchmark/gold/`) يحقق **100%** على الفحص الآلي، ومقال ضعيف نموذجي (`benchmark/samples/`)
 يحقق **55%** — فيصير الفارق بين «جيد» و«رديء» رقمًا لا انطباعًا.
@@ -188,8 +213,14 @@ npm run bench   -- --profile=rabeh_article_ar_deepseek --judge     # يحتاج 
 `tools/simulate.mjs` محاكي n8n مصغّر ينفّذ الـ workflow فعليًا بنموذج وهمي،
 فيتحقق من تدفق البيانات ودورة التعديل ومنطق البوابة **قبل أن تدفع دولارًا واحدًا لـ API**.
 
-بنية المشروع وقرارات التصميم: [`docs/PLAN.md`](docs/PLAN.md)
-خطة الجودة وبروتوكول التكرار: [`docs/QUALITY-PLAN.md`](docs/QUALITY-PLAN.md)
+| الوثيقة | المحتوى |
+|---|---|
+| [`docs/SHEET.md`](docs/SHEET.md) | لوحة التحكم في شيت جوجل: الأعمدة والصيغ والتشغيل |
+| [`docs/SETUP.md`](docs/SETUP.md) | الاستيراد والاعتمادات وحل المشكلات |
+| [`docs/QUALITY-PLAN.md`](docs/QUALITY-PLAN.md) | خطة الجودة وبروتوكول التكرار |
+| [`docs/PLAN.md`](docs/PLAN.md) | البنية المعمارية وقرارات التصميم |
+| [`docs/ROSTER.md`](docs/ROSTER.md) | الأدوار والشخصيات وفحوص المفتش الآلي |
+| [`docs/EXTENDING.md`](docs/EXTENDING.md) | التوسعة لأي مشروع آخر |
 
 ---
 

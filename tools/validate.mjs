@@ -63,7 +63,7 @@ for (const n of wf.nodes) {
 }
 
 /* 5) عقد لا تصلها أي وصلة (عدا المشغّلات والملاحظات) */
-const reached = new Set(['▶️ Run Manually', '📨 Form Intake', '🔌 Webhook Intake']);
+const reached = new Set(['▶️ Run Manually', '📨 Form Intake', '🔌 Webhook Intake', '⏱️ Sheet Poll']);
 Object.values(wf.connections).forEach((s) => s.main.forEach((t) => (t || []).forEach((x) => reached.add(x.node))));
 wf.nodes.forEach((n) => {
   if (n.type === 'n8n-nodes-base.stickyNote') return;
