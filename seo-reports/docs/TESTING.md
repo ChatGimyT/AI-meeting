@@ -204,7 +204,7 @@ node seo-reports/test.mjs                 # ٦٧ اختبار سلوكي
 4. اتأكد إن الكريدنشيالز اترطبت لوحدها:
    * `googleOAuth2Api` → `rabeh.seven.b`
    * `smtp` → `Rabeh SMTP`
-   * `DeepSeek API` → كريدنشيال الـ Header Auth بتاعه (**لازم تختاره يدوي — مش متضمّن في الملف**)
+   * `httpHeaderAuth` → `DeepSeek` (نود `DeepSeek API`)
 
 ### ج) رن جاف بمعزل عن الشيت الحقيقي
 

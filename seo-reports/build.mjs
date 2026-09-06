@@ -17,6 +17,7 @@ const DIST = path.join(HERE, 'dist');
 const CREDS = {
   google: { googleOAuth2Api: { id: 'zqpCaDcnpV6T6BqM', name: 'rabeh.seven.b' } },
   smtp:   { smtp: { id: 'u4SuwA3OxF79v0f6', name: 'Rabeh SMTP' } },
+  deepseek: { httpHeaderAuth: { id: 'UtZ5Hq48pibn5oXX', name: 'DeepSeek' } },
 };
 const DEEPSEEK_AUTH = 'httpHeaderAuth';
 
@@ -365,7 +366,7 @@ function buildWorkflow(projectKey, cadenceKey) {
     sendBody: true, specifyBody: 'json',
     jsonBody: "={{ JSON.stringify({ model: 'deepseek-chat', temperature: 0.3, messages: [{ role: 'system', content: 'أنت خبير SEO تكتب تعليقاً موجزاً بالعربية. التزم بالتعليمات ولا تخترع أرقاماً.' },{ role: 'user', content: $json.prompt } ] }) }}",
     options: { timeout: 120000 },
-  }, { retryOnFail: true, maxTries: 3, waitBetweenTries: 5000,
+  }, { credentials: CREDS.deepseek, retryOnFail: true, maxTries: 3, waitBetweenTries: 5000,
        onError: 'continueRegularOutput', alwaysOutputData: true }));
 
   push(code('Build Email', at(), withIncludes(fill(src('build-email.js'), {

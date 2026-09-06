@@ -115,7 +115,6 @@ for (const file of fs.readdirSync(DIST).filter((f) => f.endsWith('.json')).sort(
   // 7) كل نود HTTP/Email معاه كريدنشيال (ماعدا DeepSeek اللي بيستخدم Header Auth عام)
   for (const n of wf.nodes) {
     if (!NEEDS_CREDENTIALS.has(n.type)) continue;
-    if (n.name === 'DeepSeek API') continue;
     if (!n.credentials || !Object.keys(n.credentials).length) {
       fail(wf.name, `${n.name}: من غير كريدنشيال`);
     }

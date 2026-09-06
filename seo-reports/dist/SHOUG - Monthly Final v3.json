@@ -865,6 +865,12 @@
         5940,
         0
       ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "UtZ5Hq48pibn5oXX",
+          "name": "DeepSeek"
+        }
+      },
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 5000,
