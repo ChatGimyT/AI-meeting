@@ -16,7 +16,12 @@
     "bench": "node tools/bench.mjs",
     "check": "node tools/check-stages.mjs",
     "ping": "node tools/ping.mjs",
-    "sheet:template": "node tools/sheet-template.mjs --csv > benchmark/sheet-template.csv && node tools/sheet-template.mjs > benchmark/sheet-template.tsv"
+    "sheet:template": "node tools/sheet-template.mjs --csv > benchmark/sheet-template.csv && node tools/sheet-template.mjs > benchmark/sheet-template.tsv",
+    "seo:keywords": "python3 seo-reports/extract-keywords.py",
+    "seo:build": "node seo-reports/build.mjs",
+    "seo:validate": "node seo-reports/validate.mjs",
+    "seo:test": "node seo-reports/test.mjs",
+    "seo:all": "npm run seo:build && npm run seo:validate && npm run seo:test"
   },
   "engines": {
     "node": ">=18"
