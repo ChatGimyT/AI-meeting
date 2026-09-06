@@ -112,7 +112,7 @@ for (const file of fs.readdirSync(DIST).filter((f) => f.endsWith('.json')).sort(
     }
   }
 
-  // 7) كل نود HTTP/Email معاه كريدنشيال (ماعدا DeepSeek اللي بيستخدم Header Auth عام)
+  // 7) كل نود HTTP/Email معاه كريدنشيال
   for (const n of wf.nodes) {
     if (!NEEDS_CREDENTIALS.has(n.type)) continue;
     if (!n.credentials || !Object.keys(n.credentials).length) {
@@ -143,6 +143,24 @@ for (const file of fs.readdirSync(DIST).filter((f) => f.endsWith('.json')).sort(
     if (!String(n.parameters.fromEmail).includes('mailFromDisplay')) {
       fail(wf.name, `${n.name}: fromEmail لازم يستخدم mailFromDisplay`);
     }
+  }
+
+  // 9ب) مفيش أي أثر للـ AI (اتشال بناءً على طلب صريح)
+  const blobAll = JSON.stringify(wf);
+  for (const bad of ['deepseek', 'api.openai.com', 'choices[0]', 'Build Prompt']) {
+    if (blobAll.toLowerCase().includes(bad.toLowerCase())) {
+      fail(wf.name, `فيه أثر للـ AI المفروض اتشال: ${bad}`);
+    }
+  }
+
+  // 9ج) تنبيه فشل GSC لازم يكون تشخيصي مش نص ثابت
+  const alert = wf.nodes.find((n) => n.name === 'GSC Alert Email');
+  if (alert && !String(alert.parameters.html).includes('alertHtml')) {
+    fail(wf.name, 'GSC Alert Email: لازم ياخد نصه من نود GSC Diagnose مش نص ثابت');
+  }
+  const diagOuts = wf.connections['GSC Access Check']?.main || [];
+  if (diagOuts[1]?.[0]?.node !== 'List GSC Sites') {
+    fail(wf.name, 'فرع فشل GSC لازم يعدّي على List GSC Sites قبل التنبيه');
   }
 
   // 10) الشيت بيتكتب بقيمة مبنية في الكود مش بتعبير طويل

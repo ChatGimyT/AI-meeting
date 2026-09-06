@@ -169,7 +169,7 @@ Config → Verify GSC Access → GSC Access Check
 python3 seo-reports/extract-keywords.py     # يقرا الإكسل ويطلّع JSON
 node seo-reports/build.mjs                  # يبني ملفات n8n الأربعة
 node seo-reports/validate.mjs               # فحص ساكن
-node seo-reports/test.mjs                   # ٦٧ اختبار
+node seo-reports/test.mjs                   # ٧٥ اختبار
 # ٢) استورد dist/*.json في n8n
 ```
 
@@ -222,10 +222,54 @@ mailCc_1 = M.gamal@rabeh.org            ← بيوصل
 
 ---
 
+## المشكلة الرابعة: تنبيه فشل Search Console مكانش بيقول السبب
+
+التنبيه القديم كان **نص ثابت** مكتوب في نود الإيميل نفسه: «الصلاحية غالبًا منتهية
+أو فيه مشكلة في الحساب المربوط». يعني مهما كان السبب الحقيقي، الرسالة واحدة —
+ومحدش يعرف يبدأ منين.
+
+### الحل: فرع تشخيص حقيقي
+
+```
+GSC Access Check ──فشل──→ List GSC Sites ──→ GSC Diagnose ──→ GSC Alert Email
+```
+
+**`List GSC Sites`** بيجيب من جوجل قائمة **كل المواقع اللي الحساب المربوط شايفها
+فعلاً** مع مستوى الصلاحية على كل واحد.
+
+**`GSC Diagnose`** بيقارن اللي في `Config` باللي جوجل رجّعه، وبيطلّع سبب محدد وخطوة
+محددة:
+
+| رد جوجل | التشخيص | الخطوة |
+|---------|---------|--------|
+| `401` / `invalid_grant` / `revoked` | صلاحية الحساب انتهت أو اتسحبت | Reconnect لكريدنشيال `rabeh.seven.b` في n8n |
+| نفس الدومين بشكل مختلف في القائمة | `SITE_URL` مش مطابق لشكل الموقع المسجّل | **بيديك النص الصح جاهز للنسخ** (مثلاً `sc-domain:aaalojan.com`) |
+| الموقع مش في القائمة أصلاً | الحساب مالوش صلاحية عليه | ضيف الحساب في Search Console ← المستخدمون والأذونات |
+| `403` | متصل بس بدون صلاحية | نفس الخطوة اللي فوق |
+| `404` والقائمة كمان فشلت | الصلاحية واقعة أو الـ API مش مفعّل | Reconnect + فعّل Search Console API في Google Cloud |
+| `429` / quota | تجاوز حد استخدام مؤقت | شغّله تاني بعد شوية (بيتصنّف `temporary`) |
+| `ETIMEDOUT` / `5xx` | عطل شبكة مؤقت | شغّله تاني (بيتصنّف `temporary`) |
+
+الإيميل الجديد فيه:
+
+* **إيه اللي حصل بالظبط** — بالعربي، سبب واحد محدد.
+* **إيه اللي تعمله** — خطوة واحدة، ومعاها اسم الكريدنشيال أو النص الجاهز للنسخ.
+* **الموقع المطلوب** مقابل **جدول بكل المواقع اللي الحساب شايفها** ومستوى الصلاحية.
+* **رسالة جوجل الخام** للفني.
+* تطمين إن الشيت والعرض ما اتلمسوش.
+
+الشكل الغلط للـ `SITE_URL` من أشهر الأسباب: جوجل بيعتبر
+`https://www.aaalojan.com/` و `https://aaalojan.com/` و `sc-domain:aaalojan.com`
+**تلات مواقع مختلفة تمامًا**. الجدول في الإيميل بيحسم الموضوع فورًا.
+
+---
+
 ## ملخص التغييرات
 
-**نودات جديدة (١٣):**
-`GSC Freshness` • `Freshness Guard` • `Collect Results` • `Needs Retry?` • `GSC Retry Query` • `Validate Data` • `Data Quality Gate` • `Data Alert Email` • `Delivery Audit` • `Needs Resend?` • `Resend Individually` • `Delivery Report` • `Delivery Alert Email`
+**نودات جديدة (١٥):**
+`GSC Freshness` • `Freshness Guard` • `List GSC Sites` • `GSC Diagnose` • `Collect Results` • `Needs Retry?` • `GSC Retry Query` • `Validate Data` • `Data Quality Gate` • `Data Alert Email` • `Delivery Audit` • `Needs Resend?` • `Resend Individually` • `Delivery Report` • `Delivery Alert Email`
+
+**نودات اتشالت (١):** `DeepSeek API` — بناءً على طلب صريح، التعليق التحليلي بالذكاء الاصطناعي اتشال خالص. نود `Build Prompt` اتسمّى `Report Stats` وفضل بيحسب أرقام الكروت (تحسّن / تراجع / ثابت / متوسط التغير) بس من غير أي برومبت.
 
 **نودات اتعدّلت:**
 `Config` (إعدادات جودة + تحقق إيميل) • `Keywords` (قوائم جديدة + حجم بحث) • `Search Volume` (بقى تعديل يدوي) • `Fetch Sheet` (قراءة خام) • `Read Sheet` (تحويل أرقام + كشف فشل + مقاس) • `Build Tasks` (نضارة + taskId) • `GSC Query` (إعدادات + `alwaysOutputData: false`) • `Merge History` (إعادة كتابة كاملة) • `Write To Sheet` (تبطين + عمود Article) • كل نودات الإيميل

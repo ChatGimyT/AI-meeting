@@ -17,9 +17,7 @@ const DIST = path.join(HERE, 'dist');
 const CREDS = {
   google: { googleOAuth2Api: { id: 'zqpCaDcnpV6T6BqM', name: 'rabeh.seven.b' } },
   smtp:   { smtp: { id: 'u4SuwA3OxF79v0f6', name: 'Rabeh SMTP' } },
-  deepseek: { httpHeaderAuth: { id: 'UtZ5Hq48pibn5oXX', name: 'DeepSeek' } },
 };
-const DEEPSEEK_AUTH = 'httpHeaderAuth';
 
 const MAIL_FROM = 'M.gamal@rabeh.org';
 
@@ -353,21 +351,9 @@ function buildWorkflow(projectKey, cadenceKey) {
     // batchUpdate في Slides ذرّية (كلها أو ولا حاجة) فإعادة المحاولة آمنة.
   }, { credentials: CREDS.google, retryOnFail: true, maxTries: 3, waitBetweenTries: 4000 }));
 
-  push(code('Build Prompt', at(), withIncludes(fill(src('build-prompt.js'), {
+  push(code('Report Stats', at(), withIncludes(fill(src('report-stats.js'), {
     PERIOD_LABEL_FN: C.periodLabelFn,
-    CADENCE_AR: C.ar,
-    PERIOD_AR: C.periodAr,
-    HEADLINE_EXPR: C.headlineExpr,
   }))));
-
-  push(http('DeepSeek API', at(), {
-    method: 'POST', url: 'https://api.deepseek.com/chat/completions',
-    authentication: 'genericCredentialType', genericAuthType: DEEPSEEK_AUTH,
-    sendBody: true, specifyBody: 'json',
-    jsonBody: "={{ JSON.stringify({ model: 'deepseek-chat', temperature: 0.3, messages: [{ role: 'system', content: 'أنت خبير SEO تكتب تعليقاً موجزاً بالعربية. التزم بالتعليمات ولا تخترع أرقاماً.' },{ role: 'user', content: $json.prompt } ] }) }}",
-    options: { timeout: 120000 },
-  }, { credentials: CREDS.deepseek, retryOnFail: true, maxTries: 3, waitBetweenTries: 5000,
-       onError: 'continueRegularOutput', alwaysOutputData: true }));
 
   push(code('Build Email', at(), withIncludes(fill(src('build-email.js'), {
     PERIOD_LABEL_FN: C.periodLabelFn,
@@ -429,26 +415,27 @@ function buildWorkflow(projectKey, cadenceKey) {
   }, { credentials: CREDS.smtp, retryOnFail: true, maxTries: 2, waitBetweenTries: 5000,
        onError: 'continueRegularOutput' }));
 
-  // ---- نودات التنبيه (فرع تحت) ----
-  push(node('GSC Alert Email', 'n8n-nodes-base.emailSend', 2.1, [X0 + DX * 5, Y0 + 420], {
+  // ---- فرع تشخيص فشل الوصول لـ Search Console (تحت) ----
+  // بنجيب قائمة المواقع اللي الحساب المربوط شايفها، عشان التنبيه يقدر يقول
+  // "الحساب شايف المواقع دي، واللي إنت طالبه مش فيهم" بدل رسالة عامة.
+  push(http('List GSC Sites', [X0 + DX * 5, Y0 + 420], {
+    url: 'https://searchconsole.googleapis.com/webmasters/v3/sites',
+    authentication: 'predefinedCredentialType',
+    nodeCredentialType: 'googleOAuth2Api',
+    options: { timeout: 30000 },
+  }, { credentials: CREDS.google, onError: 'continueRegularOutput', alwaysOutputData: true,
+       retryOnFail: true, maxTries: 2, waitBetweenTries: 3000 }));
+
+  push(code('GSC Diagnose', [X0 + DX * 6, Y0 + 420],
+    src('gsc-diagnose.js').split('__CRED_NAME__').join(CREDS.google.googleOAuth2Api.name)));
+
+  push(node('GSC Alert Email', 'n8n-nodes-base.emailSend', 2.1, [X0 + DX * 7, Y0 + 420], {
     fromEmail: "={{ $('Config').first().json.mailFromDisplay }}",
     toEmail: "={{ $('Config').first().json.mailTo }}",
-    subject: '=تعذر الوصول لـ Google Search Console — تقرير SEO لم يُرسل',
+    subject: '={{ $json.alertSubject }}',
     emailFormat: 'both',
-    text: '=الأوتوميشن حاول يشتغل بس مقدرش يتأكد من الاتصال بـ Google Search Console '
-        + '(الصلاحية غالبًا منتهية أو فيه مشكلة في الحساب المربوط).\n\n'
-        + 'عشان كده التقرير ما اتبعتش، والشيت ما اتلمسش خالص — عشان منستلمش تقرير فاضي أو ببيانات غلط.\n\n'
-        + 'لو سمحت راجع صلاحية حساب Google المربوط بالأوتوميشن (Google OAuth) في n8n وجدّدها، '
-        + 'وبعدين شغّل الأوتوميشن تاني يدويًا من زرار Manual Trigger.',
-    html: '=<div style="font-family:Calibri,Arial,sans-serif;direction:rtl;text-align:right;background:#f2f1ee;padding:24px;color:#142f38;font-size:14px;">'
-        + '<div style="max-width:600px;margin:0 auto;background:#ffffff;border:1px solid #d8d6d0;border-radius:10px;padding:22px;">'
-        + '<h3 style="margin:0 0 12px 0;font-size:16px;">تنبيه من أوتوميشن تقرير SEO</h3>'
-        + '<p style="line-height:1.8;">الأوتوميشن حاول يشتغل بس مقدرش يتأكد من الاتصال بـ Google Search Console '
-        + '(الصلاحية غالبًا منتهية أو فيه مشكلة في الحساب المربوط).</p>'
-        + '<p style="line-height:1.8;"><b>عشان كده التقرير ما اتبعتش، والشيت ما اتلمسش خالص</b> — عشان منستلمش تقرير فاضي أو ببيانات غلط.</p>'
-        + '<p style="line-height:1.8;">لو سمحت راجع صلاحية حساب Google المربوط بالأوتوميشن (Google OAuth) في n8n وجدّدها، '
-        + 'وبعدين شغّل الأوتوميشن تاني يدويًا من زرار Manual Trigger.</p>'
-        + '</div></div>',
+    text: '={{ $json.alertText }}',
+    html: '={{ $json.alertHtml }}',
     options: mailOpts(),
   }, { credentials: CREDS.smtp, retryOnFail: true, maxTries: 2, waitBetweenTries: 5000,
        onError: 'continueRegularOutput' }));
@@ -473,7 +460,9 @@ function buildWorkflow(projectKey, cadenceKey) {
     link('Config', 'Verify GSC Access'),
     link('Verify GSC Access', 'GSC Access Check'),
     link('GSC Access Check', 'GSC Freshness', 0),
-    link('GSC Access Check', 'GSC Alert Email', 1),
+    link('GSC Access Check', 'List GSC Sites', 1),
+    link('List GSC Sites', 'GSC Diagnose'),
+    link('GSC Diagnose', 'GSC Alert Email'),
     link('GSC Freshness', 'Freshness Guard'),
     link('Freshness Guard', 'Keywords'),
     link('Keywords', 'Search Volume'),
@@ -497,9 +486,8 @@ function buildWorkflow(projectKey, cadenceKey) {
     link('Has Old Slides?', 'Build Slide Batches', 1),
     link('Delete Old Slides', 'Build Slide Batches'),
     link('Build Slide Batches', 'Create Slides'),
-    link('Create Slides', 'Build Prompt'),
-    link('Build Prompt', 'DeepSeek API'),
-    link('DeepSeek API', 'Build Email'),
+    link('Create Slides', 'Report Stats'),
+    link('Report Stats', 'Build Email'),
     link('Build Email', 'Send Report Email'),
     link('Send Report Email', 'Delivery Audit'),
     link('Delivery Audit', 'Needs Resend?'),

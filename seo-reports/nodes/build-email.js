@@ -1,6 +1,6 @@
 const cfg = $('Config').first().json;
 const res = $('Validate Data').first().json;
-const st  = $('Build Prompt').first().json;
+const st  = $('Report Stats').first().json;
 
 // ============ الألوان وحجم الخط — غيّرها من هنا ============
 const BG    = '#f2f1ee';   // خلفية 242,241,238
@@ -12,13 +12,6 @@ const FS    = '14px';      // حجم الخط الموحّد لكل النصوص
 
 // @include _lib.report-labels.js
 const periodLabel = __PERIOD_LABEL_FN__;
-
-let ai = '';
-try { ai = $json.choices[0].message.content || ''; } catch (e) { ai = ''; }
-ai = String(ai).replace(/[#*]/g, '').trim();
-const aiParas = ai ? ai.split(/\n+/).filter(p => p.trim()) : [];
-const aiHtml = aiParas.map(p =>
-  '<p style="margin:0 0 10px 0;font-size:' + FS + ';">' + p + '</p>').join('');
 
 const m  = res.months || [];
 const li = m.length - 1, pi = m.length - 2;
@@ -86,7 +79,6 @@ const html =
   '<div style="color:#ffffff;font-size:' + FS + ';font-weight:bold;">تقرير SEO __CADENCE_AR__ — ' + esc(cfg.company) + '</div>' +
   '<div style="color:' + BG + ';font-size:' + FS + ';margin-top:6px;">' + __HEADER_LINE__ + '</div>' +
 '</div><div style="padding:22px;">' +
-  (aiHtml ? '<div style="line-height:1.9;color:' + INK + ';margin-bottom:20px;">' + aiHtml + '</div>' : '') +
   '<table width="100%" cellspacing="8" cellpadding="0" style="margin-bottom:20px;"><tr>' +
     card('تحسّن', st.up, GREEN) + card('تراجع', st.down, RED) +
     card('ثابت', st.same, GREY) + card('متوسط التغير', (st.avg > 0 ? '+' : '') + st.avg + '%', st.avg >= 0 ? GREEN : RED) +
@@ -116,7 +108,6 @@ const textRows = rows.map(r =>
   ' | التغير: ' + r.txt);
 
 const text = ['تقرير SEO __CADENCE_AR__ — ' + cfg.company, __TEXT_HEADER__, '']
-  .concat(aiParas.length ? aiParas.concat(['']) : [])
   .concat(['تحسّن: ' + st.up + ' | تراجع: ' + st.down + ' | ثابت: ' + st.same +
            ' | متوسط التغير: ' + (st.avg > 0 ? '+' : '') + st.avg + '%', ''])
   .concat(textRows)

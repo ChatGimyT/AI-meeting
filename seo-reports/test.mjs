@@ -637,8 +637,8 @@ group('١٣) بناء التقرير والسلايدز', () => {
     const out = runNode({
       workflow: M, node: 'Build Email',
       nodes: { Config: [CFG], 'Validate Data': [v], 'Search Volume': [{}],
-               'Build Prompt': [{ up: 1, down: 1, same: 0, avg: 2.5 }] },
-      input: [{ choices: [{ message: { content: 'فقرة أولى.\nفقرة تانية.' } }] }],
+               'Report Stats': [{ up: 1, down: 1, same: 0, avg: 2.5 }] },
+      input: [{ up: 1, down: 1, same: 0, avg: 2.5 }],
     })[0].json;
     assert(out.emailHtml.includes('<table'), 'فيه جدول HTML');
     assert(out.emailText.length > 100, 'فيه نسخة نصية حقيقية');
@@ -647,15 +647,32 @@ group('١٣) بناء التقرير والسلايدز', () => {
     assert(out.emailHtml.includes('عدد مرات البحث'), 'عمود حجم البحث موجود');
   });
 
-  test('DeepSeek وقع → الإيميل بيتبعت من غير التعليق', () => {
+  test('مفيش أي تعليق AI في الإيميل', () => {
     const v = validated();
     const out = runNode({
       workflow: M, node: 'Build Email',
       nodes: { Config: [CFG], 'Validate Data': [v], 'Search Volume': [{}],
-               'Build Prompt': [{ up: 1, down: 1, same: 0, avg: 0 }] },
-      input: [{ error: '500' }],
+               'Report Stats': [{ up: 1, down: 1, same: 0, avg: 0 }] },
+      input: [{}],
     })[0].json;
-    assert(out.emailHtml.includes('<table'), 'التقرير لسه بيتبني');
+    assert(out.emailHtml.includes('<table'), 'التقرير بيتبني عادي');
+    assert(!out.emailHtml.includes('تحية طيبة'), 'مفيش فقرة AI');
+  });
+
+  test('Report Stats بيحسب التحسّن والتراجع صح', () => {
+    const merged = mergeRun({
+      results: ALL_TASKS.map((t, i) => okResponse(
+        [gscRow('https://x/p', [9, 5, 3, 2, 4, 8][i], 10)], { item: i })),
+    });
+    const v = runNode({ workflow: M, node: 'Validate Data', nodes: { Config: [CFG] }, input: [merged] })[0].json;
+    const st = runNode({
+      workflow: M, node: 'Report Stats',
+      nodes: { Config: [CFG], 'Validate Data': [v] }, input: [v],
+    })[0].json;
+    // كلمة أ: 5 → 3 = تحسّن | كلمة ب: 4 → 8 = تراجع
+    equal(st.up, 1);
+    equal(st.down, 1);
+    assert(st.prompt === undefined, 'مفيش برومبت AI');
   });
 
   test('حجم البحث من الإكسل بيظهر، والتعديل اليدوي بيكسب', () => {
@@ -663,7 +680,7 @@ group('١٣) بناء التقرير والسلايدز', () => {
     const build = (sv) => runNode({
       workflow: M, node: 'Build Email',
       nodes: { Config: [CFG], 'Validate Data': [v], 'Search Volume': [sv],
-               'Build Prompt': [{ up: 0, down: 0, same: 0, avg: 0 }] },
+               'Report Stats': [{ up: 0, down: 0, same: 0, avg: 0 }] },
       input: [{}],
     })[0].json.emailHtml;
     assert(build({}).includes('>100<'), 'قيمة الإكسل ظاهرة');
@@ -730,7 +747,7 @@ group('١٤) الفروق الخاصة بالتقرير الأسبوعي', () =>
       workflow: W, node: 'Build Email',
       nodes: {
         Config: [CFG], 'Search Volume': [{}],
-        'Build Prompt': [{ up: 0, down: 0, same: 0, avg: 0 }],
+        'Report Stats': [{ up: 0, down: 0, same: 0, avg: 0 }],
         'Validate Data': [{ months: weekMonths, quality: { tally: { holes: 0 } },
           data: [{ country: 'السعودية', section: 'ق1', keyword: 'كلمة أ', sv: 10,
                    positions: [5, 3], impressionsAll: [10, 20], impressions: 20 }] }],
@@ -787,6 +804,69 @@ group('١٥) قوائم الكلمات المحدّثة من الإكسل', () =
     const withSv = k.keywords.filter((x) => x.sv !== '' && x.sv !== null);
     assert(withSv.length >= 15, `المفروض معظم الكلمات ليها حجم بحث، لقينا ${withSv.length}`);
     equal(k.keywords.find((x) => x.keyword === 'الدماغ والحبل الشوكي').sv, 1900);
+  });
+});
+
+// ============================================================ ١٦) تشخيص فشل GSC
+group('١٦) تنبيه فشل الوصول لـ Search Console بيقول السبب', () => {
+  const diagnose = (verify, list, cfg = CFG) => runNode({
+    workflow: M, node: 'GSC Diagnose',
+    nodes: { Config: [cfg], 'Verify GSC Access': [verify] },
+    input: [list],
+  })[0].json;
+
+  const SITES = { siteEntry: [
+    { siteUrl: 'sc-domain:aaalojan.com', permissionLevel: 'siteOwner' },
+    { siteUrl: 'https://shoug-lawyer.com/', permissionLevel: 'siteFullUser' },
+  ] };
+
+  test('توكن منتهي → يقول اعمل Reconnect ويسمّي الكريدنشيال', () => {
+    const d = diagnose({ error: '401 invalid_grant: Token has been expired or revoked.' },
+                       { error: '401 invalid_grant' });
+    assert(d.diagnosis.cause.includes('انتهت'), d.diagnosis.cause);
+    assert(d.diagnosis.action.includes('Reconnect'));
+    assert(d.diagnosis.action.includes('rabeh.seven.b'), 'اسم الكريدنشيال في الرسالة');
+    assert(d.alertHtml.includes('invalid_grant'), 'رسالة جوجل الخام موجودة');
+  });
+
+  test('الموقع مسجّل كـ Domain Property → يقول غيّر SITE_URL للشكل الصح', () => {
+    const d = diagnose({ error: '404 Not Found' }, SITES);
+    assert(d.diagnosis.cause.includes('مش مطابق'), d.diagnosis.cause);
+    assert(d.diagnosis.action.includes('sc-domain:aaalojan.com'), d.diagnosis.action);
+    assert(d.alertHtml.includes('sc-domain:aaalojan.com'), 'الشكل الصح ظاهر في الإيميل');
+  });
+
+  test('الحساب مالوش صلاحية على الموقع → يقول ضيفه في Search Console', () => {
+    const d = diagnose({ error: '403 forbidden' },
+                       { siteEntry: [{ siteUrl: 'https://other.com/', permissionLevel: 'siteOwner' }] });
+    assert(d.diagnosis.cause.includes('مش موجود'), d.diagnosis.cause);
+    assert(d.diagnosis.action.includes('المستخدمون والأذونات'));
+  });
+
+  test('تجاوز حد الاستخدام → يتصنّف مؤقت', () => {
+    const d = diagnose({ error: '429 Quota exceeded' }, { error: '429' });
+    equal(d.diagnosis.severity, 'temporary');
+  });
+
+  test('عطل شبكة → يتصنّف مؤقت ويقول شغّله تاني', () => {
+    const d = diagnose({ error: 'ETIMEDOUT' }, { error: 'ETIMEDOUT' });
+    equal(d.diagnosis.severity, 'temporary');
+    assert(d.diagnosis.action.includes('Manual Trigger'));
+  });
+
+  test('التنبيه بيسرد كل المواقع اللي الحساب شايفها', () => {
+    const d = diagnose({ error: '404' }, SITES);
+    equal(d.diagnosis.sites.length, 2);
+    assert(d.alertHtml.includes('shoug-lawyer.com'));
+    assert(d.alertText.includes('sc-domain:aaalojan.com'));
+  });
+
+  test('التنبيه بيطمّن إن الشيت ما اتلمسش، وبنسخة نصية', () => {
+    const d = diagnose({ error: '401' }, { error: '401' });
+    assert(d.alertHtml.includes('ما اتلمسوش'));
+    assert(d.alertText.includes('ما اتلمسوش'));
+    assert(!d.alertText.includes('<div'), 'النسخة النصية من غير HTML');
+    assert(d.alertSubject.includes('لم يُرسل'));
   });
 });
 

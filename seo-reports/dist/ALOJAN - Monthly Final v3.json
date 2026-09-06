@@ -881,10 +881,10 @@
     },
     {
       "parameters": {
-        "jsCode": "const cfg = $('Config').first().json;\nconst res = $('Validate Data').first().json;\nconst m = res.months || [];\nconst li = m.length - 1, pi = m.length - 2;\nconst AR_MON = ['يناير','فبراير','مارس','أبريل','مايو','يونيو',\n                'يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];\nfunction arMonth(mo) {\n  if (!mo || !mo.key) return '';\n  const parts = String(mo.key).split('-');\n  return (AR_MON[Number(parts[1]) - 1] || parts[1]) + ' ' + parts[0];\n}\nfunction arWeek(mo) {\n  if (!mo || !mo.startDate) return '';\n  const s = new Date(mo.startDate + 'T00:00:00Z');\n  const e = new Date(mo.endDate   + 'T00:00:00Z');\n  const sm = AR_MON[s.getUTCMonth()], em = AR_MON[e.getUTCMonth()];\n  const y  = e.getUTCFullYear();\n  return sm === em\n    ? 'أسبوع ' + s.getUTCDate() + ' – ' + e.getUTCDate() + ' ' + em + ' ' + y\n    : 'أسبوع ' + s.getUTCDate() + ' ' + sm + ' – ' + e.getUTCDate() + ' ' + em + ' ' + y;\n}\nconst periodLabel = arMonth;\nconst lastLabel = m.length ? periodLabel(m[li]) : '';\nconst prevLabel = pi >= 0 ? periodLabel(m[pi]) : '';\n\nlet up = 0, down = 0, same = 0, gone = 0, fresh = 0, sum = 0, n = 0;\nconst lines = [];\n(res.data || []).forEach(d => {\n  const last = d.positions[li], prev = pi >= 0 ? d.positions[pi] : null;\n  let pct = null, state;\n  if (prev === null && last !== null) { state = 'جديدة'; fresh++; }\n  else if (prev !== null && last === null) { state = 'اختفت'; gone++; }\n  else if (prev !== null && last !== null && prev !== 0) {\n    pct = Math.round(((prev - last) / prev) * 1000) / 10;\n    sum += pct; n++;\n    state = pct > 0 ? 'تحسّن' : (pct < 0 ? 'تراجع' : 'ثابت');\n    if (pct > 0) up++; else if (pct < 0) down++; else same++;\n  } else state = 'لا بيانات';\n  lines.push('- ' + d.keyword + ' (' + d.country + ') | السابق: ' + (prev === null ? '-' : prev) +\n             ' | الحالي: ' + (last === null ? '-' : last) +\n             ' | التغير: ' + (pct === null ? '-' : (pct > 0 ? '+' : '') + pct + '%') + ' | ' + state);\n});\nconst avg = n ? Math.round((sum / n) * 10) / 10 : 0;\n\nconst prompt =\n'اكتب فقرتين قصيرتين فقط (بحد أقصى 90 كلمة) كتعليق تحليلي على تقرير SEO الشهري لشركة \"' + cfg.company + '\".\\n' +\n'ابدأ بالضبط بـ: \"تحية طيبة ' + cfg.manager + ' المدير،\"\\n' +\n'الرقم الأقل في الترتيب أفضل. النسبة الموجبة تحسّن والسالبة تراجع.\\n' +\n'لا تكتب جداول ولا قوائم ولا Markdown ولا رموز # أو *. نص عادي فقط. ولا تذكر أي روابط.\\n' +\n'الفقرة الأولى: خلاصة الشهر. الفقرة الثانية: توصية عملية واحدة.\\n\\n' +\n'شهر ' + lastLabel + ' مقابل ' + prevLabel + '\\n' +\n +\n'تحسّن: ' + up + ' | تراجع: ' + down + ' | ثابت: ' + same + ' | جديدة: ' + fresh + ' | اختفت: ' + gone + '\\n' +\n'متوسط التغير: ' + (avg > 0 ? '+' : '') + avg + '%\\n\\n' + lines.join('\\n');\n\nreturn [{ json: { prompt, up, down, same, fresh, gone, avg, lastLabel, prevLabel } }];\n"
+        "jsCode": "// بيحسب أرقام الملخص اللي بتظهر في كروت الإيميل (تحسّن/تراجع/ثابت/متوسط التغير).\n// النود ده كان بيبني كمان برومبت لتعليق AI — التعليق اتشال والحسابات فضلت.\nconst cfg = $('Config').first().json;\nconst res = $('Validate Data').first().json;\nconst m = res.months || [];\nconst li = m.length - 1, pi = m.length - 2;\nconst AR_MON = ['يناير','فبراير','مارس','أبريل','مايو','يونيو',\n                'يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];\nfunction arMonth(mo) {\n  if (!mo || !mo.key) return '';\n  const parts = String(mo.key).split('-');\n  return (AR_MON[Number(parts[1]) - 1] || parts[1]) + ' ' + parts[0];\n}\nfunction arWeek(mo) {\n  if (!mo || !mo.startDate) return '';\n  const s = new Date(mo.startDate + 'T00:00:00Z');\n  const e = new Date(mo.endDate   + 'T00:00:00Z');\n  const sm = AR_MON[s.getUTCMonth()], em = AR_MON[e.getUTCMonth()];\n  const y  = e.getUTCFullYear();\n  return sm === em\n    ? 'أسبوع ' + s.getUTCDate() + ' – ' + e.getUTCDate() + ' ' + em + ' ' + y\n    : 'أسبوع ' + s.getUTCDate() + ' ' + sm + ' – ' + e.getUTCDate() + ' ' + em + ' ' + y;\n}\nconst periodLabel = arMonth;\nconst lastLabel = m.length ? periodLabel(m[li]) : '';\nconst prevLabel = pi >= 0 ? periodLabel(m[pi]) : '';\n\nlet up = 0, down = 0, same = 0, gone = 0, fresh = 0, sum = 0, n = 0;\n(res.data || []).forEach(d => {\n  const last = d.positions[li], prev = pi >= 0 ? d.positions[pi] : null;\n  if (prev === null && last !== null) { fresh++; return; }\n  if (prev !== null && last === null) { gone++; return; }\n  if (prev !== null && last !== null && prev !== 0) {\n    const pct = Math.round(((prev - last) / prev) * 1000) / 10;\n    sum += pct; n++;\n    if (pct > 0) up++; else if (pct < 0) down++; else same++;\n  }\n});\nconst avg = n ? Math.round((sum / n) * 10) / 10 : 0;\n\nreturn [{ json: { up, down, same, fresh, gone, avg, lastLabel, prevLabel } }];\n"
       },
-      "id": "fc5d0cc6-0000-4000-8000-fc5d0cc60000",
-      "name": "Build Prompt",
+      "id": "dd13eacb-0000-4000-8000-dd13eacb0000",
+      "name": "Report Stats",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -894,47 +894,14 @@
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "https://api.deepseek.com/chat/completions",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ model: 'deepseek-chat', temperature: 0.3, messages: [{ role: 'system', content: 'أنت خبير SEO تكتب تعليقاً موجزاً بالعربية. التزم بالتعليمات ولا تخترع أرقاماً.' },{ role: 'user', content: $json.prompt } ] }) }}",
-        "options": {
-          "timeout": 120000
-        }
+        "jsCode": "const cfg = $('Config').first().json;\nconst res = $('Validate Data').first().json;\nconst st  = $('Report Stats').first().json;\n\n// ============ الألوان وحجم الخط — غيّرها من هنا ============\nconst BG    = '#f2f1ee';   // خلفية 242,241,238\nconst INK   = '#142f38';   // اللون الأساسي 20,47,56\nconst LINE  = '#d8d6d0';   // لون الحدود\nconst GREEN = '#1e7a34', RED = '#c0392b', GREY = '#7a7a7a';\nconst FS    = '14px';      // حجم الخط الموحّد لكل النصوص\n// ========================================================\n\nconst AR_MON = ['يناير','فبراير','مارس','أبريل','مايو','يونيو',\n                'يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];\nfunction arMonth(mo) {\n  if (!mo || !mo.key) return '';\n  const parts = String(mo.key).split('-');\n  return (AR_MON[Number(parts[1]) - 1] || parts[1]) + ' ' + parts[0];\n}\nfunction arWeek(mo) {\n  if (!mo || !mo.startDate) return '';\n  const s = new Date(mo.startDate + 'T00:00:00Z');\n  const e = new Date(mo.endDate   + 'T00:00:00Z');\n  const sm = AR_MON[s.getUTCMonth()], em = AR_MON[e.getUTCMonth()];\n  const y  = e.getUTCFullYear();\n  return sm === em\n    ? 'أسبوع ' + s.getUTCDate() + ' – ' + e.getUTCDate() + ' ' + em + ' ' + y\n    : 'أسبوع ' + s.getUTCDate() + ' ' + sm + ' – ' + e.getUTCDate() + ' ' + em + ' ' + y;\n}\nconst periodLabel = arMonth;\n\nconst m  = res.months || [];\nconst li = m.length - 1, pi = m.length - 2;\nconst nowLabel  = m.length ? periodLabel(m[li]) : '';\nconst prevLabel = pi >= 0 ? periodLabel(m[pi]) : '';\n\nconst esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\n\n// عدد مرات البحث: الأصل من الإكسل (نود Keywords)، وأي تعديل يدوي في نود\n// \"Search Volume\" بيكسب.\nconst svOverride = $('Search Volume').first().json || {};\nfunction svText(d) {\n  const manual = svOverride[d.keyword];\n  const raw = (manual !== undefined && String(manual).trim() !== '') ? manual : d.sv;\n  if (raw === undefined || raw === null || String(raw).trim() === '') return '–';\n  const n = Number(String(raw).replace(/[^0-9.]/g, ''));\n  return (isFinite(n) && n > 0) ? n.toLocaleString('en-US') : String(raw).trim();\n}\n\nconst rows = (res.data || []).map(d => {\n  const last = d.positions[li], prev = pi >= 0 ? d.positions[pi] : null;\n  let pct = null, color = GREY, arrow = '–', txt = '–';\n  if (prev !== null && last !== null && prev !== 0) {\n    pct = Math.round(((prev - last) / prev) * 1000) / 10;\n    if (pct > 0)      { color = GREEN; arrow = '▲'; txt = '+' + pct + '%'; }\n    else if (pct < 0) { color = RED;   arrow = '▼'; txt = pct + '%'; }\n    else              { txt = '0%'; }\n  } else if (prev === null && last !== null) { color = GREEN; arrow = '★'; txt = 'جديدة'; }\n  else if (prev !== null && last === null)   { color = RED;   arrow = '✕'; txt = 'اختفت'; }\n  return { d, last, prev, pct, color, arrow, txt, sv: svText(d) };\n});\nrows.sort((a, b) => (b.pct === null ? -999 : b.pct) - (a.pct === null ? -999 : a.pct));\n\nconst td = 'padding:9px 10px;border-bottom:1px solid ' + LINE + ';font-size:' + FS + ';color:' + INK + ';';\nconst body = rows.map((r, i) => '<tr style=\"background:' + (i % 2 ? '#ffffff' : BG) + ';\">' +\n  '<td style=\"' + td + '\">' + esc(r.d.keyword) + '</td>' +\n  '<td style=\"' + td + '\">' + esc(r.d.section) + '</td>' +\n  '<td style=\"' + td + 'text-align:center;\">' + esc(r.d.country) + '</td>' +\n  '<td style=\"' + td + 'text-align:center;\">' + r.sv + '</td>' +\n  '<td style=\"' + td + 'text-align:center;\">' + (r.prev === null ? '–' : r.prev) + '</td>' +\n  '<td style=\"' + td + 'text-align:center;font-weight:bold;\">' + (r.last === null ? '–' : r.last) + '</td>' +\n  '<td style=\"' + td + 'text-align:center;\">' + (r.d.impressions || 0) + '</td>' +\n  '<td style=\"' + td + 'text-align:center;color:' + r.color + ';font-weight:bold;white-space:nowrap;\">' +\n  r.arrow + ' ' + r.txt + '</td></tr>').join('');\n\nconst th = 'padding:11px 10px;text-align:right;font-size:' + FS + ';color:#ffffff;background:' + INK + ';font-weight:bold;';\nconst card = (label, val, color) =>\n  '<td style=\"padding:14px 8px;text-align:center;background:' + BG + ';border:1px solid ' + LINE + ';border-radius:6px;\">' +\n  '<div style=\"font-size:' + FS + ';font-weight:bold;color:' + color + ';\">' + val + '</div>' +\n  '<div style=\"font-size:' + FS + ';color:' + INK + ';margin-top:3px;\">' + label + '</div></td>';\n\nconst slides = 'https://docs.google.com/presentation/d/' + cfg.presentationId;\n\n// سطر جودة البيانات — بيخلي أي خانة ناقصة مرئية بدل ما تعدّي في صمت.\nconst q = res.quality || {};\nconst holes = (q.tally || {}).holes || 0;\nconst qualityNote = holes\n  ? 'ملاحظة: ' + holes + ' خانة لسه فاضية وهتتسحب في الرن الجاي.'\n  : 'كل الخانات مسحوبة ومتأكد منها.';\n\nconst html =\n'<div style=\"font-family:Calibri,Arial,sans-serif;direction:rtl;text-align:right;background:' + BG + ';padding:22px;font-size:' + FS + ';color:' + INK + ';\">' +\n'<div style=\"max-width:900px;margin:0 auto;background:#ffffff;border-radius:10px;overflow:hidden;border:1px solid ' + LINE + ';\">' +\n'<div style=\"background:' + INK + ';padding:22px;\">' +\n  '<div style=\"color:#ffffff;font-size:' + FS + ';font-weight:bold;\">تقرير SEO الشهري — ' + esc(cfg.company) + '</div>' +\n  '<div style=\"color:' + BG + ';font-size:' + FS + ';margin-top:6px;\">' + 'تقرير شهر ' + nowLabel + (prevLabel ? ' &nbsp;•&nbsp; مقارنةً بشهر ' + prevLabel : '') + '</div>' +\n'</div><div style=\"padding:22px;\">' +\n  '<table width=\"100%\" cellspacing=\"8\" cellpadding=\"0\" style=\"margin-bottom:20px;\"><tr>' +\n    card('تحسّن', st.up, GREEN) + card('تراجع', st.down, RED) +\n    card('ثابت', st.same, GREY) + card('متوسط التغير', (st.avg > 0 ? '+' : '') + st.avg + '%', st.avg >= 0 ? GREEN : RED) +\n  '</tr></table>' +\n  '<table width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" style=\"border-collapse:collapse;border:1px solid ' + LINE + ';\">' +\n  '<tr><th style=\"' + th + '\">الكلمة</th><th style=\"' + th + '\">القسم</th>' +\n  '<th style=\"' + th + 'text-align:center;\">الدولة</th>' +\n  '<th style=\"' + th + 'text-align:center;\">عدد مرات البحث</th>' +\n  '<th style=\"' + th + 'text-align:center;\">السابق</th>' +\n  '<th style=\"' + th + 'text-align:center;\">الحالي</th>' +\n  '<th style=\"' + th + 'text-align:center;\">الظهور (الشهر الأخير)</th>' +\n  '<th style=\"' + th + 'text-align:center;\">التغير</th></tr>' + body + '</table>' +\n  '<div style=\"margin-top:22px;text-align:center;\">' +\n    '<a href=\"' + slides + '\" style=\"display:inline-block;background:' + INK + ';color:#ffffff;padding:12px 30px;' +\n    'border-radius:6px;text-decoration:none;font-size:' + FS + ';font-weight:bold;\">عرض التقرير الكامل</a></div>' +\n  '<div style=\"margin-top:16px;font-size:' + FS + ';color:' + INK + ';text-align:center;\">الرقم الأقل = ترتيب أفضل</div>' +\n  '<div style=\"margin-top:8px;font-size:12px;color:' + GREY + ';text-align:center;\">' + esc(qualityNote) + '</div>' +\n'</div></div></div>';\n\n// نسخة نصية — مهمة جدًا لتوصيل الإيميل: الرسائل اللي فيها HTML بس من غير\n// نسخة نص عادي بتاخد سكور سبام أعلى عند جيميل وأوتلوك.\nconst textRows = rows.map(r =>\n  '- ' + r.d.keyword + ' (' + r.d.section + ') | بحث شهري: ' + r.sv +\n  ' | السابق: ' + (r.prev === null ? '-' : r.prev) +\n  ' | الحالي: ' + (r.last === null ? '-' : r.last) +\n  ' | الظهور: ' + (r.d.impressions || 0) +\n  ' | التغير: ' + r.txt);\n\nconst text = ['تقرير SEO الشهري — ' + cfg.company, 'شهر ' + nowLabel + (prevLabel ? ' مقارنةً بشهر ' + prevLabel : ''), '']\n  .concat(['تحسّن: ' + st.up + ' | تراجع: ' + st.down + ' | ثابت: ' + st.same +\n           ' | متوسط التغير: ' + (st.avg > 0 ? '+' : '') + st.avg + '%', ''])\n  .concat(textRows)\n  .concat(['', 'الرقم الأقل = ترتيب أفضل.', qualityNote, '',\n           'التقرير الكامل بالسلايدز: ' + slides])\n  .join('\\n');\n\nreturn [{ json: {\n  emailHtml: html,\n  emailText: text,\n  periodLabel: nowLabel,\n  subject: 'تقرير SEO الشهري — ' + cfg.company + ' — ' + 'شهر ' + nowLabel,\n} }];\n"
       },
-      "id": "e7ad8c75-0000-4000-8000-e7ad8c750000",
-      "name": "DeepSeek API",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        5940,
-        0
-      ],
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "UtZ5Hq48pibn5oXX",
-          "name": "DeepSeek"
-        }
-      },
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 5000,
-      "onError": "continueRegularOutput",
-      "alwaysOutputData": true
-    },
-    {
-      "parameters": {
-        "jsCode": "const cfg = $('Config').first().json;\nconst res = $('Validate Data').first().json;\nconst st  = $('Build Prompt').first().json;\n\n// ============ الألوان وحجم الخط — غيّرها من هنا ============\nconst BG    = '#f2f1ee';   // خلفية 242,241,238\nconst INK   = '#142f38';   // اللون الأساسي 20,47,56\nconst LINE  = '#d8d6d0';   // لون الحدود\nconst GREEN = '#1e7a34', RED = '#c0392b', GREY = '#7a7a7a';\nconst FS    = '14px';      // حجم الخط الموحّد لكل النصوص\n// ========================================================\n\nconst AR_MON = ['يناير','فبراير','مارس','أبريل','مايو','يونيو',\n                'يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];\nfunction arMonth(mo) {\n  if (!mo || !mo.key) return '';\n  const parts = String(mo.key).split('-');\n  return (AR_MON[Number(parts[1]) - 1] || parts[1]) + ' ' + parts[0];\n}\nfunction arWeek(mo) {\n  if (!mo || !mo.startDate) return '';\n  const s = new Date(mo.startDate + 'T00:00:00Z');\n  const e = new Date(mo.endDate   + 'T00:00:00Z');\n  const sm = AR_MON[s.getUTCMonth()], em = AR_MON[e.getUTCMonth()];\n  const y  = e.getUTCFullYear();\n  return sm === em\n    ? 'أسبوع ' + s.getUTCDate() + ' – ' + e.getUTCDate() + ' ' + em + ' ' + y\n    : 'أسبوع ' + s.getUTCDate() + ' ' + sm + ' – ' + e.getUTCDate() + ' ' + em + ' ' + y;\n}\nconst periodLabel = arMonth;\n\nlet ai = '';\ntry { ai = $json.choices[0].message.content || ''; } catch (e) { ai = ''; }\nai = String(ai).replace(/[#*]/g, '').trim();\nconst aiParas = ai ? ai.split(/\\n+/).filter(p => p.trim()) : [];\nconst aiHtml = aiParas.map(p =>\n  '<p style=\"margin:0 0 10px 0;font-size:' + FS + ';\">' + p + '</p>').join('');\n\nconst m  = res.months || [];\nconst li = m.length - 1, pi = m.length - 2;\nconst nowLabel  = m.length ? periodLabel(m[li]) : '';\nconst prevLabel = pi >= 0 ? periodLabel(m[pi]) : '';\n\nconst esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\n\n// عدد مرات البحث: الأصل من الإكسل (نود Keywords)، وأي تعديل يدوي في نود\n// \"Search Volume\" بيكسب.\nconst svOverride = $('Search Volume').first().json || {};\nfunction svText(d) {\n  const manual = svOverride[d.keyword];\n  const raw = (manual !== undefined && String(manual).trim() !== '') ? manual : d.sv;\n  if (raw === undefined || raw === null || String(raw).trim() === '') return '–';\n  const n = Number(String(raw).replace(/[^0-9.]/g, ''));\n  return (isFinite(n) && n > 0) ? n.toLocaleString('en-US') : String(raw).trim();\n}\n\nconst rows = (res.data || []).map(d => {\n  const last = d.positions[li], prev = pi >= 0 ? d.positions[pi] : null;\n  let pct = null, color = GREY, arrow = '–', txt = '–';\n  if (prev !== null && last !== null && prev !== 0) {\n    pct = Math.round(((prev - last) / prev) * 1000) / 10;\n    if (pct > 0)      { color = GREEN; arrow = '▲'; txt = '+' + pct + '%'; }\n    else if (pct < 0) { color = RED;   arrow = '▼'; txt = pct + '%'; }\n    else              { txt = '0%'; }\n  } else if (prev === null && last !== null) { color = GREEN; arrow = '★'; txt = 'جديدة'; }\n  else if (prev !== null && last === null)   { color = RED;   arrow = '✕'; txt = 'اختفت'; }\n  return { d, last, prev, pct, color, arrow, txt, sv: svText(d) };\n});\nrows.sort((a, b) => (b.pct === null ? -999 : b.pct) - (a.pct === null ? -999 : a.pct));\n\nconst td = 'padding:9px 10px;border-bottom:1px solid ' + LINE + ';font-size:' + FS + ';color:' + INK + ';';\nconst body = rows.map((r, i) => '<tr style=\"background:' + (i % 2 ? '#ffffff' : BG) + ';\">' +\n  '<td style=\"' + td + '\">' + esc(r.d.keyword) + '</td>' +\n  '<td style=\"' + td + '\">' + esc(r.d.section) + '</td>' +\n  '<td style=\"' + td + 'text-align:center;\">' + esc(r.d.country) + '</td>' +\n  '<td style=\"' + td + 'text-align:center;\">' + r.sv + '</td>' +\n  '<td style=\"' + td + 'text-align:center;\">' + (r.prev === null ? '–' : r.prev) + '</td>' +\n  '<td style=\"' + td + 'text-align:center;font-weight:bold;\">' + (r.last === null ? '–' : r.last) + '</td>' +\n  '<td style=\"' + td + 'text-align:center;\">' + (r.d.impressions || 0) + '</td>' +\n  '<td style=\"' + td + 'text-align:center;color:' + r.color + ';font-weight:bold;white-space:nowrap;\">' +\n  r.arrow + ' ' + r.txt + '</td></tr>').join('');\n\nconst th = 'padding:11px 10px;text-align:right;font-size:' + FS + ';color:#ffffff;background:' + INK + ';font-weight:bold;';\nconst card = (label, val, color) =>\n  '<td style=\"padding:14px 8px;text-align:center;background:' + BG + ';border:1px solid ' + LINE + ';border-radius:6px;\">' +\n  '<div style=\"font-size:' + FS + ';font-weight:bold;color:' + color + ';\">' + val + '</div>' +\n  '<div style=\"font-size:' + FS + ';color:' + INK + ';margin-top:3px;\">' + label + '</div></td>';\n\nconst slides = 'https://docs.google.com/presentation/d/' + cfg.presentationId;\n\n// سطر جودة البيانات — بيخلي أي خانة ناقصة مرئية بدل ما تعدّي في صمت.\nconst q = res.quality || {};\nconst holes = (q.tally || {}).holes || 0;\nconst qualityNote = holes\n  ? 'ملاحظة: ' + holes + ' خانة لسه فاضية وهتتسحب في الرن الجاي.'\n  : 'كل الخانات مسحوبة ومتأكد منها.';\n\nconst html =\n'<div style=\"font-family:Calibri,Arial,sans-serif;direction:rtl;text-align:right;background:' + BG + ';padding:22px;font-size:' + FS + ';color:' + INK + ';\">' +\n'<div style=\"max-width:900px;margin:0 auto;background:#ffffff;border-radius:10px;overflow:hidden;border:1px solid ' + LINE + ';\">' +\n'<div style=\"background:' + INK + ';padding:22px;\">' +\n  '<div style=\"color:#ffffff;font-size:' + FS + ';font-weight:bold;\">تقرير SEO الشهري — ' + esc(cfg.company) + '</div>' +\n  '<div style=\"color:' + BG + ';font-size:' + FS + ';margin-top:6px;\">' + 'تقرير شهر ' + nowLabel + (prevLabel ? ' &nbsp;•&nbsp; مقارنةً بشهر ' + prevLabel : '') + '</div>' +\n'</div><div style=\"padding:22px;\">' +\n  (aiHtml ? '<div style=\"line-height:1.9;color:' + INK + ';margin-bottom:20px;\">' + aiHtml + '</div>' : '') +\n  '<table width=\"100%\" cellspacing=\"8\" cellpadding=\"0\" style=\"margin-bottom:20px;\"><tr>' +\n    card('تحسّن', st.up, GREEN) + card('تراجع', st.down, RED) +\n    card('ثابت', st.same, GREY) + card('متوسط التغير', (st.avg > 0 ? '+' : '') + st.avg + '%', st.avg >= 0 ? GREEN : RED) +\n  '</tr></table>' +\n  '<table width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" style=\"border-collapse:collapse;border:1px solid ' + LINE + ';\">' +\n  '<tr><th style=\"' + th + '\">الكلمة</th><th style=\"' + th + '\">القسم</th>' +\n  '<th style=\"' + th + 'text-align:center;\">الدولة</th>' +\n  '<th style=\"' + th + 'text-align:center;\">عدد مرات البحث</th>' +\n  '<th style=\"' + th + 'text-align:center;\">السابق</th>' +\n  '<th style=\"' + th + 'text-align:center;\">الحالي</th>' +\n  '<th style=\"' + th + 'text-align:center;\">الظهور (الشهر الأخير)</th>' +\n  '<th style=\"' + th + 'text-align:center;\">التغير</th></tr>' + body + '</table>' +\n  '<div style=\"margin-top:22px;text-align:center;\">' +\n    '<a href=\"' + slides + '\" style=\"display:inline-block;background:' + INK + ';color:#ffffff;padding:12px 30px;' +\n    'border-radius:6px;text-decoration:none;font-size:' + FS + ';font-weight:bold;\">عرض التقرير الكامل</a></div>' +\n  '<div style=\"margin-top:16px;font-size:' + FS + ';color:' + INK + ';text-align:center;\">الرقم الأقل = ترتيب أفضل</div>' +\n  '<div style=\"margin-top:8px;font-size:12px;color:' + GREY + ';text-align:center;\">' + esc(qualityNote) + '</div>' +\n'</div></div></div>';\n\n// نسخة نصية — مهمة جدًا لتوصيل الإيميل: الرسائل اللي فيها HTML بس من غير\n// نسخة نص عادي بتاخد سكور سبام أعلى عند جيميل وأوتلوك.\nconst textRows = rows.map(r =>\n  '- ' + r.d.keyword + ' (' + r.d.section + ') | بحث شهري: ' + r.sv +\n  ' | السابق: ' + (r.prev === null ? '-' : r.prev) +\n  ' | الحالي: ' + (r.last === null ? '-' : r.last) +\n  ' | الظهور: ' + (r.d.impressions || 0) +\n  ' | التغير: ' + r.txt);\n\nconst text = ['تقرير SEO الشهري — ' + cfg.company, 'شهر ' + nowLabel + (prevLabel ? ' مقارنةً بشهر ' + prevLabel : ''), '']\n  .concat(aiParas.length ? aiParas.concat(['']) : [])\n  .concat(['تحسّن: ' + st.up + ' | تراجع: ' + st.down + ' | ثابت: ' + st.same +\n           ' | متوسط التغير: ' + (st.avg > 0 ? '+' : '') + st.avg + '%', ''])\n  .concat(textRows)\n  .concat(['', 'الرقم الأقل = ترتيب أفضل.', qualityNote, '',\n           'التقرير الكامل بالسلايدز: ' + slides])\n  .join('\\n');\n\nreturn [{ json: {\n  emailHtml: html,\n  emailText: text,\n  periodLabel: nowLabel,\n  subject: 'تقرير SEO الشهري — ' + cfg.company + ' — ' + 'شهر ' + nowLabel,\n} }];\n"
-      },
-      "id": "cb486333-0000-4000-8000-cb4863330000",
+      "id": "5e457905-0000-4000-8000-5e4579050000",
       "name": "Build Email",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        6160,
+        5940,
         0
       ]
     },
@@ -952,12 +919,12 @@
           "appendAttribution": false
         }
       },
-      "id": "41cd9730-0000-4000-8000-41cd97300000",
+      "id": "42cd98c3-0000-4000-8000-42cd98c30000",
       "name": "Send Report Email",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        6380,
+        6160,
         0
       ],
       "credentials": {
@@ -976,12 +943,12 @@
       "parameters": {
         "jsCode": "// بيقرأ رد سيرفر الـ SMTP الحقيقي بعد إرسال التقرير.\n//\n// المشكلة اللي بيحلها: نود Send Email بيعتبر الإرسال ناجح طالما السيرفر\n// استلم الرسالة، حتى لو رفض بعض المستلمين (وده اللي بيحصل مع إيميلات جيميل\n// لما السيرفر مش مسموح له يوصّل بره الدومين). فالرن بيبان أخضر والإيميل\n// مش واصل. هنا بنقارن المستلمين المتوقعين بالمستلمين اللي السيرفر قبلهم\n// فعلاً، وأي حد اترفض بنبعتله رسالة منفصلة وبنسجّل السبب.\nconst cfg  = $('Config').first().json;\nconst info = $input.first() ? ($input.first().json || {}) : {};\n\nconst norm = e => String(e || '').trim().toLowerCase();\nconst addrOf = (e) => {\n  const s = String(e || '');\n  const m = s.match(/<([^>]+)>/);\n  return norm(m ? m[1] : s);\n};\n\nconst expected = (cfg.mailAllList || []).map(norm).filter(Boolean);\n\nconst accepted = []\n  .concat(Array.isArray(info.accepted) ? info.accepted : [])\n  .map(addrOf).filter(Boolean);\nconst rejected = []\n  .concat(Array.isArray(info.rejected) ? info.rejected : [])\n  .concat(Array.isArray(info.pending)  ? info.pending  : [])\n  .map(addrOf).filter(Boolean);\n\n// الإرسال نفسه وقع (نود Send Report Email شغّال بـ continueRegularOutput):\n// كل المستلمين محتاجين إعادة إرسال فردي، ولازم يوصل تنبيه.\nconst sendError = (info.error !== undefined && info.error !== null)\n  ? (typeof info.error === 'string' ? info.error : (info.error.message || JSON.stringify(info.error))).slice(0, 300)\n  : '';\n\n// لو السيرفر مرجّعش قائمة accepted أصلاً مانفترضش الأسوأ ومانبعتش مرتين.\nconst knowsAccepted = accepted.length > 0 || rejected.length > 0;\n\nconst missing = sendError\n  ? expected.slice()\n  : (knowsAccepted ? expected.filter(e => accepted.indexOf(e) === -1) : []);\n\nconst base = {\n  expected,\n  accepted,\n  rejected,\n  missing,\n  knowsAccepted,\n  sendError,\n  messageId: info.messageId || '',\n  smtpResponse: sendError || String(info.response || '').slice(0, 300),\n  envelopeFrom: (info.envelope && info.envelope.from) || '',\n  subject: $('Build Email').first().json.subject,\n};\n\nif (!missing.length) {\n  return [{ json: Object.assign({ __resend: false, resendCount: 0 }, base) }];\n}\n\nreturn missing.map((recipient, i) => ({ json: Object.assign({\n  __resend: true,\n  recipient,\n  resendIndex: i,\n  resendCount: missing.length,\n}, base) }));\n"
       },
-      "id": "2a0fdf52-0000-4000-8000-2a0fdf520000",
+      "id": "290fddbf-0000-4000-8000-290fddbf0000",
       "name": "Delivery Audit",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        6600,
+        6380,
         0
       ]
     },
@@ -1010,12 +977,12 @@
         },
         "options": {}
       },
-      "id": "0800919d-0000-4000-8000-0800919d0000",
+      "id": "0700900a-0000-4000-8000-0700900a0000",
       "name": "Needs Resend?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        6820,
+        6600,
         0
       ]
     },
@@ -1032,12 +999,12 @@
           "appendAttribution": false
         }
       },
-      "id": "2bd5a2d8-0000-4000-8000-2bd5a2d80000",
+      "id": "32d5addd-0000-4000-8000-32d5addd0000",
       "name": "Resend Individually",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        7040,
+        6820,
         200
       ],
       "credentials": {
@@ -1056,12 +1023,12 @@
       "parameters": {
         "jsCode": "// بيلمّ نتايج الإرسال الفردي ويبني تنبيه بحالة التوصيل لكل مستلم.\nconst cfg   = $('Config').first().json;\nconst audit = $('Delivery Audit').first().json || {};\nconst tries = $input.all();\n\nconst norm = e => String(e || '').trim().toLowerCase();\nconst addrOf = (e) => {\n  const s = String(e || '');\n  const m = s.match(/<([^>]+)>/);\n  return norm(m ? m[1] : s);\n};\n\n// الربط بـ pairedItem زي باقي النودات — الترتيب لوحده مش ضمان.\nconst auditItems = $('Delivery Audit').all();\nfunction srcIndex(item, fallbackIndex) {\n  const p = item ? item.pairedItem : undefined;\n  if (typeof p === 'number') return p;\n  if (p && typeof p.item === 'number') return p.item;\n  if (Array.isArray(p) && p.length && p[0] && typeof p[0].item === 'number') return p[0].item;\n  return fallbackIndex;\n}\n\nconst rows = [];\ntries.forEach((item, i) => {\n  const j = item.json || {};\n  const src = auditItems[srcIndex(item, i)] || auditItems[i] || {};\n  const target = norm((src.json || {}).recipient || '');\n  const err = (j.error !== undefined && j.error !== null)\n    ? (typeof j.error === 'string' ? j.error : (j.error.message || JSON.stringify(j.error))).slice(0, 300)\n    : '';\n  const accepted = (Array.isArray(j.accepted) ? j.accepted : []).map(addrOf);\n  rows.push({\n    recipient: target,\n    ok: !err && accepted.indexOf(target) !== -1,\n    error: err,\n    response: String(j.response || '').slice(0, 200),\n  });\n});\n\nconst failed = rows.filter(r => !r.ok);\nconst fixed  = rows.filter(r => r.ok);\n\nconst esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\n\nconst line = r => (r.ok ? 'وصل بعد إعادة الإرسال' : 'ما وصلش') + ' — ' + r.recipient +\n                  (r.error ? ' — ' + r.error : (r.response ? ' — ' + r.response : ''));\n\nconst text = [\n  'تقرير حالة توصيل إيميل SEO — ' + cfg.company,\n  '',\n  'الموضوع: ' + (audit.subject || ''),\n  'المستلمين المتوقعين: ' + (audit.expected || []).join(', '),\n  'اللي السيرفر قبلهم في الإرسال الأول: ' + ((audit.accepted || []).join(', ') || 'مفيش'),\n  'اللي اترفضوا أو ماتأكدوش: ' + ((audit.missing || []).join(', ') || 'مفيش'),\n  'رد سيرفر SMTP: ' + (audit.smtpResponse || '—'),\n  '',\n  'نتيجة إعادة الإرسال الفردي:',\n].concat(rows.map(r => '- ' + line(r)))\n .concat(failed.length ? [\n   '',\n   'المستلمين دول لسه ما وصلهمش الإيميل. ده معناه إن سيرفر SMTP نفسه رافض',\n   'يوصّل لبره الدومين، أو إن الرسالة بتتحجب عند المستلم. الحل في الإعدادات',\n   'مش في الأوتوميشن — راجع ملف EMAIL-DELIVERABILITY.md.',\n ] : ['', 'كل المستلمين وصلهم الإيميل بعد إعادة الإرسال الفردي.'])\n .join('\\n');\n\nconst html =\n'<div style=\"font-family:Calibri,Arial,sans-serif;direction:rtl;text-align:right;background:#f2f1ee;padding:24px;color:#142f38;font-size:14px;\">' +\n'<div style=\"max-width:700px;margin:0 auto;background:#ffffff;border:1px solid #d8d6d0;border-radius:10px;padding:22px;\">' +\n'<h3 style=\"margin:0 0 12px 0;font-size:16px;\">حالة توصيل إيميل التقرير — ' + esc(cfg.company) + '</h3>' +\n'<p style=\"line-height:1.9;margin:0 0 14px 0;\">الإرسال الأول ما وصلش لكل المستلمين، فأعدنا الإرسال لكل واحد لوحده. ' +\n'دي النتيجة النهائية:</p>' +\n'<table width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" style=\"border-collapse:collapse;border:1px solid #d8d6d0;\">' +\n'<tr><th style=\"padding:10px;background:#142f38;color:#fff;text-align:right;\">المستلم</th>' +\n'<th style=\"padding:10px;background:#142f38;color:#fff;text-align:center;\">الحالة</th>' +\n'<th style=\"padding:10px;background:#142f38;color:#fff;text-align:right;\">رد السيرفر</th></tr>' +\nrows.map((r, i) => '<tr style=\"background:' + (i % 2 ? '#ffffff' : '#f2f1ee') + ';\">' +\n  '<td style=\"padding:9px 10px;border-bottom:1px solid #d8d6d0;\">' + esc(r.recipient) + '</td>' +\n  '<td style=\"padding:9px 10px;border-bottom:1px solid #d8d6d0;text-align:center;color:' +\n    (r.ok ? '#1e7a34' : '#c0392b') + ';font-weight:bold;\">' + (r.ok ? 'وصل' : 'ما وصلش') + '</td>' +\n  '<td style=\"padding:9px 10px;border-bottom:1px solid #d8d6d0;\">' + esc(r.error || r.response || '—') + '</td></tr>').join('') +\n'</table>' +\n'<p style=\"margin:14px 0 0 0;line-height:1.9;\"><b>رد سيرفر SMTP في الإرسال الأول:</b> ' + esc(audit.smtpResponse || '—') + '</p>' +\n(failed.length\n  ? '<p style=\"margin:10px 0 0 0;line-height:1.9;\">لسه فيه ' + failed.length + ' مستلم ما وصلهوش. ' +\n    'المشكلة في إعدادات السيرفر مش في الأوتوميشن — راجع ملف <b>EMAIL-DELIVERABILITY.md</b> ' +\n    '(صلاحية الإرسال الخارجي + SPF و DKIM و DMARC).</p>'\n  : '<p style=\"margin:10px 0 0 0;line-height:1.9;color:#1e7a34;\">كل المستلمين وصلهم الإيميل بعد إعادة الإرسال الفردي.</p>') +\n'</div></div>';\n\nreturn [{ json: {\n  deliveryRows: rows,\n  stillFailing: failed.map(r => r.recipient),\n  recovered: fixed.map(r => r.recipient),\n  alertSubject: (failed.length ? 'إيميل التقرير ما وصلش لكل المستلمين — ' : 'إيميل التقرير اتصلّح بعد إعادة الإرسال — ') + cfg.company,\n  alertHtml: html,\n  alertText: text,\n} }];\n"
       },
-      "id": "ff5f723e-0000-4000-8000-ff5f723e0000",
+      "id": "005f73d1-0000-4000-8000-005f73d10000",
       "name": "Delivery Report",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        7260,
+        7040,
         0
       ]
     },
@@ -1078,12 +1045,12 @@
           "appendAttribution": false
         }
       },
-      "id": "38c8f625-0000-4000-8000-38c8f6250000",
+      "id": "35c8f16c-0000-4000-8000-35c8f16c0000",
       "name": "Delivery Alert Email",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        7480,
+        7260,
         0
       ],
       "credentials": {
@@ -1099,24 +1066,66 @@
     },
     {
       "parameters": {
+        "url": "https://searchconsole.googleapis.com/webmasters/v3/sites",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleOAuth2Api",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "73c2924a-0000-4000-8000-73c2924a0000",
+      "name": "List GSC Sites",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1100,
+        420
+      ],
+      "credentials": {
+        "googleOAuth2Api": {
+          "id": "zqpCaDcnpV6T6BqM",
+          "name": "rabeh.seven.b"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "jsCode": "// بيحوّل \"مقدرناش نوصل لـ Search Console\" لسبب محدد وخطوة واضحة.\n//\n// بيقرا حاجتين:\n//   1) رد طلب الموقع المحدد في Config  (نود Verify GSC Access)\n//   2) قائمة المواقع اللي الحساب المربوط شايفها فعلاً (نود List GSC Sites)\n// ومن الاتنين دول بيعرف: التوكن واقع؟ ولا الحساب مالوش صلاحية؟ ولا الرابط\n// المكتوب في Config مش مطابق لشكل الموقع المسجّل في جوجل؟\nconst cfg    = $('Config').first().json;\nconst verify = $('Verify GSC Access').first().json || {};\nconst listed = $input.first() ? ($input.first().json || {}) : {};\n\nfunction errText(e) {\n  if (e === undefined || e === null) return '';\n  if (typeof e === 'string') return e;\n  if (e.message) return String(e.message);\n  try { return JSON.stringify(e); } catch (x) { return String(e); }\n}\n\nconst verifyErr = errText(verify.error);\nconst listErr   = errText(listed.error);\nconst blob      = (verifyErr + ' ' + listErr);\n\n// المواقع اللي الحساب شايفها\nconst entries = Array.isArray(listed.siteEntry) ? listed.siteEntry : [];\nconst sites = entries.map(e => ({\n  url: String(e.siteUrl || ''),\n  level: String(e.permissionLevel || ''),\n}));\n\nconst want = String(cfg.siteUrl || '');\nconst norm = (u) => String(u || '').trim().toLowerCase()\n  .replace(/^sc-domain:/, '').replace(/^https?:\\/\\//, '').replace(/^www\\./, '').replace(/\\/+$/, '');\nconst wantN = norm(want);\n\nconst exact  = sites.find(s => s.url === want);\nconst sameHost = sites.filter(s => norm(s.url) === wantN && s.url !== want);\nconst readOnly = sites.filter(s => /^(siteUnverifiedUser|siteRestrictedUser)$/.test(s.level));\n\n// ---------------- تحديد السبب ----------------\nlet cause, action, severity = 'blocked';\n\nif (/invalid_grant|invalid_token|Token has been expired|revoked|unauthorized_client/i.test(blob)\n    || /\\b401\\b/.test(blob)) {\n  cause = 'صلاحية حساب جوجل المربوط بالأوتوميشن انتهت أو اتسحبت. '\n        + 'ده بيحصل لما الباسورد يتغيّر، أو حد يشيل صلاحية n8n من إعدادات الحساب، '\n        + 'أو التوكن يقعد فترة طويلة من غير استخدام.';\n  action = 'افتح n8n ← Credentials ← \"' + 'rabeh.seven.b' + '\" ← اضغط Reconnect وسجّل دخول '\n         + 'بحساب جوجل اللي عنده صلاحية على الموقع، وبعدين شغّل الأوتوميشن يدويًا من Manual Trigger.';\n} else if (sameHost.length) {\n  cause = 'الرابط المكتوب في إعدادات الأوتوميشن مش مطابق لشكل الموقع المسجّل في '\n        + 'Search Console. جوجل بيعتبرهم موقعين مختلفين تمامًا حتى لو نفس الدومين.';\n  action = 'غيّر SITE_URL في نود Config من \"' + want + '\" لـ \"' + sameHost[0].url + '\" بالظبط '\n         + '(انسخه زي ما هو من الجدول تحت).';\n} else if (sites.length && !exact) {\n  cause = 'الحساب المربوط بالأوتوميشن شغّال تمام، بس الموقع \"' + want + '\" مش موجود '\n        + 'في المواقع اللي الحساب ده عنده صلاحية عليها.';\n  action = 'يا إما تضيف الحساب ده كمستخدم على الموقع في Search Console '\n         + '(الإعدادات ← المستخدمون والأذونات ← إضافة مستخدم)، يا إما تظبط SITE_URL في '\n         + 'نود Config على واحد من المواقع الموجودة في الجدول تحت.';\n} else if (/\\b403\\b|does not have sufficient permission|insufficientPermissions|forbidden/i.test(blob)) {\n  cause = 'الحساب المربوط متصل بس مالوش صلاحية على الموقع ده في Search Console.';\n  action = 'من Search Console: الإعدادات ← المستخدمون والأذونات ← إضافة مستخدم، '\n         + 'وضيف حساب جوجل المربوط بالأوتوميشن بصلاحية \"كامل\" أو \"مقيّد\".';\n} else if (/\\b404\\b|notFound/i.test(blob) && !sites.length) {\n  cause = 'جوجل بيقول إن الموقع ده مش موجود عنده، والأوتوميشن كمان مقدرش يجيب قائمة '\n        + 'المواقع — غالبًا الصلاحية واقعة أو الـ API مش مفعّل على المشروع.';\n  action = 'راجع كريدنشيال جوجل في n8n (Reconnect)، واتأكد إن Search Console API مفعّل '\n         + 'في Google Cloud Console على المشروع اللي عامل منه الـ OAuth.';\n} else if (/\\b429\\b|quota|rateLimit/i.test(blob)) {\n  cause = 'جوجل رفض الطلب مؤقتًا بسبب تجاوز حد الاستخدام.';\n  action = 'مفيش حاجة تتعمل — شغّل الأوتوميشن تاني بعد شوية. لو اتكررت كل مرة، '\n         + 'راجع حصة Search Console API في Google Cloud Console.';\n  severity = 'temporary';\n} else if (/ETIMEDOUT|ECONNRESET|ENOTFOUND|socket hang up|timeout|\\b5\\d\\d\\b/i.test(blob)) {\n  cause = 'الاتصال بجوجل نفسه فشل (شبكة أو عطل مؤقت عند جوجل).';\n  action = 'شغّل الأوتوميشن تاني من Manual Trigger. لو فضل بيفشل، راجع اتصال سيرفر n8n بالإنترنت.';\n  severity = 'temporary';\n} else if (!verifyErr && !verify.siteUrl) {\n  cause = 'جوجل رد على الطلب بس الرد مالهوش الشكل المتوقع (مفيش siteUrl في الرد).';\n  action = 'ابعت لقطة من مخرجات نود \"Verify GSC Access\" — التفاصيل الخام تحت في الإيميل ده.';\n} else {\n  cause = 'مقدرناش نحدد السبب أوتوماتيك من رد جوجل.';\n  action = 'راجع رسالة الخطأ الخام تحت، وابدأ بعمل Reconnect لكريدنشيال جوجل في n8n.';\n}\n\n// ---------------- بناء الإيميل ----------------\nconst esc = t => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\n\nconst LEVEL_AR = {\n  siteOwner: 'مالك', siteFullUser: 'صلاحية كاملة',\n  siteRestrictedUser: 'صلاحية مقيّدة', siteUnverifiedUser: 'غير مُتحقّق',\n};\n\nconst sitesHtml = sites.length\n  ? '<table width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" style=\"border-collapse:collapse;border:1px solid #d8d6d0;margin-top:8px;\">'\n    + '<tr><th style=\"padding:9px 10px;background:#142f38;color:#fff;text-align:right;font-size:13px;\">الموقع كما هو مسجّل في جوجل</th>'\n    + '<th style=\"padding:9px 10px;background:#142f38;color:#fff;text-align:center;font-size:13px;\">الصلاحية</th></tr>'\n    + sites.map((s, i) => '<tr style=\"background:' + (i % 2 ? '#ffffff' : '#f2f1ee') + ';\">'\n      + '<td style=\"padding:8px 10px;border-bottom:1px solid #d8d6d0;font-family:monospace;direction:ltr;text-align:left;\">'\n      + esc(s.url) + '</td>'\n      + '<td style=\"padding:8px 10px;border-bottom:1px solid #d8d6d0;text-align:center;\">'\n      + esc(LEVEL_AR[s.level] || s.level) + '</td></tr>').join('')\n    + '</table>'\n  : '<p style=\"margin:8px 0 0 0;color:#c0392b;\">مقدرناش نجيب قائمة المواقع كمان — '\n    + 'ده بيرجّح إن المشكلة في صلاحية الحساب نفسه مش في الموقع.</p>';\n\nconst raw = [\n  verifyErr ? 'رد فحص الموقع: ' + verifyErr : '',\n  listErr   ? 'رد قائمة المواقع: ' + listErr : '',\n].filter(Boolean).join('\\n') || 'مفيش رسالة خطأ صريحة من جوجل.';\n\nconst subject = 'تقرير SEO ' + (cfg.cadence === 'weekly' ? 'الأسبوعي' : 'الشهري')\n              + ' لم يُرسل — ' + cfg.company + ' — مشكلة في الوصول لـ Search Console';\n\nconst text = [\n  'تقرير SEO ما اتبعتش — ' + cfg.company,\n  '',\n  'إيه اللي حصل:',\n  cause,\n  '',\n  'إيه اللي تعمله:',\n  action,\n  '',\n  'الموقع المطلوب في الإعدادات: ' + want,\n  'المواقع اللي الحساب المربوط شايفها (' + sites.length + '):',\n].concat(sites.length\n    ? sites.map(s => '  - ' + s.url + '   [' + (LEVEL_AR[s.level] || s.level) + ']')\n    : ['  (مقدرناش نجيبها)'])\n .concat([\n  '',\n  'رسالة جوجل الخام:',\n  raw,\n  '',\n  'الشيت والعرض التقديمي ما اتلمسوش خالص — مفيش أي بيانات اتغيرت.',\n ]).join('\\n');\n\nconst html =\n'<div style=\"font-family:Calibri,Arial,sans-serif;direction:rtl;text-align:right;background:#f2f1ee;padding:24px;color:#142f38;font-size:14px;\">'\n+ '<div style=\"max-width:700px;margin:0 auto;background:#ffffff;border:1px solid #d8d6d0;border-radius:10px;padding:22px;\">'\n+ '<h3 style=\"margin:0 0 4px 0;font-size:16px;\">تقرير SEO ما اتبعتش — ' + esc(cfg.company) + '</h3>'\n+ '<div style=\"color:#7a7a7a;margin-bottom:16px;\">مشكلة في الوصول لـ Google Search Console</div>'\n\n+ '<div style=\"background:#f2f1ee;border-right:4px solid #c0392b;border-radius:4px;padding:12px 16px;margin-bottom:14px;\">'\n+ '<b>إيه اللي حصل بالظبط</b>'\n+ '<p style=\"margin:6px 0 0 0;line-height:1.9;\">' + esc(cause) + '</p></div>'\n\n+ '<div style=\"background:#f2f1ee;border-right:4px solid #1e7a34;border-radius:4px;padding:12px 16px;margin-bottom:14px;\">'\n+ '<b>إيه اللي تعمله</b>'\n+ '<p style=\"margin:6px 0 0 0;line-height:1.9;\">' + esc(action) + '</p></div>'\n\n+ '<p style=\"margin:0 0 4px 0;\"><b>الموقع المطلوب في إعدادات الأوتوميشن:</b></p>'\n+ '<div style=\"font-family:monospace;direction:ltr;text-align:left;background:#f2f1ee;border:1px solid #d8d6d0;'\n+ 'border-radius:4px;padding:8px 10px;margin-bottom:14px;\">' + esc(want) + '</div>'\n\n+ '<p style=\"margin:0 0 4px 0;\"><b>المواقع اللي الحساب المربوط شايفها فعلاً:</b></p>'\n+ sitesHtml\n\n+ '<p style=\"margin:16px 0 4px 0;\"><b>رسالة جوجل الخام (للفني):</b></p>'\n+ '<div style=\"font-family:monospace;direction:ltr;text-align:left;background:#f2f1ee;border:1px solid #d8d6d0;'\n+ 'border-radius:4px;padding:8px 10px;white-space:pre-wrap;word-break:break-word;font-size:12px;\">'\n+ esc(raw) + '</div>'\n\n+ '<p style=\"margin:16px 0 0 0;line-height:1.9;background:#f2f1ee;border-radius:4px;padding:10px 14px;\">'\n+ '<b>الشيت والعرض التقديمي ما اتلمسوش خالص</b> — مفيش أي بيانات اتغيرت ولا اتمسحت. '\n+ 'بعد ما تظبط السبب، شغّل الأوتوميشن يدويًا من زرار Manual Trigger.</p>'\n\n+ '</div></div>';\n\nreturn [{ json: {\n  alertSubject: subject, alertHtml: html, alertText: text,\n  diagnosis: { cause, action, severity, want, sites, raw, readOnly: readOnly.length },\n} }];\n"
+      },
+      "id": "7f505397-0000-4000-8000-7f5053970000",
+      "name": "GSC Diagnose",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        420
+      ]
+    },
+    {
+      "parameters": {
         "fromEmail": "={{ $('Config').first().json.mailFromDisplay }}",
         "toEmail": "={{ $('Config').first().json.mailTo }}",
-        "subject": "=تعذر الوصول لـ Google Search Console — تقرير SEO لم يُرسل",
+        "subject": "={{ $json.alertSubject }}",
         "emailFormat": "both",
-        "text": "=الأوتوميشن حاول يشتغل بس مقدرش يتأكد من الاتصال بـ Google Search Console (الصلاحية غالبًا منتهية أو فيه مشكلة في الحساب المربوط).\n\nعشان كده التقرير ما اتبعتش، والشيت ما اتلمسش خالص — عشان منستلمش تقرير فاضي أو ببيانات غلط.\n\nلو سمحت راجع صلاحية حساب Google المربوط بالأوتوميشن (Google OAuth) في n8n وجدّدها، وبعدين شغّل الأوتوميشن تاني يدويًا من زرار Manual Trigger.",
-        "html": "=<div style=\"font-family:Calibri,Arial,sans-serif;direction:rtl;text-align:right;background:#f2f1ee;padding:24px;color:#142f38;font-size:14px;\"><div style=\"max-width:600px;margin:0 auto;background:#ffffff;border:1px solid #d8d6d0;border-radius:10px;padding:22px;\"><h3 style=\"margin:0 0 12px 0;font-size:16px;\">تنبيه من أوتوميشن تقرير SEO</h3><p style=\"line-height:1.8;\">الأوتوميشن حاول يشتغل بس مقدرش يتأكد من الاتصال بـ Google Search Console (الصلاحية غالبًا منتهية أو فيه مشكلة في الحساب المربوط).</p><p style=\"line-height:1.8;\"><b>عشان كده التقرير ما اتبعتش، والشيت ما اتلمسش خالص</b> — عشان منستلمش تقرير فاضي أو ببيانات غلط.</p><p style=\"line-height:1.8;\">لو سمحت راجع صلاحية حساب Google المربوط بالأوتوميشن (Google OAuth) في n8n وجدّدها، وبعدين شغّل الأوتوميشن تاني يدويًا من زرار Manual Trigger.</p></div></div>",
+        "text": "={{ $json.alertText }}",
+        "html": "={{ $json.alertHtml }}",
         "options": {
           "ccEmail": "={{ $('Config').first().json.mailCc }}",
           "replyTo": "={{ $('Config').first().json.mailReplyTo }}",
           "appendAttribution": false
         }
       },
-      "id": "c54b9ced-0000-4000-8000-c54b9ced0000",
+      "id": "b64b8550-0000-4000-8000-b64b85500000",
       "name": "GSC Alert Email",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        1100,
+        1540,
         420
       ],
       "credentials": {
@@ -1143,7 +1152,7 @@
           "appendAttribution": false
         }
       },
-      "id": "c4032bfb-0000-4000-8000-c4032bfb0000",
+      "id": "c3032a68-0000-4000-8000-c3032a680000",
       "name": "Data Alert Email",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
@@ -1229,6 +1238,28 @@
             "index": 0
           }
         ],
+        [
+          {
+            "node": "List GSC Sites",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List GSC Sites": {
+      "main": [
+        [
+          {
+            "node": "GSC Diagnose",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GSC Diagnose": {
+      "main": [
         [
           {
             "node": "GSC Alert Email",
@@ -1483,25 +1514,14 @@
       "main": [
         [
           {
-            "node": "Build Prompt",
+            "node": "Report Stats",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Build Prompt": {
-      "main": [
-        [
-          {
-            "node": "DeepSeek API",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "DeepSeek API": {
+    "Report Stats": {
       "main": [
         [
           {
