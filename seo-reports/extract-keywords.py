@@ -3,7 +3,12 @@
 
 قواعد القراءة:
   A = رقم | B = الكلمة | C = SV (السعودية/الكويت) | D = KD | E = المقالة/القسم
+  F = رابط الصفحة المستهدفة (اختياري — لو مكتوب بيكسب على خريطة الأقسام)
   الصفوف الفاضية بتفصل بين المجموعات.
+
+الرابط مهم: من غيره الأوتوميشن بيقيس الكلمة على مستوى الموقع كله بدل الصفحة
+المستهدفة، ووقتها الرقم بيطابق فلتر Query لوحده في واجهة Search Console — مش
+فلتر Query + Page. لو الرقم اللي عايزه هو بتاع صفحة معيّنة، حط رابطها.
 
 الاستخدام:  python3 extract-keywords.py
 الخرج:      keywords/alojan.json  +  keywords/shoug.json
@@ -56,6 +61,12 @@ def sv(v):
     return int(f) if f.is_integer() else f
 
 
+def page_url(v):
+    """عمود الرابط: بيقبل رابط صريح بس — أي كلام تاني بيتجاهل."""
+    s = clean(v)
+    return s if s.lower().startswith(('http://', 'https://')) else ''
+
+
 def read_blocks(ws, last_row):
     """يرجّع قائمة مجموعات؛ كل مجموعة = صفوف متتالية من غير سطر فاضي."""
     blocks, cur = [], []
@@ -72,6 +83,7 @@ def read_blocks(ws, last_row):
             'sv': sv(ws.cell(r, 3).value),
             'kd': sv(ws.cell(r, 4).value),
             'article': clean(ws.cell(r, 5).value),
+            'page': page_url(ws.cell(r, 6).value),
         })
     if cur:
         blocks.append(cur)
@@ -93,6 +105,16 @@ ALOJAN_GROUPS = [
 # شوق: اسم القسم موجود في عمود E نفسه، بس بنظبّط الاسم المبهم "مقال".
 SHOUG_SECTION_FIX = {
     'مقال': 'مقال: أفضل محامية في الكويت',
+}
+
+# روابط صفحات العوجان المعروفة.
+# قسم "الرئيسية — كلمات تجارية" مكتوب في عمود E بالحرف "الصفحة الرئيسية -
+# كلمات تجارية"، يعني الصفحة المستهدفة للكلمات دي هي الرئيسية. من غير الرابط
+# ده كان الأوتوميشن بيقيسها على مستوى الموقع كله وميقدرش يطابق فلتر
+# Query + Page في واجهة Search Console.
+# باقي الأقسام مقالات لسه من غير روابط مؤكدة — حطها في عمود F في الإكسل.
+ALOJAN_PAGES = {
+    'الرئيسية — كلمات تجارية': 'https://www.aaalojan.com/',
 }
 
 # روابط الصفحات المعروفة (من الأوتوميشن القديم — متأكدين منها).
@@ -125,7 +147,7 @@ def build_alojan(ws):
         for item in block:
             out.append({
                 'group': name,
-                'page': '',              # مفيش روابط مؤكدة للعوجان
+                'page': item['page'] or ALOJAN_PAGES.get(name, ''),
                 'keyword': item['keyword'],
                 'sv': item['sv'],
                 'article': item['article'],
@@ -142,7 +164,7 @@ def build_shoug(ws):
                 sys.exit(f'شوق: الصف {item["row"]} من غير قسم في عمود E.')
             out.append({
                 'group': section,
-                'page': SHOUG_PAGES.get(section, ''),
+                'page': item['page'] or SHOUG_PAGES.get(section, ''),
                 'keyword': item['keyword'],
                 'sv': item['sv'],
                 'article': item['article'],
@@ -178,6 +200,11 @@ def main():
         print(f'{name}: {len(rows)} كلمة في {len(groups)} قسم → {path}')
         for g in groups:
             print(f'    - {g}: {sum(1 for r in rows if r["group"] == g)}')
+        no_page = [r['keyword'] for r in rows if not r['page']]
+        if no_page:
+            print(f'    ⚠ {len(no_page)} كلمة من غير رابط صفحة مستهدفة — '
+                  f'أرقامها هتتقاس على مستوى الموقع كله.')
+            print(f'      حط الرابط في عمود F في الإكسل عشان تتقاس على الصفحة نفسها.')
 
 
 if __name__ == '__main__':

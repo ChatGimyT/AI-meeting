@@ -41,13 +41,16 @@ const rows = (res.data || []).map(d => {
     else              { txt = '0%'; }
   } else if (prev === null && last !== null) { color = GREEN; arrow = '★'; txt = 'جديدة'; }
   else if (prev !== null && last === null)   { color = RED;   arrow = '✕'; txt = 'اختفت'; }
-  return { d, last, prev, pct, color, arrow, txt, sv: svText(d) };
+  // نجمة على الكلمات اللي رقمها على مستوى الموقع كله مش على صفحة محددة —
+  // عشان اللي بيراجع في Search Console يعرف يحط الفلتر الصح.
+  const siteWide = d.scope !== 'page';
+  return { d, last, prev, pct, color, arrow, txt, sv: svText(d), siteWide };
 });
 rows.sort((a, b) => (b.pct === null ? -999 : b.pct) - (a.pct === null ? -999 : a.pct));
 
 const td = 'padding:9px 10px;border-bottom:1px solid ' + LINE + ';font-size:' + FS + ';color:' + INK + ';';
 const body = rows.map((r, i) => '<tr style="background:' + (i % 2 ? '#ffffff' : BG) + ';">' +
-  '<td style="' + td + '">' + esc(r.d.keyword) + '</td>' +
+  '<td style="' + td + '">' + esc(r.d.keyword) + (r.siteWide ? ' <span style="color:' + GREY + ';">*</span>' : '') + '</td>' +
   '<td style="' + td + '">' + esc(r.d.section) + '</td>' +
   '<td style="' + td + 'text-align:center;">' + esc(r.d.country) + '</td>' +
   '<td style="' + td + 'text-align:center;">' + r.sv + '</td>' +
@@ -71,6 +74,30 @@ const holes = (q.tally || {}).holes || 0;
 const qualityNote = holes
   ? 'ملاحظة: ' + holes + ' خانة لسه فاضية وهتتسحب في الرن الجاي.'
   : 'كل الخانات مسحوبة ومتأكد منها.';
+
+// ---- إزاي تراجع أي رقم في التقرير على Search Console ----
+// الأرقام دي مش تقديرات: كل رقم ليه فلتر محدد في الواجهة. السطور دي بتقول
+// الفلتر بالظبط عشان أي حد يفتح Search Console ويطلّع نفس الرقم.
+const lastMonth = m.length ? m[li] : {};
+const rangeTxt = (lastMonth.startDate && lastMonth.endDate)
+  ? lastMonth.startDate + ' → ' + lastMonth.endDate
+  : nowLabel;
+const countryTxt = (cfg.countries || []).map(c => c.name).join(' / ');
+const siteWideCount = rows.filter(r => r.siteWide).length;
+
+const verifySteps = [
+  'افتح Search Console → Performance → Search results.',
+  'Date: Custom → ' + rangeTxt + ' (نفس أيام العمود الأخير في التقرير).',
+  'Search type: Web.',
+  'Query: Exact query = الكلمة زي ما هي مكتوبة في التقرير بالحرف.',
+  'Country: ' + countryTxt + '.',
+  'Page: Exact URL = رابط الصفحة المستهدفة للكلمة. ' +
+    'الكلمات اللي جنبها * مالهاش صفحة مستهدفة، فسيب فلتر Page فاضي — ' +
+    'رقمها محسوب على كل صفحات الموقع للكلمة.',
+];
+const verifyNote = 'ملحوظة: بيانات جوجل نهائية (final) بس، وأي فلتر ناقص أو زايد ' +
+  'بيغيّر الرقم — خصوصًا فلتر الدولة وفلتر الصفحة.' +
+  (siteWideCount ? ' في التقرير ده ' + siteWideCount + ' كلمة من غير صفحة مستهدفة (*).' : '');
 
 const html =
 '<div style="font-family:Calibri,Arial,sans-serif;direction:rtl;text-align:right;background:' + BG + ';padding:22px;font-size:' + FS + ';color:' + INK + ';">' +
@@ -96,12 +123,18 @@ const html =
     'border-radius:6px;text-decoration:none;font-size:' + FS + ';font-weight:bold;">عرض التقرير الكامل</a></div>' +
   '<div style="margin-top:16px;font-size:' + FS + ';color:' + INK + ';text-align:center;">الرقم الأقل = ترتيب أفضل</div>' +
   '<div style="margin-top:8px;font-size:12px;color:' + GREY + ';text-align:center;">' + esc(qualityNote) + '</div>' +
+  '<div style="margin-top:18px;background:' + BG + ';border:1px solid ' + LINE + ';border-radius:6px;padding:14px 16px;font-size:12px;line-height:1.9;">' +
+    '<b>تحب تراجع أي رقم بنفسك على Search Console؟</b>' +
+    '<ol style="margin:8px 0 0 0;padding-inline-start:18px;">' +
+    verifySteps.map(t => '<li>' + esc(t) + '</li>').join('') + '</ol>' +
+    '<div style="margin-top:8px;color:' + GREY + ';">' + esc(verifyNote) + '</div>' +
+  '</div>' +
 '</div></div></div>';
 
 // نسخة نصية — مهمة جدًا لتوصيل الإيميل: الرسائل اللي فيها HTML بس من غير
 // نسخة نص عادي بتاخد سكور سبام أعلى عند جيميل وأوتلوك.
 const textRows = rows.map(r =>
-  '- ' + r.d.keyword + ' (' + r.d.section + ') | بحث شهري: ' + r.sv +
+  '- ' + r.d.keyword + (r.siteWide ? ' *' : '') + ' (' + r.d.section + ') | بحث شهري: ' + r.sv +
   ' | السابق: ' + (r.prev === null ? '-' : r.prev) +
   ' | الحالي: ' + (r.last === null ? '-' : r.last) +
   ' | الظهور: ' + (r.d.impressions || 0) +
@@ -112,7 +145,9 @@ const text = ['تقرير SEO __CADENCE_AR__ — ' + cfg.company, __TEXT_HEADER_
            ' | متوسط التغير: ' + (st.avg > 0 ? '+' : '') + st.avg + '%', ''])
   .concat(textRows)
   .concat(['', 'الرقم الأقل = ترتيب أفضل.', qualityNote, '',
-           'التقرير الكامل بالسلايدز: ' + slides])
+           'مراجعة الأرقام على Search Console:'])
+  .concat(verifySteps.map((t, i) => (i + 1) + ') ' + t))
+  .concat([verifyNote, '', 'التقرير الكامل بالسلايدز: ' + slides])
   .join('\n');
 
 return [{ json: {

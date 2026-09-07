@@ -34,8 +34,8 @@ const PROJECTS = {
     fromName: 'رابح — تقارير SEO',
     countries: [{ code: 'sau', name: 'السعودية' }],
     keywords: 'alojan',
-    // العوجان: مفيش روابط مؤكدة في خطة المحتوى، فبنسيب الرابط فاضي والكود
-    // بياخد أعلى صفحة ظاهرة للكلمة.
+    // 'prefer' = لو الصفحة المستهدفة مش ظاهرة الأسبوع ده، نرجّع رقم الموقع
+    // كله للكلمة (زي فلتر Query لوحده في الواجهة) بدل ما نطلّع خانة فاضية.
     pageMatch: 'prefer',
     monthly: {
       name: 'ALOJAN - Monthly Final v3',
@@ -93,7 +93,7 @@ const CADENCE = {
       'const labelOf = (key) => AR_MON[Number(String(key).split(\'-\')[1]) - 1] || String(key);',
       'const lastLabelOf = (p) => labelOf(p.key);',
     ].join('\n'),
-    monthMap: 'p => ({ key: p.key, label: labelOf(p.key) })',
+    monthMap: 'p => ({ key: p.key, label: labelOf(p.key), startDate: p.startDate, endDate: p.endDate })',
     periodLabelFn: 'arMonth',
     headlineExpr: "'شهر ' + lastLabel + ' مقابل ' + prevLabel + '\\n' +\n",
     headerLine: "'تقرير شهر ' + nowLabel + (prevLabel ? ' &nbsp;•&nbsp; مقارنةً بشهر ' + prevLabel : '')",
@@ -278,7 +278,10 @@ function buildWorkflow(projectKey, cadenceKey) {
 
   push(code('Build Tasks', at(), src(`build-tasks.${cadenceKey}.js`)));
 
-  const gscBody = "={{ JSON.stringify({ startDate: $json.startDate, endDate: $json.endDate, dimensions: ['page'], type: 'web', rowLimit: $('Config').first().json.gscRowLimit, dataState: $('Config').first().json.gscDataState, dimensionFilterGroups: [{ filters: [{ dimension: 'query', operator: 'equals', expression: $json.keyword }, { dimension: 'country', operator: 'equals', expression: $json.countryCode }] }] }) }}";
+  // aggregationType: 'byPage' مكتوبة صراحة عشان الرقم يطابق واجهة Search
+  // Console بالظبط لما تفلتر بصفحة — الواجهة بتجمّع byPage، والـ API لو
+  // سبناه 'auto' بيقرر لوحده. الكتابة الصريحة بتمنع أي اختلاف صامت.
+  const gscBody = "={{ JSON.stringify({ startDate: $json.startDate, endDate: $json.endDate, dimensions: ['page'], type: 'web', aggregationType: 'byPage', rowLimit: $('Config').first().json.gscRowLimit, dataState: $('Config').first().json.gscDataState, dimensionFilterGroups: [{ filters: [{ dimension: 'query', operator: 'equals', expression: $json.keyword }, { dimension: 'country', operator: 'equals', expression: $json.countryCode }] }] }) }}";
   const gscUrl = "=https://searchconsole.googleapis.com/webmasters/v3/sites/{{ encodeURIComponent($('Config').first().json.siteUrl) }}/searchAnalytics/query";
 
   push(http('GSC Query', at(), {

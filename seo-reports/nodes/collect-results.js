@@ -12,7 +12,7 @@ if (noFetch) {
   return [{ json: { __retry: false, retryCount: 0, pass1: { ok: 0, failed: 0, missing: 0 }, noFetch: true } }];
 }
 
-const paired = pairResults(tasks, results);
+const paired = pairResults(tasks, results, cfg.gscRowLimit);
 
 const retry = [];
 const summary = { ok: 0, failed: 0, missing: 0 };

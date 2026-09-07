@@ -133,6 +133,44 @@ for (const file of fs.readdirSync(DIST).filter((f) => f.endsWith('.json')).sort(
     if (!n.retryOnFail || n.maxTries < 3) fail(wf.name, `${nm}: إعادة المحاولة ناقصة`);
   }
 
+  // 8ب) الطلب لازم يطابق فلاتر واجهة Search Console بالظبط
+  //     أي فرق هنا = أرقام في التقرير مش موجودة في الواجهة.
+  for (const nm of ['GSC Query', 'GSC Retry Query']) {
+    const body = String(wf.nodes.find((x) => x.name === nm)?.parameters?.jsonBody || '');
+    const must = [
+      ["dimensions: ['page']", 'لازم يجيب الصفحات عشان نقدر نطابق الصفحة المستهدفة'],
+      ["type: 'web'", "لازم Search type = Web زي الواجهة"],
+      ["aggregationType: 'byPage'", 'لازم نفس تجميع الواجهة'],
+      ["dimension: 'query', operator: 'equals'", 'الكلمة لازم Exact query مش contains'],
+      ["dimension: 'country', operator: 'equals'", 'الدولة لازم فلتر محدد'],
+      ['dataState', 'لازم نحدد بيانات نهائية'],
+    ];
+    for (const [needle, why] of must) {
+      if (!body.includes(needle)) fail(wf.name, `${nm}: ناقص ${needle} — ${why}`);
+    }
+  }
+
+  // 8ج) الموضع لازم يتحسب متوسط موزون بالظهور — مش "أقل موضع بين الصفحات".
+  //     أقل موضع كان بيطلّع رقم صفحة متقفشة (POS 10 / IMP 1) بدل رقم الصفحة
+  //     المستهدفة (20.9)، وده كان أكبر فرق بين التقرير والواجهة.
+  for (const nm of ['Merge History', 'Collect Results']) {
+    const js = String(wf.nodes.find((x) => x.name === nm)?.parameters?.jsCode || '');
+    if (!js.includes('function aggregateRows')) {
+      fail(wf.name, `${nm}: مكتبة التجميع الموزون مش متحقونة`);
+    }
+    if (/hit = valid[\s\S]{0,80}sort\(/.test(js)) {
+      fail(wf.name, `${nm}: لسه بياخد أقل موضع بين الصفحات بدل المتوسط الموزون`);
+    }
+  }
+
+  // 8د) الإيميل لازم يقول إزاي تراجع الرقم في الواجهة
+  const emailJs = String(wf.nodes.find((n) => n.name === 'Build Email')?.parameters?.jsCode || '');
+  for (const needle of ['Exact query', 'Exact URL', 'Search type: Web']) {
+    if (!emailJs.includes(needle)) {
+      fail(wf.name, `Build Email: ناقص خطوة المراجعة "${needle}"`);
+    }
+  }
+
   // 9) الإيميلات: نسخة نصية + إلغاء توقيع n8n
   for (const n of wf.nodes.filter((x) => x.type === 'n8n-nodes-base.emailSend')) {
     if (n.parameters.emailFormat !== 'both') fail(wf.name, `${n.name}: emailFormat لازم تكون both`);
@@ -210,6 +248,18 @@ for (const file of fs.readdirSync(DIST).filter((f) => f.endsWith('.json')).sort(
   const svCount = svNode.parameters.assignments.assignments.length;
   if (kwCount !== svCount) fail(wf.name, `عدد الكلمات ${kwCount} مش مساوي خانات Search Volume ${svCount}`);
   else ok(`${kwCount} كلمة متطابقة بين Keywords و Search Volume`);
+
+  // 13) كل كلمة ليها رابط صفحة مستهدفة = رقمها بيطابق فلتر Query + Page.
+  //     اللي من غير رابط بتتقاس على مستوى الموقع — مسموح، بس لازم يبان.
+  const kwJson = JSON.parse(kwNode.parameters.jsCode
+    .match(/const keywords = (\[[\s\S]*?\]);/)[1]);
+  const withPage = kwJson.filter((k) => k.page).length;
+  const home = kwJson.filter((k) => /الرئيسية/.test(k.group || ''));
+  if (home.length && home.some((k) => !k.page)) {
+    fail(wf.name, 'كلمات قسم الرئيسية لازم يكون معاها رابط الصفحة الرئيسية');
+  }
+  ok(`${withPage} من ${kwJson.length} كلمة معاها رابط صفحة مستهدفة` +
+     (withPage < kwJson.length ? ` (الباقي بيتقاس على مستوى الموقع)` : ''));
 
   ok(`${wf.nodes.length} نود — الفحص خلص`);
 }

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // خطة الاختبار منفّذة كود — كل حالة هنا بتقابل بند في docs/TESTING.md
-import { runNode, test, group, assert, equal, summary,
+import { runNode, loadWorkflow, test, group, assert, equal, summary,
          gscRow, okResponse, emptyResponse, errResponse } from './tests/harness.mjs';
 
 const M = 'ALOJAN - Monthly Final v3';
@@ -205,15 +205,28 @@ group('٤) مطابقة الصفحة المستهدفة', () => {
     equal(res.quality.pageMisses.length, 0);
   });
 
-  test('الصفحة المستهدفة مش ظاهرة → بياخد أعلى صفحة ترتيبًا ويعلّمها', () => {
+  test('الصفحة المستهدفة مش ظاهرة → رقم الموقع كله للكلمة مش أعلى صفحة', () => {
     const res = mergeRun({
       results: ALL_TASKS.map((t, i) => okResponse(
         [gscRow('https://www.aaalojan.com/other', 7, 50),
          gscRow('https://www.aaalojan.com/third', 4, 5)], { item: i })),
     });
-    equal(posOf(res, 1, 0), 4, 'أعلى ترتيب (4) مش أعلى كليكات (7)');
+    // (7×50 + 4×5) ÷ 55 = 6.7 — مش 4 (أقل موضع) ولا 7 (أعلى ظهور).
+    equal(posOf(res, 1, 0), 6.7, 'المتوسط الموزون بالظهور');
+    equal(res.data[1].impressionsAll[0], 55, 'مجموع ظهور كل الصفحات');
     assert(res.quality.pageMisses.length > 0, 'الحالة اتسجّلت كملاحظة');
     equal(res.quality.tally.holes, 0, 'اختلاف الرابط عمره ما يطلّع خانة فاضية');
+  });
+
+  test('الصفحة المستهدفة ظاهرة → رقمها هي بالظبط مش رقم الموقع', () => {
+    const res = mergeRun({
+      results: ALL_TASKS.map((t, i) => okResponse(
+        [gscRow('https://www.aaalojan.com/other', 3, 900),
+         gscRow('https://www.aaalojan.com/target', 21, 4)], { item: i })),
+    });
+    equal(posOf(res, 1, 0), 21, 'رقم الصفحة المستهدفة');
+    equal(res.data[1].impressionsAll[0], 4, 'ظهور الصفحة المستهدفة لوحدها');
+    equal(res.data[1].scope, 'page');
   });
 
   test('وضع strict: الصفحة مش ظاهرة → "-" مؤكدة مش رقم صفحة تانية', () => {
@@ -890,6 +903,136 @@ group('١٦) تنبيه فشل الوصول لـ Search Console بيقول ال�
     equal(d.diagnosis.sites.map((s) => s.url), ['https://www.aaalojan.com/']);
     assert(d.alertText.includes('https://shoug-lawyer.com/'), 'بيقول إيه المطلوب');
     assert(d.alertText.includes('https://www.aaalojan.com/'), 'وإيه المتاح');
+  });
+});
+
+// ====================================== 17) مطابقة أرقام التقرير لواجهة GSC
+// الحالة اللي اتبلّغت: التقرير قال «POS 10 / IMP 1» لكلمة «جراح مخ واعصاب»
+// على الرئيسية، والواجهة بنفس الكلمة ونفس الرابط بتقول موضع 20.9 وظهور أكتر.
+// السبب: الكود القديم كان بياخد "أقل موضع" بين كل صفحات الموقع وظهور الصفحة
+// دي لوحدها — يعني رقم صفحة تانية خالص.
+group('١٧) الأرقام تطابق واجهة Search Console', () => {
+  const HOME = 'https://www.aaalojan.com/';
+
+  // نفس شكل رد جوجل في الحالة الحقيقية: الرئيسية بترتيب ضعيف وظهور معقول،
+  // وصفحة داخلية ظهرت مرة واحدة بس بترتيب ممتاز.
+  const realRows = [
+    gscRow(HOME, 20.9, 12),
+    gscRow('https://www.aaalojan.com/blog/article-x', 10, 1),
+  ];
+
+  const KW_HOME = [
+    { group: 'الرئيسية — كلمات تجارية', page: HOME, keyword: 'كلمة أ', sv: '', article: 'الرئيسية' },
+    { group: 'ق1', page: '', keyword: 'كلمة ب', sv: '', article: 'مقال ب' },
+  ];
+
+  // Build Tasks بيحمل الرابط مع كل طلب، فلازم الطلبات تتبني من نفس القايمة.
+  const HOME_TASKS = [0, 1].flatMap((k) => [0, 1, 2].map((pIdx) => ({
+    ...task(k, pIdx), page: KW_HOME[k].page, group: KW_HOME[k].group,
+  })));
+
+  const homeRun = (rows) => mergeRun({
+    kws: KW_HOME,
+    tasks: HOME_TASKS,
+    results: HOME_TASKS.map((t, i) => okResponse(rows, { item: i })),
+  });
+
+  test('الكلمة ليها رابط الرئيسية → التقرير بيقول رقم الرئيسية (20.9 / 12)', () => {
+    const res = homeRun(realRows);
+    equal(posOf(res, 0, 0), 20.9, 'موضع الرئيسية مش موضع الصفحة الداخلية');
+    equal(res.data[0].impressionsAll[0], 12, 'ظهور الرئيسية');
+    equal(res.data[0].scope, 'page');
+    equal(res.data[0].matchedPage, HOME);
+  });
+
+  test('الرقم القديم الغلط (POS 10 / IMP 1) مابقاش يطلع', () => {
+    const res = homeRun(realRows);
+    assert(posOf(res, 0, 0) !== 10, 'مش أقل موضع بين الصفحات');
+    assert(res.data[0].impressionsAll[0] !== 1, 'مش ظهور صفحة واحدة متقفشة');
+  });
+
+  test('كلمة من غير رابط → متوسط موزون ومجموع ظهور، مش أقل موضع', () => {
+    const res = homeRun(realRows);
+    // (20.9×12 + 10×1) ÷ 13 = 20.06…
+    equal(posOf(res, 1, 0), 20.1);
+    equal(res.data[1].impressionsAll[0], 13, 'مجموع ظهور كل الصفحات');
+    equal(res.data[1].scope, 'site');
+  });
+
+  test('الكلمات من غير رابط بتتسجّل كتحذير باسمها', () => {
+    const res = homeRun(realRows);
+    equal(res.quality.keywordsWithoutPage, ['كلمة ب']);
+    const v = runNode({ workflow: M, node: 'Validate Data', nodes: { Config: [CFG] }, input: [res] })[0].json;
+    assert(v.warnings.some(w => w.includes('من غير رابط صفحة مستهدفة') && w.includes('كلمة ب')),
+           'التحذير بيسمّي الكلمة: ' + JSON.stringify(v.warnings));
+  });
+
+  test('صف واحد بس → الموضع زي ما هو من غير تشويه من المتوسط', () => {
+    const res = mergeRun({
+      results: ALL_TASKS.map((t, i) => okResponse([gscRow('https://x/p', 7.4, 3)], { item: i })),
+    });
+    equal(posOf(res, 0, 0), 7.4);
+    equal(res.data[0].impressionsAll[0], 3);
+  });
+
+  test('عدد الصفحات وصل الحد الأقصى → بيتعلّم truncated وبيطلع تحذير', () => {
+    const many = [];
+    for (let i = 0; i < 4; i++) many.push(gscRow('https://x/p' + i, 5 + i, 2));
+    const res = mergeRun({
+      cfg: { ...CFG, gscRowLimit: 4 },
+      results: ALL_TASKS.map((t, i) => okResponse(many, { item: i })),
+    });
+    assert(res.quality.requestStats.truncated > 0, 'الحارس اشتغل');
+    const v = runNode({ workflow: M, node: 'Validate Data',
+                        nodes: { Config: [{ ...CFG, gscRowLimit: 4 }] }, input: [res] })[0].json;
+    assert(v.warnings.some(w => w.includes('GSC_ROW_LIMIT')), 'التحذير وصل للإيميل');
+  });
+
+  test('عدد الصفحات أقل من الحد → مفيش تحذير قطع', () => {
+    const res = mergeRun({
+      cfg: { ...CFG, gscRowLimit: 500 },
+      results: ALL_TASKS.map((t, i) => okResponse([gscRow('https://x/p', 5, 2)], { item: i })),
+    });
+    equal(res.quality.requestStats.truncated, 0);
+  });
+
+  test('طلب GSC بيتبعت بـ aggregationType=byPage زي الواجهة', () => {
+    const wf = JSON.parse(JSON.stringify(loadWorkflow(W)));
+    ['GSC Query', 'GSC Retry Query'].forEach((name) => {
+      const body = wf.nodes.find(n => n.name === name).parameters.jsonBody;
+      assert(body.includes("aggregationType: 'byPage'"), name + ' من غير aggregationType');
+      assert(body.includes("dimension: 'query', operator: 'equals'"), name + ': الكلمة لازم exact');
+    });
+  });
+
+  test('الإيميل بيقول إزاي تراجع الرقم على Search Console', () => {
+    const merged = homeRun(realRows);
+    const v = runNode({ workflow: M, node: 'Validate Data', nodes: { Config: [CFG] }, input: [merged] })[0].json;
+    const out = runNode({
+      workflow: M, node: 'Build Email',
+      nodes: { Config: [CFG], 'Validate Data': [v], 'Search Volume': [{}],
+               'Report Stats': [{ up: 0, down: 0, same: 0, avg: 0 }] },
+      input: [{}],
+    })[0].json;
+    assert(out.emailHtml.includes('Exact query'), 'بيقول الفلتر بالحرف');
+    assert(out.emailHtml.includes('Exact URL'), 'وبيقول فلتر الصفحة');
+    assert(out.emailHtml.includes('السعودية'), 'وبيقول الدولة');
+    assert(out.emailText.includes('Search type: Web'), 'وموجود في النسخة النصية');
+    assert(!out.emailText.includes('<'), 'النسخة النصية فضلت من غير HTML');
+  });
+
+  test('السلايد بيكتب نطاق القياس والصفحة المستهدفة', () => {
+    const merged = homeRun(realRows);
+    const v = runNode({ workflow: M, node: 'Validate Data', nodes: { Config: [CFG] }, input: [merged] })[0].json;
+    const batches = runNode({
+      workflow: M, node: 'Build Slide Batches',
+      nodes: { Config: [CFG], 'Validate Data': [v], 'Search Volume': [{}] },
+      input: [v],
+    });
+    const textOf = (b) => b.json.requests.filter(r => r.insertText).map(r => r.insertText.text).join(' | ');
+    assert(textOf(batches[0]).includes('www.aaalojan.com/'), 'صفحة مستهدفة مكتوبة في السلايد');
+    assert(textOf(batches[0]).includes('نطاق القياس'), 'عنوان السطر موجود');
+    assert(textOf(batches[1]).includes('كل صفحات الموقع للكلمة'), 'الكلمة من غير رابط متعلّمة');
   });
 });
 

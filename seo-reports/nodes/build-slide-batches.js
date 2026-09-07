@@ -77,6 +77,19 @@ res.data.forEach((d, idx) => {
   const sub = 'عدد مرات البحث الشهري: ' + svText(d) + '   |   POS = الموضع   |   IMP = عدد الظهور';
   textBox(reqs, sid + '_s', sid, 55, 80, 610, 20, sub, 10, false, 'CENTER');
 
+  // سطر نطاق القياس: بيقول الرقم ده اتقاس على إيه بالظبط، عشان أي حد يقدر
+  // يفتح Search Console ويحط نفس الفلاتر ويطلع نفس الرقم.
+  //   scope = 'page' → فلتر Query + Page في الواجهة
+  //   scope = 'site' → فلتر Query لوحده
+  const ltr = t => '\u2066' + String(t) + '\u2069';
+  const scopeText = (d.scope === 'page' && d.page)
+    ? 'الصفحة المستهدفة: ' + ltr(String(d.page).replace(/^https?:\/\//, ''))
+    : 'كل صفحات الموقع للكلمة';
+  const filters = 'نطاق القياس: ' + scopeText +
+                  '   •   ' + d.country +
+                  '   •   بحث الويب   •   بيانات نهائية';
+  textBox(reqs, sid + '_f', sid, 55, 99, 610, 16, filters, 8, false, 'CENTER', IMP);
+
   const vals = d.positions;
   const imps = d.impressionsAll || [];
   const nums = vals.filter(v => v !== null && v !== undefined);

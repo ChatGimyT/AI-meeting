@@ -25,14 +25,14 @@ const cells = {};                       // taskId → classify()
 const pairing = { pass1: null, pass2: null };
 
 if (!noFetch) {
-  const p1 = pairResults(tasks, $('GSC Query').all());
+  const p1 = pairResults(tasks, $('GSC Query').all(), cfg.gscRowLimit);
   pairing.pass1 = p1.stats;
   Object.keys(p1.map).forEach(k => { cells[k] = p1.map[k]; });
 
   // نود GSC Retry Query بيشتغل بس لما يبقى فيه طلبات محتاجة إعادة.
   if (Number(collect.retryCount) > 0) {
     const retryTasks = $('Collect Results').all();
-    const p2 = pairResults(retryTasks, $('GSC Retry Query').all());
+    const p2 = pairResults(retryTasks, $('GSC Retry Query').all(), cfg.gscRowLimit);
     pairing.pass2 = p2.stats;
     Object.keys(p2.map).forEach(k => {
       // المحاولة التانية بتستبدل نتيجة فاشلة بس — مش بتلغي نتيجة سليمة.
@@ -43,9 +43,11 @@ if (!noFetch) {
 
 // ---------- 2) قراءة كل خانة ----------
 const fresh = {};
-const requestStats = { requested: tasks.length, ranked: 0, noData: 0, failed: 0, truncated: 0 };
+const requestStats = { requested: tasks.length, ranked: 0, noData: 0, failed: 0, truncated: 0,
+                       scopePage: 0, scopeSite: 0 };
 const failures = [];      // تفاصيل كل خانة فشلت
-const pageMisses = [];    // الصفحة المستهدفة مش ظاهرة واستخدمنا أعلى صفحة
+const pageMisses = [];    // الصفحة المستهدفة متحطة بس مكانتش ظاهرة الأسبوع ده
+const noPageKws = {};     // كلمات من غير رابط صفحة مستهدفة أصلاً
 
 if (!noFetch) {
   tasks.forEach(t => {
@@ -53,12 +55,15 @@ if (!noFetch) {
     if (!j.taskId) return;
     const cell = readCell(cells[j.taskId], j.page, cfg.pageMatch);
     fresh[j.taskId] = cell;
+    if (!j.page) noPageKws[j.keyword] = 1;
     if (cell.verdict === 'ranked') {
       requestStats.ranked++;
       if (cell.truncated) requestStats.truncated++;
-      if (j.page && cell.matchMode === 'top') {
+      if (cell.scope === 'page') requestStats.scopePage++; else requestStats.scopeSite++;
+      if (j.page && cell.matchMode === 'site-fallback' && pageMisses.length < 200) {
         pageMisses.push({ keyword: j.keyword, period: j.period,
-                          expected: j.page, matched: cell.matchedPage });
+                          expected: j.page, topPage: cell.topPage,
+                          pagesSeen: cell.pagesSeen });
       }
     } else if (cell.verdict === 'no-data') {
       requestStats.noData++;
@@ -101,7 +106,8 @@ function resolve(rowKey, key, isReportPeriod) {
   const archivedNum = archived && o.position !== null;
 
   if (f && f.verdict === 'ranked') {
-    return { state: 'ranked', position: f.position, impressions: f.impressions, cell: f.position };
+    return { state: 'ranked', position: f.position, impressions: f.impressions,
+             cell: f.position, scope: f.scope, matchedPage: f.matchedPage || '' };
   }
   if (f && f.verdict === 'no-data') {
     // عمود قديم + الأرشيف فيه رقم → نمسك الأرشيف ونسجّل شبهة.
@@ -150,12 +156,18 @@ cfg.countries.forEach(c => {
     });
 
     const li = periods.length - 1;
+    const lastCell = periods.length ? fresh[rowKey + '||' + periods[li].key] : null;
     data.push({
       country: c.name, section: k.group, group: k.group + ' — ' + c.name,
       keyword: k.keyword, page: k.page || '', article: k.article || '',
       sv: (k.sv === undefined || k.sv === null) ? '' : k.sv,
       positions, impressionsAll: impressions, cellsPos,
       impressions: impressions[li] || 0,
+      // نطاق قياس آخر عمود: 'page' = الصفحة المستهدفة | 'site' = كل صفحات
+      // الموقع للكلمة. بيتعرض في السلايد عشان اللي بيراجع يعرف يفلتر نفس
+      // الفلتر في واجهة Search Console.
+      scope: (lastCell && lastCell.scope) || (k.page ? 'page' : 'site'),
+      matchedPage: (lastCell && lastCell.matchedPage) || '',
     });
   });
 });
@@ -177,6 +189,7 @@ return [{ json: {
     coverage: totalCells ? Math.round((filled / totalCells) * 10000) / 10000 : 1,
     tally, requestStats, pairing,
     failures, suspicious, pageMisses,
+    keywordsWithoutPage: Object.keys(noPageKws),
     noFetch,
     sheetError: rs.__sheetError || '',
     extent: rs.__extent || { rows: 0, cols: 0 },

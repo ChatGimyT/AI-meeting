@@ -81,11 +81,20 @@ if ((q.tally || {}).keptArchive > 0) {
 }
 if ((q.pageMisses || []).length) {
   warnings.push((q.pageMisses.length) + ' خانة الصفحة المستهدفة فيها مكانتش ظاهرة، ' +
-                'فاتحسب الترتيب من أعلى صفحة ظاهرة للكلمة.');
+                'فالرقم اتحسب على مستوى الموقع كله للكلمة (زي فلتر الكلمة لوحدها ' +
+                'في واجهة Search Console) — مش من صفحة تانية.');
+}
+const noPage = q.keywordsWithoutPage || [];
+if (noPage.length) {
+  warnings.push(noPage.length + ' كلمة من غير رابط صفحة مستهدفة، فأرقامها على مستوى ' +
+                'الموقع كله. لو عايز الرقم يطابق فلتر Query + Page في الواجهة، حط ' +
+                'الرابط في seo-reports/extract-keywords.py: ' +
+                noPage.slice(0, 8).join(' | ') + (noPage.length > 8 ? ' …' : ''));
 }
 if ((q.requestStats || {}).truncated > 0) {
-  warnings.push(q.requestStats.truncated + ' كلمة رجع فيها عدد صفحات على الحد الأقصى — ' +
-                'ممكن نرفع GSC_ROW_LIMIT.');
+  warnings.push(q.requestStats.truncated + ' كلمة رجع فيها عدد صفحات على الحد الأقصى (' +
+                cfg.gscRowLimit + ') — يعني فيه صفحات اتقصّت ومجموع الظهور ناقص. ' +
+                'ارفع GSC_ROW_LIMIT.');
 }
 if ((q.invalidEmails || []).length) {
   warnings.push('إيميلات بصيغة غلط واتجاهلت: ' + q.invalidEmails.join(', '));
