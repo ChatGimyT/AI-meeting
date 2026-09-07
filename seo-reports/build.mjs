@@ -14,9 +14,15 @@ const NODES = path.join(HERE, 'nodes');
 const DIST = path.join(HERE, 'dist');
 
 // ---------------------------------------------------------------- بيانات المشاريع
+// ⚠️ كل مشروع على حساب جوجل مختلف — دي القيم المنقولة من الملفات الأصلية
+// زي ما هي. حساب العوجان مش شايف موقع شوق والعكس، فالخلط بينهم بيوقف الرن
+// بخطأ 404 من Search Console.
+const GOOGLE_CREDS = {
+  alojan: { googleOAuth2Api: { id: 'zqpCaDcnpV6T6BqM', name: 'rabeh.seven.b' } },
+  shoug:  { googleOAuth2Api: { id: 'eAFsFY5y1jlvRQZZ', name: 'Google' } },
+};
 const CREDS = {
-  google: { googleOAuth2Api: { id: 'zqpCaDcnpV6T6BqM', name: 'rabeh.seven.b' } },
-  smtp:   { smtp: { id: 'u4SuwA3OxF79v0f6', name: 'Rabeh SMTP' } },
+  smtp: { smtp: { id: 'u4SuwA3OxF79v0f6', name: 'Rabeh SMTP' } },
 };
 
 const MAIL_FROM = 'M.gamal@rabeh.org';
@@ -167,6 +173,8 @@ function buildWorkflow(projectKey, cadenceKey) {
   const P = PROJECTS[projectKey];
   const W = P[cadenceKey];
   const C = CADENCE[cadenceKey];
+  const googleCred = GOOGLE_CREDS[projectKey];
+  if (!googleCred) throw new Error(`مفيش كريدنشيال جوجل معرّف للمشروع ${projectKey}`);
   uid = 0;
 
   const kwFile = path.join(HERE, 'keywords', `${P.keywords}.json`);
@@ -222,7 +230,7 @@ function buildWorkflow(projectKey, cadenceKey) {
     authentication: 'predefinedCredentialType',
     nodeCredentialType: 'googleOAuth2Api',
     options: { timeout: 30000 },
-  }, { credentials: CREDS.google, onError: 'continueRegularOutput', alwaysOutputData: true,
+  }, { credentials: googleCred, onError: 'continueRegularOutput', alwaysOutputData: true,
        retryOnFail: true, maxTries: 3, waitBetweenTries: 3000 }));
 
   push(ifNode('GSC Access Check', at(), [{
@@ -239,7 +247,7 @@ function buildWorkflow(projectKey, cadenceKey) {
     sendBody: true, specifyBody: 'json',
     jsonBody: "={{ JSON.stringify({ startDate: new Date(Date.now() - 25*86400000).toISOString().slice(0,10), endDate: new Date().toISOString().slice(0,10), dimensions: ['date'], type: 'web', rowLimit: 30, dataState: $('Config').first().json.gscDataState }) }}",
     options: { timeout: 30000 },
-  }, { credentials: CREDS.google, onError: 'continueRegularOutput', alwaysOutputData: true,
+  }, { credentials: googleCred, onError: 'continueRegularOutput', alwaysOutputData: true,
        retryOnFail: true, maxTries: 3, waitBetweenTries: 3000 }));
 
   push(code('Freshness Guard', at(), src('freshness-guard.js')));
@@ -259,7 +267,7 @@ function buildWorkflow(projectKey, cadenceKey) {
     authentication: 'predefinedCredentialType',
     nodeCredentialType: 'googleOAuth2Api',
     options: { timeout: 60000 },
-  }, { credentials: CREDS.google, onError: 'continueRegularOutput', alwaysOutputData: true,
+  }, { credentials: googleCred, onError: 'continueRegularOutput', alwaysOutputData: true,
        retryOnFail: true, maxTries: 4, waitBetweenTries: 3000 }));
 
   push(code('Read Sheet', at(), fill(src('read-sheet.js'), { PERIOD_HEADER_RE: C.headerRe })));
@@ -274,7 +282,7 @@ function buildWorkflow(projectKey, cadenceKey) {
     authentication: 'predefinedCredentialType', nodeCredentialType: 'googleOAuth2Api',
     sendBody: true, specifyBody: 'json', jsonBody: gscBody,
     options: { timeout: 60000, batching: { batch: { batchSize: 5, batchInterval: 700 } } },
-  }, { credentials: CREDS.google, onError: 'continueRegularOutput',
+  }, { credentials: googleCred, onError: 'continueRegularOutput',
        // مهم: alwaysOutputData لازم تفضل false. لو اتفعّلت، n8n بيضيف عنصر
        // فاضي {} لما النود ما يطلّعش حاجة، والعنصر ده بيتقري غلط على إنه
        // "رد ناجح من غير بيانات" فيتكتب '-' في خانة أصلها فشل.
@@ -293,7 +301,7 @@ function buildWorkflow(projectKey, cadenceKey) {
     authentication: 'predefinedCredentialType', nodeCredentialType: 'googleOAuth2Api',
     sendBody: true, specifyBody: 'json', jsonBody: gscBody,
     options: { timeout: 60000, batching: { batch: { batchSize: 3, batchInterval: 1500 } } },
-  }, { credentials: CREDS.google, onError: 'continueRegularOutput', alwaysOutputData: false,
+  }, { credentials: googleCred, onError: 'continueRegularOutput', alwaysOutputData: false,
        retryOnFail: true, maxTries: 5, waitBetweenTries: 8000 }));
 
   push(code('Merge History', at(), withIncludes(fill(src('merge-history.js'), {
@@ -315,13 +323,13 @@ function buildWorkflow(projectKey, cadenceKey) {
     sendBody: true, specifyBody: 'json',
     jsonBody: '={{ JSON.stringify({ values: $json.sheetValues }) }}',
     options: { timeout: 120000 },
-  }, { credentials: CREDS.google, retryOnFail: true, maxTries: 4, waitBetweenTries: 4000 }));
+  }, { credentials: googleCred, retryOnFail: true, maxTries: 4, waitBetweenTries: 4000 }));
 
   push(http('Get Presentation', at(), {
     url: "=https://slides.googleapis.com/v1/presentations/{{ $('Config').first().json.presentationId }}?fields=slides.objectId",
     authentication: 'predefinedCredentialType', nodeCredentialType: 'googleOAuth2Api',
     options: { timeout: 60000 },
-  }, { credentials: CREDS.google, retryOnFail: true, maxTries: 3, waitBetweenTries: 3000 }));
+  }, { credentials: googleCred, retryOnFail: true, maxTries: 3, waitBetweenTries: 3000 }));
 
   push(code('Build Delete Requests', at(), src('build-delete-requests.js')));
 
@@ -337,7 +345,7 @@ function buildWorkflow(projectKey, cadenceKey) {
     sendBody: true, specifyBody: 'json',
     jsonBody: '={{ JSON.stringify({ requests: $json.requests }) }}',
     options: { timeout: 120000 },
-  }, { credentials: CREDS.google, retryOnFail: true, maxTries: 3, waitBetweenTries: 3000 }));
+  }, { credentials: googleCred, retryOnFail: true, maxTries: 3, waitBetweenTries: 3000 }));
 
   push(code('Build Slide Batches', at(), src('build-slide-batches.js')));
 
@@ -349,7 +357,7 @@ function buildWorkflow(projectKey, cadenceKey) {
     jsonBody: '={{ JSON.stringify({ requests: $json.requests }) }}',
     options: { timeout: 120000, batching: { batch: { batchSize: 1, batchInterval: 1200 } } },
     // batchUpdate في Slides ذرّية (كلها أو ولا حاجة) فإعادة المحاولة آمنة.
-  }, { credentials: CREDS.google, retryOnFail: true, maxTries: 3, waitBetweenTries: 4000 }));
+  }, { credentials: googleCred, retryOnFail: true, maxTries: 3, waitBetweenTries: 4000 }));
 
   push(code('Report Stats', at(), withIncludes(fill(src('report-stats.js'), {
     PERIOD_LABEL_FN: C.periodLabelFn,
@@ -423,11 +431,11 @@ function buildWorkflow(projectKey, cadenceKey) {
     authentication: 'predefinedCredentialType',
     nodeCredentialType: 'googleOAuth2Api',
     options: { timeout: 30000 },
-  }, { credentials: CREDS.google, onError: 'continueRegularOutput', alwaysOutputData: true,
+  }, { credentials: googleCred, onError: 'continueRegularOutput', alwaysOutputData: true,
        retryOnFail: true, maxTries: 2, waitBetweenTries: 3000 }));
 
   push(code('GSC Diagnose', [X0 + DX * 6, Y0 + 420],
-    src('gsc-diagnose.js').split('__CRED_NAME__').join(CREDS.google.googleOAuth2Api.name)));
+    src('gsc-diagnose.js').split('__CRED_NAME__').join(googleCred.googleOAuth2Api.name)));
 
   push(node('GSC Alert Email', 'n8n-nodes-base.emailSend', 2.1, [X0 + DX * 7, Y0 + 420], {
     fromEmail: "={{ $('Config').first().json.mailFromDisplay }}",
@@ -543,7 +551,8 @@ for (const projectKey of Object.keys(PROJECTS)) {
     const file = path.join(DIST, `${wf.name}.json`);
     fs.writeFileSync(file, `${JSON.stringify(wf, null, 2)}\n`, 'utf8');
     built.push({ file, wf });
-    console.log(`✓ ${wf.name}  —  ${wf.nodes.length} نود، ${Object.keys(wf.connections).length} وصلة`);
+    const g = wf.nodes.find((n) => n.credentials?.googleOAuth2Api).credentials.googleOAuth2Api;
+    console.log(`✓ ${wf.name}  —  ${wf.nodes.length} نود، جوجل: ${g.name}`);
   }
 }
 console.log(`\nالخرج في: ${DIST}`);

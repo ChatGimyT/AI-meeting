@@ -136,8 +136,8 @@
       ],
       "credentials": {
         "googleOAuth2Api": {
-          "id": "zqpCaDcnpV6T6BqM",
-          "name": "rabeh.seven.b"
+          "id": "eAFsFY5y1jlvRQZZ",
+          "name": "Google"
         }
       },
       "onError": "continueRegularOutput",
@@ -203,8 +203,8 @@
       ],
       "credentials": {
         "googleOAuth2Api": {
-          "id": "zqpCaDcnpV6T6BqM",
-          "name": "rabeh.seven.b"
+          "id": "eAFsFY5y1jlvRQZZ",
+          "name": "Google"
         }
       },
       "onError": "continueRegularOutput",
@@ -425,8 +425,8 @@
       ],
       "credentials": {
         "googleOAuth2Api": {
-          "id": "zqpCaDcnpV6T6BqM",
-          "name": "rabeh.seven.b"
+          "id": "eAFsFY5y1jlvRQZZ",
+          "name": "Google"
         }
       },
       "onError": "continueRegularOutput",
@@ -490,8 +490,8 @@
       ],
       "credentials": {
         "googleOAuth2Api": {
-          "id": "zqpCaDcnpV6T6BqM",
-          "name": "rabeh.seven.b"
+          "id": "eAFsFY5y1jlvRQZZ",
+          "name": "Google"
         }
       },
       "onError": "continueRegularOutput",
@@ -576,8 +576,8 @@
       ],
       "credentials": {
         "googleOAuth2Api": {
-          "id": "zqpCaDcnpV6T6BqM",
-          "name": "rabeh.seven.b"
+          "id": "eAFsFY5y1jlvRQZZ",
+          "name": "Google"
         }
       },
       "onError": "continueRegularOutput",
@@ -669,8 +669,8 @@
       ],
       "credentials": {
         "googleOAuth2Api": {
-          "id": "zqpCaDcnpV6T6BqM",
-          "name": "rabeh.seven.b"
+          "id": "eAFsFY5y1jlvRQZZ",
+          "name": "Google"
         }
       },
       "retryOnFail": true,
@@ -696,8 +696,8 @@
       ],
       "credentials": {
         "googleOAuth2Api": {
-          "id": "zqpCaDcnpV6T6BqM",
-          "name": "rabeh.seven.b"
+          "id": "eAFsFY5y1jlvRQZZ",
+          "name": "Google"
         }
       },
       "retryOnFail": true,
@@ -773,8 +773,8 @@
       ],
       "credentials": {
         "googleOAuth2Api": {
-          "id": "zqpCaDcnpV6T6BqM",
-          "name": "rabeh.seven.b"
+          "id": "eAFsFY5y1jlvRQZZ",
+          "name": "Google"
         }
       },
       "retryOnFail": true,
@@ -823,8 +823,8 @@
       ],
       "credentials": {
         "googleOAuth2Api": {
-          "id": "zqpCaDcnpV6T6BqM",
-          "name": "rabeh.seven.b"
+          "id": "eAFsFY5y1jlvRQZZ",
+          "name": "Google"
         }
       },
       "retryOnFail": true,
@@ -1035,8 +1035,8 @@
       ],
       "credentials": {
         "googleOAuth2Api": {
-          "id": "zqpCaDcnpV6T6BqM",
-          "name": "rabeh.seven.b"
+          "id": "eAFsFY5y1jlvRQZZ",
+          "name": "Google"
         }
       },
       "onError": "continueRegularOutput",
@@ -1047,7 +1047,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// بيحوّل \"مقدرناش نوصل لـ Search Console\" لسبب محدد وخطوة واضحة.\n//\n// بيقرا حاجتين:\n//   1) رد طلب الموقع المحدد في Config  (نود Verify GSC Access)\n//   2) قائمة المواقع اللي الحساب المربوط شايفها فعلاً (نود List GSC Sites)\n// ومن الاتنين دول بيعرف: التوكن واقع؟ ولا الحساب مالوش صلاحية؟ ولا الرابط\n// المكتوب في Config مش مطابق لشكل الموقع المسجّل في جوجل؟\nconst cfg    = $('Config').first().json;\nconst verify = $('Verify GSC Access').first().json || {};\nconst listed = $input.first() ? ($input.first().json || {}) : {};\n\nfunction errText(e) {\n  if (e === undefined || e === null) return '';\n  if (typeof e === 'string') return e;\n  if (e.message) return String(e.message);\n  try { return JSON.stringify(e); } catch (x) { return String(e); }\n}\n\nconst verifyErr = errText(verify.error);\nconst listErr   = errText(listed.error);\nconst blob      = (verifyErr + ' ' + listErr);\n\n// المواقع اللي الحساب شايفها\nconst entries = Array.isArray(listed.siteEntry) ? listed.siteEntry : [];\nconst sites = entries.map(e => ({\n  url: String(e.siteUrl || ''),\n  level: String(e.permissionLevel || ''),\n}));\n\nconst want = String(cfg.siteUrl || '');\nconst norm = (u) => String(u || '').trim().toLowerCase()\n  .replace(/^sc-domain:/, '').replace(/^https?:\\/\\//, '').replace(/^www\\./, '').replace(/\\/+$/, '');\nconst wantN = norm(want);\n\nconst exact  = sites.find(s => s.url === want);\nconst sameHost = sites.filter(s => norm(s.url) === wantN && s.url !== want);\nconst readOnly = sites.filter(s => /^(siteUnverifiedUser|siteRestrictedUser)$/.test(s.level));\n\n// ---------------- تحديد السبب ----------------\nlet cause, action, severity = 'blocked';\n\nif (/invalid_grant|invalid_token|Token has been expired|revoked|unauthorized_client/i.test(blob)\n    || /\\b401\\b/.test(blob)) {\n  cause = 'صلاحية حساب جوجل المربوط بالأوتوميشن انتهت أو اتسحبت. '\n        + 'ده بيحصل لما الباسورد يتغيّر، أو حد يشيل صلاحية n8n من إعدادات الحساب، '\n        + 'أو التوكن يقعد فترة طويلة من غير استخدام.';\n  action = 'افتح n8n ← Credentials ← \"' + 'rabeh.seven.b' + '\" ← اضغط Reconnect وسجّل دخول '\n         + 'بحساب جوجل اللي عنده صلاحية على الموقع، وبعدين شغّل الأوتوميشن يدويًا من Manual Trigger.';\n} else if (sameHost.length) {\n  cause = 'الرابط المكتوب في إعدادات الأوتوميشن مش مطابق لشكل الموقع المسجّل في '\n        + 'Search Console. جوجل بيعتبرهم موقعين مختلفين تمامًا حتى لو نفس الدومين.';\n  action = 'غيّر SITE_URL في نود Config من \"' + want + '\" لـ \"' + sameHost[0].url + '\" بالظبط '\n         + '(انسخه زي ما هو من الجدول تحت).';\n} else if (sites.length && !exact) {\n  cause = 'الحساب المربوط بالأوتوميشن شغّال تمام، بس الموقع \"' + want + '\" مش موجود '\n        + 'في المواقع اللي الحساب ده عنده صلاحية عليها.';\n  action = 'يا إما تضيف الحساب ده كمستخدم على الموقع في Search Console '\n         + '(الإعدادات ← المستخدمون والأذونات ← إضافة مستخدم)، يا إما تظبط SITE_URL في '\n         + 'نود Config على واحد من المواقع الموجودة في الجدول تحت.';\n} else if (/\\b403\\b|does not have sufficient permission|insufficientPermissions|forbidden/i.test(blob)) {\n  cause = 'الحساب المربوط متصل بس مالوش صلاحية على الموقع ده في Search Console.';\n  action = 'من Search Console: الإعدادات ← المستخدمون والأذونات ← إضافة مستخدم، '\n         + 'وضيف حساب جوجل المربوط بالأوتوميشن بصلاحية \"كامل\" أو \"مقيّد\".';\n} else if (/\\b404\\b|notFound/i.test(blob) && !sites.length) {\n  cause = 'جوجل بيقول إن الموقع ده مش موجود عنده، والأوتوميشن كمان مقدرش يجيب قائمة '\n        + 'المواقع — غالبًا الصلاحية واقعة أو الـ API مش مفعّل على المشروع.';\n  action = 'راجع كريدنشيال جوجل في n8n (Reconnect)، واتأكد إن Search Console API مفعّل '\n         + 'في Google Cloud Console على المشروع اللي عامل منه الـ OAuth.';\n} else if (/\\b429\\b|quota|rateLimit/i.test(blob)) {\n  cause = 'جوجل رفض الطلب مؤقتًا بسبب تجاوز حد الاستخدام.';\n  action = 'مفيش حاجة تتعمل — شغّل الأوتوميشن تاني بعد شوية. لو اتكررت كل مرة، '\n         + 'راجع حصة Search Console API في Google Cloud Console.';\n  severity = 'temporary';\n} else if (/ETIMEDOUT|ECONNRESET|ENOTFOUND|socket hang up|timeout|\\b5\\d\\d\\b/i.test(blob)) {\n  cause = 'الاتصال بجوجل نفسه فشل (شبكة أو عطل مؤقت عند جوجل).';\n  action = 'شغّل الأوتوميشن تاني من Manual Trigger. لو فضل بيفشل، راجع اتصال سيرفر n8n بالإنترنت.';\n  severity = 'temporary';\n} else if (!verifyErr && !verify.siteUrl) {\n  cause = 'جوجل رد على الطلب بس الرد مالهوش الشكل المتوقع (مفيش siteUrl في الرد).';\n  action = 'ابعت لقطة من مخرجات نود \"Verify GSC Access\" — التفاصيل الخام تحت في الإيميل ده.';\n} else {\n  cause = 'مقدرناش نحدد السبب أوتوماتيك من رد جوجل.';\n  action = 'راجع رسالة الخطأ الخام تحت، وابدأ بعمل Reconnect لكريدنشيال جوجل في n8n.';\n}\n\n// ---------------- بناء الإيميل ----------------\nconst esc = t => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\n\nconst LEVEL_AR = {\n  siteOwner: 'مالك', siteFullUser: 'صلاحية كاملة',\n  siteRestrictedUser: 'صلاحية مقيّدة', siteUnverifiedUser: 'غير مُتحقّق',\n};\n\nconst sitesHtml = sites.length\n  ? '<table width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" style=\"border-collapse:collapse;border:1px solid #d8d6d0;margin-top:8px;\">'\n    + '<tr><th style=\"padding:9px 10px;background:#142f38;color:#fff;text-align:right;font-size:13px;\">الموقع كما هو مسجّل في جوجل</th>'\n    + '<th style=\"padding:9px 10px;background:#142f38;color:#fff;text-align:center;font-size:13px;\">الصلاحية</th></tr>'\n    + sites.map((s, i) => '<tr style=\"background:' + (i % 2 ? '#ffffff' : '#f2f1ee') + ';\">'\n      + '<td style=\"padding:8px 10px;border-bottom:1px solid #d8d6d0;font-family:monospace;direction:ltr;text-align:left;\">'\n      + esc(s.url) + '</td>'\n      + '<td style=\"padding:8px 10px;border-bottom:1px solid #d8d6d0;text-align:center;\">'\n      + esc(LEVEL_AR[s.level] || s.level) + '</td></tr>').join('')\n    + '</table>'\n  : '<p style=\"margin:8px 0 0 0;color:#c0392b;\">مقدرناش نجيب قائمة المواقع كمان — '\n    + 'ده بيرجّح إن المشكلة في صلاحية الحساب نفسه مش في الموقع.</p>';\n\nconst raw = [\n  verifyErr ? 'رد فحص الموقع: ' + verifyErr : '',\n  listErr   ? 'رد قائمة المواقع: ' + listErr : '',\n].filter(Boolean).join('\\n') || 'مفيش رسالة خطأ صريحة من جوجل.';\n\nconst subject = 'تقرير SEO ' + (cfg.cadence === 'weekly' ? 'الأسبوعي' : 'الشهري')\n              + ' لم يُرسل — ' + cfg.company + ' — مشكلة في الوصول لـ Search Console';\n\nconst text = [\n  'تقرير SEO ما اتبعتش — ' + cfg.company,\n  '',\n  'إيه اللي حصل:',\n  cause,\n  '',\n  'إيه اللي تعمله:',\n  action,\n  '',\n  'الموقع المطلوب في الإعدادات: ' + want,\n  'المواقع اللي الحساب المربوط شايفها (' + sites.length + '):',\n].concat(sites.length\n    ? sites.map(s => '  - ' + s.url + '   [' + (LEVEL_AR[s.level] || s.level) + ']')\n    : ['  (مقدرناش نجيبها)'])\n .concat([\n  '',\n  'رسالة جوجل الخام:',\n  raw,\n  '',\n  'الشيت والعرض التقديمي ما اتلمسوش خالص — مفيش أي بيانات اتغيرت.',\n ]).join('\\n');\n\nconst html =\n'<div style=\"font-family:Calibri,Arial,sans-serif;direction:rtl;text-align:right;background:#f2f1ee;padding:24px;color:#142f38;font-size:14px;\">'\n+ '<div style=\"max-width:700px;margin:0 auto;background:#ffffff;border:1px solid #d8d6d0;border-radius:10px;padding:22px;\">'\n+ '<h3 style=\"margin:0 0 4px 0;font-size:16px;\">تقرير SEO ما اتبعتش — ' + esc(cfg.company) + '</h3>'\n+ '<div style=\"color:#7a7a7a;margin-bottom:16px;\">مشكلة في الوصول لـ Google Search Console</div>'\n\n+ '<div style=\"background:#f2f1ee;border-right:4px solid #c0392b;border-radius:4px;padding:12px 16px;margin-bottom:14px;\">'\n+ '<b>إيه اللي حصل بالظبط</b>'\n+ '<p style=\"margin:6px 0 0 0;line-height:1.9;\">' + esc(cause) + '</p></div>'\n\n+ '<div style=\"background:#f2f1ee;border-right:4px solid #1e7a34;border-radius:4px;padding:12px 16px;margin-bottom:14px;\">'\n+ '<b>إيه اللي تعمله</b>'\n+ '<p style=\"margin:6px 0 0 0;line-height:1.9;\">' + esc(action) + '</p></div>'\n\n+ '<p style=\"margin:0 0 4px 0;\"><b>الموقع المطلوب في إعدادات الأوتوميشن:</b></p>'\n+ '<div style=\"font-family:monospace;direction:ltr;text-align:left;background:#f2f1ee;border:1px solid #d8d6d0;'\n+ 'border-radius:4px;padding:8px 10px;margin-bottom:14px;\">' + esc(want) + '</div>'\n\n+ '<p style=\"margin:0 0 4px 0;\"><b>المواقع اللي الحساب المربوط شايفها فعلاً:</b></p>'\n+ sitesHtml\n\n+ '<p style=\"margin:16px 0 4px 0;\"><b>رسالة جوجل الخام (للفني):</b></p>'\n+ '<div style=\"font-family:monospace;direction:ltr;text-align:left;background:#f2f1ee;border:1px solid #d8d6d0;'\n+ 'border-radius:4px;padding:8px 10px;white-space:pre-wrap;word-break:break-word;font-size:12px;\">'\n+ esc(raw) + '</div>'\n\n+ '<p style=\"margin:16px 0 0 0;line-height:1.9;background:#f2f1ee;border-radius:4px;padding:10px 14px;\">'\n+ '<b>الشيت والعرض التقديمي ما اتلمسوش خالص</b> — مفيش أي بيانات اتغيرت ولا اتمسحت. '\n+ 'بعد ما تظبط السبب، شغّل الأوتوميشن يدويًا من زرار Manual Trigger.</p>'\n\n+ '</div></div>';\n\nreturn [{ json: {\n  alertSubject: subject, alertHtml: html, alertText: text,\n  diagnosis: { cause, action, severity, want, sites, raw, readOnly: readOnly.length },\n} }];\n"
+        "jsCode": "// بيحوّل \"مقدرناش نوصل لـ Search Console\" لسبب محدد وخطوة واضحة.\n//\n// بيقرا حاجتين:\n//   1) رد طلب الموقع المحدد في Config  (نود Verify GSC Access)\n//   2) قائمة المواقع اللي الحساب المربوط شايفها فعلاً (نود List GSC Sites)\n// ومن الاتنين دول بيعرف: التوكن واقع؟ ولا الحساب مالوش صلاحية؟ ولا الرابط\n// المكتوب في Config مش مطابق لشكل الموقع المسجّل في جوجل؟\nconst cfg    = $('Config').first().json;\nconst verify = $('Verify GSC Access').first().json || {};\nconst listed = $input.first() ? ($input.first().json || {}) : {};\n\nfunction errText(e) {\n  if (e === undefined || e === null) return '';\n  if (typeof e === 'string') return e;\n  if (e.message) return String(e.message);\n  try { return JSON.stringify(e); } catch (x) { return String(e); }\n}\n\nconst verifyErr = errText(verify.error);\nconst listErr   = errText(listed.error);\nconst blob      = (verifyErr + ' ' + listErr);\n\n// المواقع اللي الحساب شايفها\nconst entries = Array.isArray(listed.siteEntry) ? listed.siteEntry : [];\nconst sites = entries.map(e => ({\n  url: String(e.siteUrl || ''),\n  level: String(e.permissionLevel || ''),\n}));\n\nconst want = String(cfg.siteUrl || '');\nconst norm = (u) => String(u || '').trim().toLowerCase()\n  .replace(/^sc-domain:/, '').replace(/^https?:\\/\\//, '').replace(/^www\\./, '').replace(/\\/+$/, '');\nconst wantN = norm(want);\n\nconst exact  = sites.find(s => s.url === want);\nconst sameHost = sites.filter(s => norm(s.url) === wantN && s.url !== want);\nconst readOnly = sites.filter(s => /^(siteUnverifiedUser|siteRestrictedUser)$/.test(s.level));\n\n// ---------------- تحديد السبب ----------------\nlet cause, action, severity = 'blocked';\n\nif (/invalid_grant|invalid_token|Token has been expired|revoked|unauthorized_client/i.test(blob)\n    || /\\b401\\b/.test(blob)) {\n  cause = 'صلاحية حساب جوجل المربوط بالأوتوميشن انتهت أو اتسحبت. '\n        + 'ده بيحصل لما الباسورد يتغيّر، أو حد يشيل صلاحية n8n من إعدادات الحساب، '\n        + 'أو التوكن يقعد فترة طويلة من غير استخدام.';\n  action = 'افتح n8n ← Credentials ← \"' + 'Google' + '\" ← اضغط Reconnect وسجّل دخول '\n         + 'بحساب جوجل اللي عنده صلاحية على الموقع، وبعدين شغّل الأوتوميشن يدويًا من Manual Trigger.';\n} else if (sameHost.length) {\n  cause = 'الرابط المكتوب في إعدادات الأوتوميشن مش مطابق لشكل الموقع المسجّل في '\n        + 'Search Console. جوجل بيعتبرهم موقعين مختلفين تمامًا حتى لو نفس الدومين.';\n  action = 'غيّر SITE_URL في نود Config من \"' + want + '\" لـ \"' + sameHost[0].url + '\" بالظبط '\n         + '(انسخه زي ما هو من الجدول تحت).';\n} else if (sites.length && !exact) {\n  cause = 'الحساب المربوط بالأوتوميشن شغّال تمام، بس الموقع \"' + want + '\" مش موجود '\n        + 'في المواقع اللي الحساب ده عنده صلاحية عليها.';\n  action = 'يا إما تضيف الحساب ده كمستخدم على الموقع في Search Console '\n         + '(الإعدادات ← المستخدمون والأذونات ← إضافة مستخدم)، يا إما تظبط SITE_URL في '\n         + 'نود Config على واحد من المواقع الموجودة في الجدول تحت.';\n} else if (/\\b403\\b|does not have sufficient permission|insufficientPermissions|forbidden/i.test(blob)) {\n  cause = 'الحساب المربوط متصل بس مالوش صلاحية على الموقع ده في Search Console.';\n  action = 'من Search Console: الإعدادات ← المستخدمون والأذونات ← إضافة مستخدم، '\n         + 'وضيف حساب جوجل المربوط بالأوتوميشن بصلاحية \"كامل\" أو \"مقيّد\".';\n} else if (/\\b404\\b|notFound/i.test(blob) && !sites.length) {\n  cause = 'جوجل بيقول إن الموقع ده مش موجود عنده، والأوتوميشن كمان مقدرش يجيب قائمة '\n        + 'المواقع — غالبًا الصلاحية واقعة أو الـ API مش مفعّل على المشروع.';\n  action = 'راجع كريدنشيال جوجل في n8n (Reconnect)، واتأكد إن Search Console API مفعّل '\n         + 'في Google Cloud Console على المشروع اللي عامل منه الـ OAuth.';\n} else if (/\\b429\\b|quota|rateLimit/i.test(blob)) {\n  cause = 'جوجل رفض الطلب مؤقتًا بسبب تجاوز حد الاستخدام.';\n  action = 'مفيش حاجة تتعمل — شغّل الأوتوميشن تاني بعد شوية. لو اتكررت كل مرة، '\n         + 'راجع حصة Search Console API في Google Cloud Console.';\n  severity = 'temporary';\n} else if (/ETIMEDOUT|ECONNRESET|ENOTFOUND|socket hang up|timeout|\\b5\\d\\d\\b/i.test(blob)) {\n  cause = 'الاتصال بجوجل نفسه فشل (شبكة أو عطل مؤقت عند جوجل).';\n  action = 'شغّل الأوتوميشن تاني من Manual Trigger. لو فضل بيفشل، راجع اتصال سيرفر n8n بالإنترنت.';\n  severity = 'temporary';\n} else if (!verifyErr && !verify.siteUrl) {\n  cause = 'جوجل رد على الطلب بس الرد مالهوش الشكل المتوقع (مفيش siteUrl في الرد).';\n  action = 'ابعت لقطة من مخرجات نود \"Verify GSC Access\" — التفاصيل الخام تحت في الإيميل ده.';\n} else {\n  cause = 'مقدرناش نحدد السبب أوتوماتيك من رد جوجل.';\n  action = 'راجع رسالة الخطأ الخام تحت، وابدأ بعمل Reconnect لكريدنشيال جوجل في n8n.';\n}\n\n// ---------------- بناء الإيميل ----------------\nconst esc = t => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\n\nconst LEVEL_AR = {\n  siteOwner: 'مالك', siteFullUser: 'صلاحية كاملة',\n  siteRestrictedUser: 'صلاحية مقيّدة', siteUnverifiedUser: 'غير مُتحقّق',\n};\n\nconst sitesHtml = sites.length\n  ? '<table width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" style=\"border-collapse:collapse;border:1px solid #d8d6d0;margin-top:8px;\">'\n    + '<tr><th style=\"padding:9px 10px;background:#142f38;color:#fff;text-align:right;font-size:13px;\">الموقع كما هو مسجّل في جوجل</th>'\n    + '<th style=\"padding:9px 10px;background:#142f38;color:#fff;text-align:center;font-size:13px;\">الصلاحية</th></tr>'\n    + sites.map((s, i) => '<tr style=\"background:' + (i % 2 ? '#ffffff' : '#f2f1ee') + ';\">'\n      + '<td style=\"padding:8px 10px;border-bottom:1px solid #d8d6d0;font-family:monospace;direction:ltr;text-align:left;\">'\n      + esc(s.url) + '</td>'\n      + '<td style=\"padding:8px 10px;border-bottom:1px solid #d8d6d0;text-align:center;\">'\n      + esc(LEVEL_AR[s.level] || s.level) + '</td></tr>').join('')\n    + '</table>'\n  : '<p style=\"margin:8px 0 0 0;color:#c0392b;\">مقدرناش نجيب قائمة المواقع كمان — '\n    + 'ده بيرجّح إن المشكلة في صلاحية الحساب نفسه مش في الموقع.</p>';\n\nconst raw = [\n  verifyErr ? 'رد فحص الموقع: ' + verifyErr : '',\n  listErr   ? 'رد قائمة المواقع: ' + listErr : '',\n].filter(Boolean).join('\\n') || 'مفيش رسالة خطأ صريحة من جوجل.';\n\nconst subject = 'تقرير SEO ' + (cfg.cadence === 'weekly' ? 'الأسبوعي' : 'الشهري')\n              + ' لم يُرسل — ' + cfg.company + ' — مشكلة في الوصول لـ Search Console';\n\nconst text = [\n  'تقرير SEO ما اتبعتش — ' + cfg.company,\n  '',\n  'إيه اللي حصل:',\n  cause,\n  '',\n  'إيه اللي تعمله:',\n  action,\n  '',\n  'الموقع المطلوب في الإعدادات: ' + want,\n  'المواقع اللي الحساب المربوط شايفها (' + sites.length + '):',\n].concat(sites.length\n    ? sites.map(s => '  - ' + s.url + '   [' + (LEVEL_AR[s.level] || s.level) + ']')\n    : ['  (مقدرناش نجيبها)'])\n .concat([\n  '',\n  'رسالة جوجل الخام:',\n  raw,\n  '',\n  'الشيت والعرض التقديمي ما اتلمسوش خالص — مفيش أي بيانات اتغيرت.',\n ]).join('\\n');\n\nconst html =\n'<div style=\"font-family:Calibri,Arial,sans-serif;direction:rtl;text-align:right;background:#f2f1ee;padding:24px;color:#142f38;font-size:14px;\">'\n+ '<div style=\"max-width:700px;margin:0 auto;background:#ffffff;border:1px solid #d8d6d0;border-radius:10px;padding:22px;\">'\n+ '<h3 style=\"margin:0 0 4px 0;font-size:16px;\">تقرير SEO ما اتبعتش — ' + esc(cfg.company) + '</h3>'\n+ '<div style=\"color:#7a7a7a;margin-bottom:16px;\">مشكلة في الوصول لـ Google Search Console</div>'\n\n+ '<div style=\"background:#f2f1ee;border-right:4px solid #c0392b;border-radius:4px;padding:12px 16px;margin-bottom:14px;\">'\n+ '<b>إيه اللي حصل بالظبط</b>'\n+ '<p style=\"margin:6px 0 0 0;line-height:1.9;\">' + esc(cause) + '</p></div>'\n\n+ '<div style=\"background:#f2f1ee;border-right:4px solid #1e7a34;border-radius:4px;padding:12px 16px;margin-bottom:14px;\">'\n+ '<b>إيه اللي تعمله</b>'\n+ '<p style=\"margin:6px 0 0 0;line-height:1.9;\">' + esc(action) + '</p></div>'\n\n+ '<p style=\"margin:0 0 4px 0;\"><b>الموقع المطلوب في إعدادات الأوتوميشن:</b></p>'\n+ '<div style=\"font-family:monospace;direction:ltr;text-align:left;background:#f2f1ee;border:1px solid #d8d6d0;'\n+ 'border-radius:4px;padding:8px 10px;margin-bottom:14px;\">' + esc(want) + '</div>'\n\n+ '<p style=\"margin:0 0 4px 0;\"><b>المواقع اللي الحساب المربوط شايفها فعلاً:</b></p>'\n+ sitesHtml\n\n+ '<p style=\"margin:16px 0 4px 0;\"><b>رسالة جوجل الخام (للفني):</b></p>'\n+ '<div style=\"font-family:monospace;direction:ltr;text-align:left;background:#f2f1ee;border:1px solid #d8d6d0;'\n+ 'border-radius:4px;padding:8px 10px;white-space:pre-wrap;word-break:break-word;font-size:12px;\">'\n+ esc(raw) + '</div>'\n\n+ '<p style=\"margin:16px 0 0 0;line-height:1.9;background:#f2f1ee;border-radius:4px;padding:10px 14px;\">'\n+ '<b>الشيت والعرض التقديمي ما اتلمسوش خالص</b> — مفيش أي بيانات اتغيرت ولا اتمسحت. '\n+ 'بعد ما تظبط السبب، شغّل الأوتوميشن يدويًا من زرار Manual Trigger.</p>'\n\n+ '</div></div>';\n\nreturn [{ json: {\n  alertSubject: subject, alertHtml: html, alertText: text,\n  diagnosis: { cause, action, severity, want, sites, raw, readOnly: readOnly.length },\n} }];\n"
       },
       "id": "7f505397-0000-4000-8000-7f5053970000",
       "name": "GSC Diagnose",

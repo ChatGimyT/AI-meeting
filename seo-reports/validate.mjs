@@ -163,6 +163,31 @@ for (const file of fs.readdirSync(DIST).filter((f) => f.endsWith('.json')).sort(
     fail(wf.name, 'فرع فشل GSC لازم يعدّي على List GSC Sites قبل التنبيه');
   }
 
+  // 9د) كل مشروع لازم يكون على كريدنشيال جوجل بتاعه هو
+  // (حساب العوجان مش شايف موقع شوق — الخلط بينهم = 404 من Search Console)
+  const EXPECTED_GOOGLE = {
+    ALOJAN: { id: 'zqpCaDcnpV6T6BqM', name: 'rabeh.seven.b' },
+    SHOUG:  { id: 'eAFsFY5y1jlvRQZZ', name: 'Google' },
+  };
+  const project = wf.name.split(' ')[0];
+  const want = EXPECTED_GOOGLE[project];
+  if (!want) fail(wf.name, `مشروع مش معروف: ${project}`);
+  else {
+    const wrong = wf.nodes.filter((n) => n.credentials?.googleOAuth2Api
+      && n.credentials.googleOAuth2Api.id !== want.id);
+    if (wrong.length) {
+      fail(wf.name, `${wrong.length} نود على كريدنشيال جوجل غلط — المتوقع "${want.name}"`);
+    } else {
+      const count = wf.nodes.filter((n) => n.credentials?.googleOAuth2Api).length;
+      ok(`${count} نود على كريدنشيال جوجل الصح: ${want.name}`);
+    }
+    // اسم الكريدنشيال لازم يظهر في نص التشخيص عشان الرسالة تبقى قابلة للتنفيذ
+    const diag = wf.nodes.find((n) => n.name === 'GSC Diagnose');
+    if (diag && !diag.parameters.jsCode.includes(want.name)) {
+      fail(wf.name, `GSC Diagnose: لازم يسمّي كريدنشيال "${want.name}" في رسالة التنبيه`);
+    }
+  }
+
   // 10) الشيت بيتكتب بقيمة مبنية في الكود مش بتعبير طويل
   const write = wf.nodes.find((n) => n.name === 'Write To Sheet');
   if (!String(write?.parameters?.jsonBody || '').includes('sheetValues')) {

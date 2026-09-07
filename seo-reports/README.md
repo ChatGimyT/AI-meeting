@@ -24,7 +24,7 @@
 python3 seo-reports/extract-keywords.py   # الكلمات من الإكسل → JSON
 node seo-reports/build.mjs                # بناء ملفات n8n الأربعة
 node seo-reports/validate.mjs             # ١٢ فحص ساكن على الملفات
-node seo-reports/test.mjs                 # ٧٥ اختبار سلوكي
+node seo-reports/test.mjs                 # ٧٦ اختبار سلوكي
 ```
 
 أو دفعة واحدة: `npm run seo:all`
@@ -42,7 +42,7 @@ seo-reports/
 ├── extract-keywords.py        ← الإكسل → JSON
 ├── build.mjs                  ← nodes/ + keywords/ → dist/
 ├── validate.mjs               ← فحص ساكن
-├── test.mjs                   ← ٧٥ اختبار
+├── test.mjs                   ← ٧٦ اختبار
 ├── tests/harness.mjs          ← محاكي بيئة نود الكود في n8n
 └── docs/
     ├── PLAN.md                ← التشخيص والحل بالتفصيل

@@ -169,7 +169,7 @@ Config → Verify GSC Access → GSC Access Check
 python3 seo-reports/extract-keywords.py     # يقرا الإكسل ويطلّع JSON
 node seo-reports/build.mjs                  # يبني ملفات n8n الأربعة
 node seo-reports/validate.mjs               # فحص ساكن
-node seo-reports/test.mjs                   # ٧٥ اختبار
+node seo-reports/test.mjs                   # ٧٦ اختبار
 # ٢) استورد dist/*.json في n8n
 ```
 

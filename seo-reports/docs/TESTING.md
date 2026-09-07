@@ -7,7 +7,7 @@
 python3 seo-reports/extract-keywords.py   # الكلمات من الإكسل
 node seo-reports/build.mjs                # بناء ملفات n8n
 node seo-reports/validate.mjs             # فحص ساكن على الملفات
-node seo-reports/test.mjs                 # ٧٥ اختبار سلوكي
+node seo-reports/test.mjs                 # ٧٦ اختبار سلوكي
 ```
 
 كله لازم يعدّي قبل أي استيراد في n8n.

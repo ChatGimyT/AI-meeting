@@ -826,6 +826,15 @@ group('١٦) تنبيه فشل الوصول لـ Search Console بيقول ال�
     assert(d.diagnosis.cause.includes('انتهت'), d.diagnosis.cause);
     assert(d.diagnosis.action.includes('Reconnect'));
     assert(d.diagnosis.action.includes('rabeh.seven.b'), 'اسم الكريدنشيال في الرسالة');
+    // شوق على حساب جوجل تاني — التنبيه بتاعه لازم يسمّي الكريدنشيال بتاعه هو
+    const ds = runNode({
+      workflow: S, node: 'GSC Diagnose',
+      nodes: { Config: [{ ...CFG, siteUrl: 'https://shoug-lawyer.com/' }],
+               'Verify GSC Access': [{ error: '401 invalid_grant' }] },
+      input: [{ error: '401' }],
+    })[0].json;
+    assert(ds.diagnosis.action.includes('"Google"'), ds.diagnosis.action);
+    assert(!ds.diagnosis.action.includes('rabeh.seven.b'), 'مايسمّيش كريدنشيال العوجان');
     assert(d.alertHtml.includes('invalid_grant'), 'رسالة جوجل الخام موجودة');
   });
 
@@ -867,6 +876,20 @@ group('١٦) تنبيه فشل الوصول لـ Search Console بيقول ال�
     assert(d.alertText.includes('ما اتلمسوش'));
     assert(!d.alertText.includes('<div'), 'النسخة النصية من غير HTML');
     assert(d.alertSubject.includes('لم يُرسل'));
+  });
+
+  test('المشروعين على حسابين جوجل مختلفين — الخلط بينهم بيطلّع 404', () => {
+    // الحالة الحقيقية اللي حصلت: ملفات شوق اتبنت بكريدنشيال العوجان،
+    // فالحساب شاف موقع العوجان بس ورجّع 404 لموقع شوق.
+    const d = diagnose(
+      { error: 'The resource you are requesting could not be found' },
+      { siteEntry: [{ siteUrl: 'https://www.aaalojan.com/', permissionLevel: 'siteOwner' }] },
+      { ...CFG, siteUrl: 'https://shoug-lawyer.com/' },
+    );
+    assert(d.diagnosis.cause.includes('مش موجود'), d.diagnosis.cause);
+    equal(d.diagnosis.sites.map((s) => s.url), ['https://www.aaalojan.com/']);
+    assert(d.alertText.includes('https://shoug-lawyer.com/'), 'بيقول إيه المطلوب');
+    assert(d.alertText.includes('https://www.aaalojan.com/'), 'وإيه المتاح');
   });
 });
 
