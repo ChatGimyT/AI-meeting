@@ -7,7 +7,7 @@
 python3 seo-reports/extract-keywords.py   # الكلمات من الإكسل
 node seo-reports/build.mjs                # بناء ملفات n8n
 node seo-reports/validate.mjs             # فحص ساكن على الملفات
-node seo-reports/test.mjs                 # ٨٧ اختبار سلوكي
+node seo-reports/test.mjs                 # ٩٤ اختبار سلوكي
 ```
 
 كله لازم يعدّي قبل أي استيراد في n8n.
@@ -39,6 +39,8 @@ node seo-reports/test.mjs                 # ٨٧ اختبار سلوكي
 | ١٧ | مكتبة التجميع الموزون (`aggregateRows`) متحقونة، **ومفيش رجوع لـ "أقل موضع بين الصفحات"** |
 | ١٨ | `Build Email` فيه خطوات المراجعة على Search Console (`Exact query` / `Exact URL` / `Search type: Web`) |
 | ١٩ | كلمات قسم الرئيسية معاها رابط الصفحة الرئيسية + عدّاد الكلمات اللي معاها رابط |
+| ٢٠ | `Create Slides`: `retryOnFail=false` + `onError=continueRegularOutput` — الطلب مش idempotent |
+| ٢١ | `Report Stats` بيقرا ردود `Create Slides` عشان الإيميل يقول لو العرض ما اكتملش |
 
 الفحص رقم ١٧ بيمنع رجوع أكبر باج في الأرقام: الكود القديم كان بيتقفّش أحسن صفحة
 ترتيبًا من بين ٥٠٠ صفحة ويكتب رقمها في التقرير.
@@ -227,6 +229,21 @@ node seo-reports/test.mjs                 # ٨٧ اختبار سلوكي
 | طلب GSC | فيه `aggregationType: 'byPage'` و `query equals` |
 | الإيميل | فيه `Exact query` + `Exact URL` + الدولة + `Search type: Web`، والنسخة النصية من غير HTML |
 | السلايد | فيه سطر «نطاق القياس» بالصفحة المستهدفة، أو «كل صفحات الموقع للكلمة» |
+
+### ١٨) بناء العرض التقديمي — تكرار objectId
+
+الحالة الحقيقية: `400 Invalid requests[0].createSlide: The object ID (s..._0)
+should be unique among all pages and page elements.`
+
+| الحالة | المتوقع |
+|--------|---------|
+| نود `Create Slides` | `retryOnFail=false` و `onError=continueRegularOutput` في كل الملفات |
+| ٣٥ كلمة | كل `objectId` في الرن كله فريد (٢٬٩٠٥ عنصر، صفر تكرار) |
+| ٣٥ كلمة | ٧ calls مش ٣٥، ٥ سلايدات في كل call |
+| عدد مش قابل للقسمة على ٥ | آخر call بيشيل الباقي وكل الكلمات ليها سلايد |
+| أي call | حجمه أقل من ١ ميجا |
+| call فشل | الإيميل بيقول «العرض التقديمي ما اكتملش: اتبنى ٥ من ١٠» + السبب الحقيقي، والأرقام والجدول زي ما هما |
+| كل الـ calls نجحت | مفيش تحذير عرض في الإيميل |
 
 ---
 

@@ -3,8 +3,19 @@ const res = $('Validate Data').first().json;
 if (!res || !Array.isArray(res.data) || res.data.length === 0) {
   throw new Error('مفيش بيانات كلمات مفتاحية جاية من Validate Data — اتوقف قبل ما يبني عرض فاضي.');
 }
-const oldIds = [];
 const runId  = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+// ⚠️ الـ objectIds دي بتتولّد هنا مرة واحدة وبتتحقن في الداتا. يعني طلب
+// batchUpdate اللي بيتبعت منها **مش idempotent**: لو اتبعت تاني بعد ما نجح،
+// جوجل بيرد 400 "The object ID should be unique among all pages".
+// عشان كده نود Create Slides ممنوع يكون عليه retryOnFail — n8n بيعيد النود
+// كله من العنصر صفر، مش العنصر اللي فشل، فأول سلايد بيصطدم بنفسه.
+// (فحص في validate.mjs بيرفض أي بناء يرجّع الـ retry ده.)
+
+// عدد السلايدات في كل HTTP call. أقل عدد calls = فرصة أقل لخطأ عابر وضغط أقل
+// على كوتة الكتابة. batchUpdate ذرّي: الـ call إما بيتطبّق كله أو مايتطبّقش
+// خالص، فأي فشل مابيسيبش سلايد نص نص.
+const SLIDES_PER_BATCH = 5;
 
 // ============ الألوان — غيّرها من هنا ============
 const BG   = { red: 0.949, green: 0.945, blue: 0.933 };   // خلفية 242,241,238
@@ -54,7 +65,7 @@ function svText(d) {
   return (isFinite(n) && n > 0) ? n.toLocaleString('en-US') : String(raw).trim();
 }
 
-const out = [];
+const slides = [];
 res.data.forEach((d, idx) => {
   const sid = 's' + runId + '_' + idx;
   const reqs = [];
@@ -146,6 +157,21 @@ res.data.forEach((d, idx) => {
     lineProperties: { lineFill: { solidFill: { color: { rgbColor: INK } } }, weight: pt(1.5) },
     fields: 'lineFill.solidFill.color,weight' } });
 
-  out.push({ json: { presentationId: cfg.presentationId, requests: reqs, oldIds } });
+  slides.push({ keyword: d.keyword, requests: reqs });
 });
+
+// ---- تقسيم السلايدات على calls ----
+const out = [];
+for (let i = 0; i < slides.length; i += SLIDES_PER_BATCH) {
+  const chunk = slides.slice(i, i + SLIDES_PER_BATCH);
+  out.push({ json: {
+    presentationId: cfg.presentationId,
+    requests: chunk.reduce((a, s) => a.concat(s.requests), []),
+    batchIndex: out.length,
+    slidesInBatch: chunk.length,
+    keywords: chunk.map(s => s.keyword),
+    slidesExpected: slides.length,
+  } });
+}
+out.forEach(o => { o.json.batchCount = out.length; });
 return out;

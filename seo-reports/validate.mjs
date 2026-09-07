@@ -171,6 +171,27 @@ for (const file of fs.readdirSync(DIST).filter((f) => f.endsWith('.json')).sort(
     }
   }
 
+  // 8هـ) Create Slides ممنوع يكون عليه retryOnFail.
+  //      الـ objectIds بتتولّد في Build Slide Batches وبتتحقن في الداتا، فالطلب
+  //      مش idempotent. وn8n بيعيد النود كله من العنصر صفر — فأول سلايد بيتبعت
+  //      وهو موجود خلاص وجوجل بترد 400 "object ID should be unique"، والخطأ ده
+  //      بيخبّي الفشل الأصلي.
+  const slidesNode = wf.nodes.find((x) => x.name === 'Create Slides');
+  if (!slidesNode) fail(wf.name, 'نود Create Slides مش موجود');
+  else {
+    if (slidesNode.retryOnFail) {
+      fail(wf.name, 'Create Slides: retryOnFail لازم تكون false — الطلب مش idempotent');
+    }
+    if (slidesNode.onError !== 'continueRegularOutput') {
+      fail(wf.name, 'Create Slides: onError لازم continueRegularOutput عشان الإيميل يوصل بتحذير بدل ما الرن يموت');
+    }
+  }
+  // والإيميل لازم يقول لو العرض ما اكتملش
+  const statsJs = String(wf.nodes.find((n) => n.name === 'Report Stats')?.parameters?.jsCode || '');
+  if (!statsJs.includes("$('Create Slides')")) {
+    fail(wf.name, 'Report Stats: لازم يقرا ردود Create Slides عشان يعرف العرض اكتمل ولا لأ');
+  }
+
   // 9) الإيميلات: نسخة نصية + إلغاء توقيع n8n
   for (const n of wf.nodes.filter((x) => x.type === 'n8n-nodes-base.emailSend')) {
     if (n.parameters.emailFormat !== 'both') fail(wf.name, `${n.name}: emailFormat لازم تكون both`);

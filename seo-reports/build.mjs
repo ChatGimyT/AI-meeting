@@ -362,9 +362,18 @@ function buildWorkflow(projectKey, cadenceKey) {
     authentication: 'predefinedCredentialType', nodeCredentialType: 'googleOAuth2Api',
     sendBody: true, specifyBody: 'json',
     jsonBody: '={{ JSON.stringify({ requests: $json.requests }) }}',
-    options: { timeout: 120000, batching: { batch: { batchSize: 1, batchInterval: 1200 } } },
-    // batchUpdate في Slides ذرّية (كلها أو ولا حاجة) فإعادة المحاولة آمنة.
-  }, { credentials: googleCred, retryOnFail: true, maxTries: 3, waitBetweenTries: 4000 }));
+    options: { timeout: 180000, batching: { batch: { batchSize: 1, batchInterval: 1500 } } },
+    // ⚠️ ممنوع retryOnFail هنا. الـ objectIds بتتولّد في Build Slide Batches
+    // وبتتحقن في الداتا، فالطلب مش idempotent. وn8n لما بيعمل retry بيعيد
+    // النود **كله من العنصر صفر** مش العنصر اللي فشل — فأول سلايد بيتبعت
+    // تاني وهو موجود خلاص، وجوجل بترد:
+    //   400 "The object ID (s..._0) should be unique among all pages"
+    // والخطأ ده بيخبّي الفشل الأصلي (429 / timeout) اللي بدأ الموضوع.
+    //
+    // بدل الـ retry: continueRegularOutput عشان الرن يكمل ويبعت الإيميل
+    // بالأرقام الصح (الشيت اتكتب قبل كده) مع تحذير إن العرض ما اكتملش.
+    // الرن الجاي بيمسح كل السلايدات ويبنيها من أول — فالعرض بيصلّح نفسه.
+  }, { credentials: googleCred, onError: 'continueRegularOutput', retryOnFail: false }));
 
   push(code('Report Stats', at(), withIncludes(fill(src('report-stats.js'), {
     PERIOD_LABEL_FN: C.periodLabelFn,

@@ -680,7 +680,10 @@ group('١٣) بناء التقرير والسلايدز', () => {
     const v = runNode({ workflow: M, node: 'Validate Data', nodes: { Config: [CFG] }, input: [merged] })[0].json;
     const st = runNode({
       workflow: M, node: 'Report Stats',
-      nodes: { Config: [CFG], 'Validate Data': [v] }, input: [v],
+      nodes: { Config: [CFG], 'Validate Data': [v],
+               'Build Slide Batches': [{ slidesInBatch: 2, slidesExpected: 2, batchCount: 1 }],
+               'Create Slides': [{ replies: [] }] },
+      input: [v],
     })[0].json;
     // كلمة أ: 5 → 3 = تحسّن | كلمة ب: 4 → 8 = تراجع
     equal(st.up, 1);
@@ -707,7 +710,15 @@ group('١٣) بناء التقرير والسلايدز', () => {
       nodes: { Config: [CFG], 'Validate Data': [v], 'Search Volume': [{}] },
       input: [v],
     });
-    equal(out.length, 2, 'سلايد لكل كلمة');
+    // الكلمتين بيتجمّعوا في call واحد (SLIDES_PER_BATCH = 5)
+    equal(out.length, 1, 'call واحد للكلمتين');
+    equal(out[0].json.slidesInBatch, 2);
+    equal(out[0].json.slidesExpected, 2);
+    equal(out[0].json.batchCount, 1);
+    const created = out[0].json.requests.filter((r) => r.createSlide);
+    equal(created.length, 2, 'سلايد لكل كلمة');
+    const ids = created.map((r) => r.createSlide.objectId);
+    equal(new Set(ids).size, ids.length, 'الـ objectIds مالهاش تكرار');
     const texts = out[0].json.requests.filter((r) => r.insertText).map((r) => r.insertText.text);
     assert(texts.some((t) => t.includes('كلمة أ')), 'اسم الكلمة في السلايد');
     assert(texts.some((t) => t.includes('عدد مرات البحث')), 'سطر حجم البحث');
@@ -723,7 +734,9 @@ group('١٣) بناء التقرير والسلايدز', () => {
       nodes: { Config: [CFG], 'Validate Data': [v], 'Search Volume': [{}] },
       input: [v],
     });
-    const bars = out[0].json.requests.filter((r) => r.createShape && /_b\d+$/.test(r.createShape.objectId));
+    const sid = out[0].json.requests.find((r) => r.createSlide).createSlide.objectId;
+    const bars = out[0].json.requests.filter((r) => r.createShape
+      && r.createShape.objectId.indexOf(sid + '_b') === 0);
     equal(bars.length, 2, 'عمودين بس — الخانة الفاضية مالهاش عمود');
   });
 
@@ -1029,10 +1042,123 @@ group('١٧) الأرقام تطابق واجهة Search Console', () => {
       nodes: { Config: [CFG], 'Validate Data': [v], 'Search Volume': [{}] },
       input: [v],
     });
-    const textOf = (b) => b.json.requests.filter(r => r.insertText).map(r => r.insertText.text).join(' | ');
-    assert(textOf(batches[0]).includes('www.aaalojan.com/'), 'صفحة مستهدفة مكتوبة في السلايد');
-    assert(textOf(batches[0]).includes('نطاق القياس'), 'عنوان السطر موجود');
-    assert(textOf(batches[1]).includes('كل صفحات الموقع للكلمة'), 'الكلمة من غير رابط متعلّمة');
+    const all = batches.map(b => b.json.requests.filter(r => r.insertText)
+      .map(r => r.insertText.text).join(' | ')).join(' || ');
+    assert(all.includes('www.aaalojan.com/'), 'صفحة مستهدفة مكتوبة في السلايد');
+    assert(all.includes('نطاق القياس'), 'عنوان السطر موجود');
+    assert(all.includes('كل صفحات الموقع للكلمة'), 'الكلمة من غير رابط متعلّمة');
+  });
+});
+
+// ============================ 18) بناء العرض التقديمي — تكرار objectId
+// الحالة اللي اتبلّغت من n8n:
+//   400 Invalid requests[0].createSlide: The object ID (s..._0) should be
+//       unique among all pages and page elements.
+// السبب: الـ objectIds بتتولّد مرة واحدة وبتتحقن في الداتا، وكان على نود
+// Create Slides retryOnFail. n8n بيعيد النود كله من العنصر صفر — فأول سلايد
+// كان بيتبعت تاني وهو موجود خلاص.
+group('١٨) بناء العرض التقديمي — تكرار objectId', () => {
+  const many = (n) => ({
+    months: PERIODS.map(p => ({ ...p })),
+    data: Array.from({ length: n }, (_, i) => ({
+      country: 'السعودية', section: 'ق', group: 'ق — السعودية',
+      keyword: 'كلمة ' + i, page: '', article: 'a', sv: 10,
+      positions: [3, 4, 5], impressionsAll: [1, 2, 3], cellsPos: [3, 4, 5],
+      impressions: 3, scope: 'site', matchedPage: '',
+    })),
+  });
+  const batchesOf = (n) => runNode({
+    workflow: M, node: 'Build Slide Batches',
+    nodes: { Config: [CFG], 'Validate Data': [many(n)], 'Search Volume': [{}] },
+    input: [many(n)],
+  });
+
+  test('Create Slides من غير retryOnFail — الطلب مش idempotent', () => {
+    for (const name of [M, W, S]) {
+      const n = loadWorkflow(name).nodes.find(x => x.name === 'Create Slides');
+      equal(!!n.retryOnFail, false, name + ': retryOnFail لازم تتقفل');
+      equal(n.onError, 'continueRegularOutput', name + ': لازم يكمل بتحذير');
+    }
+  });
+
+  test('كل objectId في الرن كله فريد — سلايدات وعناصر', () => {
+    const ids = [];
+    batchesOf(35).forEach(b => b.json.requests.forEach(r => {
+      const o = (r.createSlide || r.createShape || r.createLine || {}).objectId;
+      if (o) ids.push(o);
+    }));
+    assert(ids.length > 500, 'فيه عناصر كتير فعلاً: ' + ids.length);
+    equal(new Set(ids).size, ids.length, 'مفيش أي objectId مكرر');
+  });
+
+  test('٣٥ كلمة → ٧ calls مش ٣٥ (ضغط أقل على كوتة جوجل)', () => {
+    const b = batchesOf(35);
+    equal(b.length, 7);
+    equal(b.map(x => x.json.slidesInBatch), [5, 5, 5, 5, 5, 5, 5]);
+    equal(b[0].json.slidesExpected, 35);
+    equal(b[0].json.batchCount, 7);
+  });
+
+  test('عدد غير قابل للقسمة → آخر call بيشيل الباقي', () => {
+    const b = batchesOf(12);
+    equal(b.map(x => x.json.slidesInBatch), [5, 5, 2]);
+    const created = b.reduce((a, x) => a + x.json.requests.filter(r => r.createSlide).length, 0);
+    equal(created, 12, 'كل الكلمات ليها سلايد');
+  });
+
+  test('كل call فيه presentationId ومقاسه معقول', () => {
+    batchesOf(35).forEach((b, i) => {
+      equal(b.json.presentationId, CFG.presentationId, 'call ' + i);
+      const kb = JSON.stringify({ requests: b.json.requests }).length / 1024;
+      assert(kb < 1024, 'call ' + i + ' حجمه ' + kb.toFixed(0) + 'KB — أكبر من اللازم');
+    });
+  });
+
+  test('فشل call → الإيميل بيقول العرض ما اكتملش والأرقام فضلت صح', () => {
+    const v = runNode({ workflow: M, node: 'Validate Data', nodes: { Config: [CFG] },
+                        input: [mergeRun({ results: ALL_TASKS.map((t, i) => okResponse([gscRow('https://x/p', 3, 10)], { item: i })) })] })[0].json;
+    const st = runNode({
+      workflow: M, node: 'Report Stats',
+      nodes: { Config: [CFG], 'Validate Data': [v],
+               'Build Slide Batches': [{ slidesInBatch: 5, slidesExpected: 10, batchCount: 2 },
+                                       { slidesInBatch: 5, slidesExpected: 10, batchCount: 2 }],
+               'Create Slides': [{ replies: [] }, { error: '429 Quota exceeded' }] },
+      input: [v],
+    })[0].json;
+    equal(st.slidesOk, false);
+    equal(st.slidesDone, 5);
+    equal(st.slidesExpected, 10);
+    assert(st.slideErrors[0].includes('429'), 'السبب الحقيقي متسجّل');
+
+    const out = runNode({
+      workflow: M, node: 'Build Email',
+      nodes: { Config: [CFG], 'Validate Data': [v], 'Search Volume': [{}], 'Report Stats': [st] },
+      input: [st],
+    })[0].json;
+    assert(out.emailHtml.includes('العرض التقديمي ما اكتملش'), 'التحذير في الـ HTML');
+    assert(out.emailHtml.includes('5 سلايد من 10'), 'بيقول اتبنى كام من كام');
+    assert(out.emailText.includes('429'), 'السبب في النسخة النصية');
+    assert(out.emailHtml.includes('<table'), 'الجدول والأرقام فضلوا زي ما هما');
+    assert(!out.emailText.includes('<'), 'النسخة النصية من غير HTML');
+  });
+
+  test('كل الـ calls نجحت → مفيش تحذير عرض في الإيميل', () => {
+    const v = runNode({ workflow: M, node: 'Validate Data', nodes: { Config: [CFG] },
+                        input: [mergeRun({ results: ALL_TASKS.map((t, i) => okResponse([gscRow('https://x/p', 3, 10)], { item: i })) })] })[0].json;
+    const st = runNode({
+      workflow: M, node: 'Report Stats',
+      nodes: { Config: [CFG], 'Validate Data': [v],
+               'Build Slide Batches': [{ slidesInBatch: 2, slidesExpected: 2, batchCount: 1 }],
+               'Create Slides': [{ replies: [] }] },
+      input: [v],
+    })[0].json;
+    equal(st.slidesOk, true);
+    const out = runNode({
+      workflow: M, node: 'Build Email',
+      nodes: { Config: [CFG], 'Validate Data': [v], 'Search Volume': [{}], 'Report Stats': [st] },
+      input: [st],
+    })[0].json;
+    assert(!out.emailHtml.includes('ما اكتملش'), 'مفيش تحذير من غير سبب');
   });
 });
 

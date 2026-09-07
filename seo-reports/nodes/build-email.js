@@ -75,6 +75,15 @@ const qualityNote = holes
   ? 'ملاحظة: ' + holes + ' خانة لسه فاضية وهتتسحب في الرن الجاي.'
   : 'كل الخانات مسحوبة ومتأكد منها.';
 
+// تحذير العرض التقديمي: الأرقام في الإيميل والشيت صح في كل الأحوال (الشيت
+// بيتكتب قبل بناء العرض)، بس ممكن العرض نفسه ما يكونش اكتمل.
+const slidesNote = (st.slidesOk === false)
+  ? 'العرض التقديمي ما اكتملش: اتبنى ' + (st.slidesDone || 0) + ' سلايد من ' +
+    (st.slidesExpected || 0) + '. الأرقام اللي فوق وفي الشيت صح ومكتملة. ' +
+    'الرن الجاي بيمسح العرض ويبنيه من أول تلقائيًا.' +
+    ((st.slideErrors || []).length ? ' السبب: ' + st.slideErrors[0] : '')
+  : '';
+
 // ---- إزاي تراجع أي رقم في التقرير على Search Console ----
 // الأرقام دي مش تقديرات: كل رقم ليه فلتر محدد في الواجهة. السطور دي بتقول
 // الفلتر بالظبط عشان أي حد يفتح Search Console ويطلّع نفس الرقم.
@@ -123,6 +132,8 @@ const html =
     'border-radius:6px;text-decoration:none;font-size:' + FS + ';font-weight:bold;">عرض التقرير الكامل</a></div>' +
   '<div style="margin-top:16px;font-size:' + FS + ';color:' + INK + ';text-align:center;">الرقم الأقل = ترتيب أفضل</div>' +
   '<div style="margin-top:8px;font-size:12px;color:' + GREY + ';text-align:center;">' + esc(qualityNote) + '</div>' +
+  (slidesNote ? '<div style="margin-top:12px;background:#fdf3f1;border:1px solid #e6b9b0;border-radius:6px;' +
+    'padding:10px 14px;font-size:12px;line-height:1.8;color:' + INK + ';">' + esc(slidesNote) + '</div>' : '') +
   '<div style="margin-top:18px;background:' + BG + ';border:1px solid ' + LINE + ';border-radius:6px;padding:14px 16px;font-size:12px;line-height:1.9;">' +
     '<b>تحب تراجع أي رقم بنفسك على Search Console؟</b>' +
     '<ol style="margin:8px 0 0 0;padding-inline-start:18px;">' +
@@ -144,8 +155,9 @@ const text = ['تقرير SEO __CADENCE_AR__ — ' + cfg.company, __TEXT_HEADER_
   .concat(['تحسّن: ' + st.up + ' | تراجع: ' + st.down + ' | ثابت: ' + st.same +
            ' | متوسط التغير: ' + (st.avg > 0 ? '+' : '') + st.avg + '%', ''])
   .concat(textRows)
-  .concat(['', 'الرقم الأقل = ترتيب أفضل.', qualityNote, '',
-           'مراجعة الأرقام على Search Console:'])
+  .concat(['', 'الرقم الأقل = ترتيب أفضل.', qualityNote])
+  .concat(slidesNote ? ['', '⚠ ' + slidesNote] : [])
+  .concat(['', 'مراجعة الأرقام على Search Console:'])
   .concat(verifySteps.map((t, i) => (i + 1) + ') ' + t))
   .concat([verifyNote, '', 'التقرير الكامل بالسلايدز: ' + slides])
   .join('\n');

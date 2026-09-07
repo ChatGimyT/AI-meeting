@@ -21,6 +21,11 @@
    على صفحتها بالظبط، واللي من غير رابط بتتقاس على الموقع كله بمتوسط موزون بالظهور
    — نفس حساب الواجهة. تفاصيل كاملة في [docs/PLAN.md](docs/PLAN.md#المشكلة-الخامسة-أرقام-التقرير-مش-مطابقة-لواجهة-search-console).
 
+6. **`400 The object ID should be unique among all pages`** من نود `Create Slides` —
+   الـ objectIds بتتولّد مرة واحدة وبتتحقن في الداتا، والنود كان عليه `retryOnFail`.
+   n8n بيعيد النود **كله من العنصر صفر**، فأول سلايد كان بيتبعت تاني وهو موجود خلاص.
+   الـ retry اتقفل، والسلايدات بقت ٥ في كل call (٧ calls بدل ٣٥).
+
 التفاصيل الكاملة في **[docs/PLAN.md](docs/PLAN.md)**.
 
 ## الأوامر
@@ -28,8 +33,8 @@
 ```bash
 python3 seo-reports/extract-keywords.py   # الكلمات من الإكسل → JSON
 node seo-reports/build.mjs                # بناء ملفات n8n الأربعة
-node seo-reports/validate.mjs             # ١٩ فحص ساكن على الملفات
-node seo-reports/test.mjs                 # ٨٧ اختبار سلوكي
+node seo-reports/validate.mjs             # ٢١ فحص ساكن على الملفات
+node seo-reports/test.mjs                 # ٩٤ اختبار سلوكي
 ```
 
 أو دفعة واحدة: `npm run seo:all`
@@ -47,7 +52,7 @@ seo-reports/
 ├── extract-keywords.py        ← الإكسل → JSON
 ├── build.mjs                  ← nodes/ + keywords/ → dist/
 ├── validate.mjs               ← فحص ساكن
-├── test.mjs                   ← ٨٧ اختبار
+├── test.mjs                   ← ٩٤ اختبار
 ├── tests/harness.mjs          ← محاكي بيئة نود الكود في n8n
 └── docs/
     ├── PLAN.md                ← التشخيص والحل بالتفصيل

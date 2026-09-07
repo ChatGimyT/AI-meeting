@@ -22,4 +22,27 @@ let up = 0, down = 0, same = 0, gone = 0, fresh = 0, sum = 0, n = 0;
 });
 const avg = n ? Math.round((sum / n) * 10) / 10 : 0;
 
-return [{ json: { up, down, same, fresh, gone, avg, lastLabel, prevLabel } }];
+// ---- حالة بناء العرض التقديمي ----
+// Create Slides شغّال بـ continueRegularOutput (مايعملش retry لأن الـ objectIds
+// بتتبعت من عندنا والطلب مش idempotent). فلازم نقرا ردوده بنفسنا ونقول في
+// الإيميل لو العرض ما اكتملش، بدل ما نبعت لينك لعرض ناقص من غير ما حد يعرف.
+const batches = $('Create Slides').all();
+const plan    = $('Build Slide Batches').first().json || {};
+let slidesDone = 0;
+const slideErrors = [];
+batches.forEach((b, i) => {
+  const j = b.json || {};
+  const err = j.error;
+  if (err !== undefined && err !== null) {
+    const txt = typeof err === 'string' ? err : (err.message || JSON.stringify(err));
+    if (slideErrors.length < 10) slideErrors.push(String(txt).slice(0, 300));
+    return;
+  }
+  const planned = $('Build Slide Batches').all()[i];
+  slidesDone += Number((planned && planned.json.slidesInBatch) || 0);
+});
+const slidesExpected = Number(plan.slidesExpected || 0);
+const slidesOk = slideErrors.length === 0 && (!slidesExpected || slidesDone === slidesExpected);
+
+return [{ json: { up, down, same, fresh, gone, avg, lastLabel, prevLabel,
+                  slidesOk, slidesDone, slidesExpected, slideErrors } }];
