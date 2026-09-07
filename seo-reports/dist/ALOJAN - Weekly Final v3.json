@@ -47,26 +47,44 @@
             },
             {
               "id": "email-2",
+              "name": "mailTo_2",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "email-3",
               "name": "mailCc_1",
               "value": "M.gamal@rabeh.org",
               "type": "string"
             },
             {
-              "id": "email-3",
+              "id": "email-4",
               "name": "mailCc_2",
               "value": "gm@rabeh.org",
               "type": "string"
             },
             {
-              "id": "email-4",
+              "id": "email-5",
               "name": "mailCc_3",
+              "value": "soaad@rabeh.org",
+              "type": "string"
+            },
+            {
+              "id": "email-6",
+              "name": "mailCc_4",
               "value": "mohamedamarawork@gmail.com",
               "type": "string"
             },
             {
-              "id": "email-5",
-              "name": "mailCc_4",
-              "value": "soaad@rabeh.org",
+              "id": "email-7",
+              "name": "mailCc_5",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "email-8",
+              "name": "mailCc_6",
+              "value": "",
               "type": "string"
             }
           ]
