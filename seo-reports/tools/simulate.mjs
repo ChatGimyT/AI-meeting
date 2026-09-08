@@ -18,12 +18,13 @@ const arg = (k, d) => {
   const hit = process.argv.find((a) => a.startsWith('--' + k + '='));
   return hit ? hit.slice(k.length + 3) : d;
 };
+const CLIENT  = arg('client', 'alojan');
 const CADENCE = arg('cadence', 'monthly');
 const SCEN    = arg('scenario', 'happy');
 const VERBOSE = process.argv.includes('-v');
 
 const file = path.join(ROOT, 'dist',
-  'ALOJAN-' + (CADENCE === 'weekly' ? 'Weekly' : 'Monthly') + '-v4.json');
+  CLIENT.toUpperCase() + '-' + (CADENCE === 'weekly' ? 'Weekly' : 'Monthly') + '-v4.json');
 const wf = JSON.parse(fs.readFileSync(file, 'utf8'));
 const byName = Object.fromEntries(wf.nodes.map((n) => [n.name, n]));
 
@@ -80,10 +81,11 @@ function httpFor(node, items) {
   if (node.name === 'Verify GSC Access') {
     return [{ json: scenario.gscAccessOk === false
       ? { error: { code: 403, message: 'User does not have sufficient permission' } }
-      : { siteUrl: 'https://www.aaalojan.com/', permissionLevel: 'siteOwner' } }];
+      : { siteUrl: (runs['Config'] && runs['Config'][0].json.siteUrl) || '', permissionLevel: 'siteOwner' } }];
   }
   if (node.name === 'List GSC Sites') {
-    return [{ json: { siteEntry: [{ siteUrl: 'https://aaalojan.com/', permissionLevel: 'siteOwner' }] } }];
+    return [{ json: { siteEntry: [{ siteUrl: String((runs['Config'] && runs['Config'][0].json.siteUrl) || '')
+                                     .replace('://www.', '://'), permissionLevel: 'siteOwner' }] } }];
   }
   if (node.name === 'GSC Freshness') {
     httpCalls.gsc++;
@@ -228,14 +230,14 @@ while (queue.length) {
   });
 }
 
-export const result = { runs, trace, httpCalls, mailSent, sheetWritten, scenario: SCEN, cadence: CADENCE };
+export const result = { runs, trace, httpCalls, mailSent, sheetWritten,
+                        scenario: SCEN, cadence: CADENCE, client: CLIENT };
 
 /* ---------- تقرير ---------- */
 if (!process.argv.includes('--quiet')) {
   const line = (k, v) => console.log('  ' + (k + ' ').padEnd(34, '.') + ' ' + v);
   console.log('\n╔══════════════════════════════════════════════════════╗');
-  console.log('║  محاكاة ' + (CADENCE === 'weekly' ? 'التقرير الأسبوعي' : 'التقرير الشهري ') +
-              ' — سيناريو: ' + SCEN.padEnd(16) + '║');
+  console.log('║  ' + (CLIENT + '/' + CADENCE).padEnd(18) + ' — سيناريو: ' + SCEN.padEnd(18) + '║');
   console.log('╚══════════════════════════════════════════════════════╝\n');
   line('نودات نُفِّذت', trace.length);
   line('طلبات GSC', httpCalls.gsc);

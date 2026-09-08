@@ -1,0 +1,40 @@
+{
+  "id": "shoug",
+  "cadences": {
+    "monthly": {
+      "spreadsheetId": "1HAEfTjq3F4NlFVsbeh_VnyUyyqMLA8ZOWgdWt_aUfTI",
+      "sheetTab": "الورقة1",
+      "presentationId": "1hbep0bBhTpM36PqZq3rUlPlc7ocpqOzot2qe-Pgi_k8",
+      "columns": 15
+    },
+    "weekly": {
+      "spreadsheetId": "1O0gJG19A374AvnHSF_Lo-WSkvUlQPclM5pgE4S_IIJw",
+      "sheetTab": "الورقة1",
+      "presentationId": "1MvSnCMnbiw4-BiH5USN-ONasekFUYIDM1noUfKzW-SU",
+      "columns": 15
+    }
+  },
+  "siteUrl": "https://shoug-lawyer.com/",
+  "company": "المحامية شوق",
+  "manager": "بشمهندس أيمن مصطفى",
+  "mailFrom": "M.gamal@rabeh.org",
+  "mailFromName": "رابح — تقارير SEO",
+  "countries": [
+    {
+      "code": "kwt",
+      "name": "الكويت"
+    }
+  ],
+  "recipients": {
+    "to": [
+      "oo.cmohamedgamal71@gmail.com"
+    ],
+    "cc": [
+      "M.gamal@rabeh.org",
+      "gm@rabeh.org",
+      "soaad@rabeh.org",
+      "mohamedamarawork@gmail.com"
+    ]
+  },
+  "keywordsFile": "keywords/shoug.json"
+}

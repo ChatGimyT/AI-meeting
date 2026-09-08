@@ -154,8 +154,23 @@ export function settings(cadence, wf) {
 }
 
 /* ---------- تعديلات حرة على نودات قائمة ---------- */
-export function rewrite(cadence, wf) {
+export function rewrite(cadence, wf, client) {
   const byName = Object.fromEntries(wf.nodes.map((n) => [n.name, n]));
+
+  /* ═══ Create Slides: ممنوع retry ═══
+   * الطلب بيبعت objectIds بنولّدها احنا، يعني **مش idempotent**: لو اتبعت
+   * تاني بعد ما نجح، جوجل بيرد 400 "The object ID should be unique among
+   * all pages". و n8n لما بيعيد نود بيعيده من العنصر صفر مش من العنصر اللي
+   * فشل — فأول سلايد بيصطدم بنفسه، والعطل العابر بيتحول لعطل دائم وعرض
+   * نص مبني. التقرير الأسبوعي للعوجان كان متصلَّح، والتلاتة التانيين لأ. */
+  const cs = byName['Create Slides'];
+  if (cs) {
+    delete cs.retryOnFail;
+    delete cs.maxTries;
+    delete cs.waitBetweenTries;
+    cs.onError = 'continueRegularOutput';
+    cs.alwaysOutputData = true;
+  }
 
   /* ═══ توحيد طلب GSC بين التقريرين ═══
    * aggregationType: 'byPage' بيخلي جوجل يحسب الموضع لكل صفحة على حدة —

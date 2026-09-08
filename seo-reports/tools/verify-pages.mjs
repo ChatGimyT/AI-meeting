@@ -23,11 +23,13 @@ const arg = (k, d) => {
   const hit = process.argv.find((a) => a.startsWith('--' + k + '='));
   return hit ? hit.slice(k.length + 3) : d;
 };
-const DELAY = Number(arg('delay', '800'));
+const DELAY  = Number(arg('delay', '800'));
+const CLIENT = arg('client', '');
+if (!CLIENT) { console.error('لازم --client=<alojan|shoug>'); process.exit(1); }
 const AS_JSON = process.argv.includes('--json');
 const UA = 'ALOJAN-SEO-Report/1.0 (page verification for Search Console reporting; +https://www.rabeh.org)';
 
-const src = JSON.parse(fs.readFileSync(path.join(ROOT, 'keywords', 'alojan.json'), 'utf8'));
+const src = JSON.parse(fs.readFileSync(path.join(ROOT, 'keywords', CLIENT + '.json'), 'utf8'));
 
 /* تطبيع للمقارنة — نفس منطق normUrl جوه الأوتوميشن بالظبط */
 function normUrl(u) {
@@ -112,7 +114,7 @@ const ICON = { ok: '✅', redirected: '↪️ ', canonical: '⚠️ ', broken: '
 const tally = {};
 rows.forEach((r) => { tally[r.verdict] = (tally[r.verdict] || 0) + 1; });
 
-console.log('\n🔎 فحص الروابط المستهدفة — ' + rows.length + ' كلمة على ' + unique.length + ' رابط فريد\n');
+console.log('\n🔎 فحص الروابط المستهدفة (' + CLIENT + ') — ' + rows.length + ' كلمة على ' + unique.length + ' رابط فريد\n');
 rows.forEach((r) => {
   if (r.verdict === 'ok') return;
   console.log(ICON[r.verdict] + ' ' + r.keyword);
@@ -137,6 +139,6 @@ if (blockedAll) {
                   : '\n✅ كل الروابط كانونية — كل رقم في التقرير قابل للمراجعة في الواجهة.\n');
 }
 
-fs.writeFileSync(path.join(ROOT, 'keywords', 'page-check.json'),
+fs.writeFileSync(path.join(ROOT, 'keywords', CLIENT + '-page-check.json'),
   JSON.stringify({ checkedAt: new Date().toISOString(), rows }, null, 2), 'utf8');
 process.exit(blockedAll ? 2 : (bad ? 1 : 0));

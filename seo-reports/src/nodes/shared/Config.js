@@ -1,9 +1,21 @@
-// ============ إعدادات المشروع — عدّل من هنا بس ============
-const SITE_URL        = 'https://www.aaalojan.com/';
-const SPREADSHEET_ID  = '1llEe4oHQyDO2FDavXP4azh-AoFYmc1HQIDFWP5WdRKw';
-const SHEET_TAB       = 'الورقة1';
-const PRESENTATION_ID = '1SMs_8ZoBkUrulcS9bZVlGRdLUKBSV5wg5aPMqjeio4I';
-const COLUMNS         = 15;   // عدد الأعمدة في التقرير والسلايدز
+// ============ إعدادات المشروع ============
+// ⚠️ النود ده واحد للأربع تقارير (عوجان/شوق × شهري/أسبوعي).
+//    كل اللي بيخص عميل معيّن بيتقرا من clients/<العميل>.json وبيتحقن هنا
+//    وقت البناء. لو عايز تغيّر موقع أو شيت أو مستلمين — عدّل ملف العميل
+//    وأعِد البناء، مش هنا.
+//
+//    السبب: أي تعديل في المنطق كان لازم يتعمل ٤ مرات، ودي بالظبط الطريقة
+//    اللي بيها اتصلّح التقرير الأسبوعي وفضل الشهري غلط شهور.
+
+/* @client */
+
+// =======================================
+
+const SITE_URL        = CLIENT.siteUrl;
+const SPREADSHEET_ID  = CAD.spreadsheetId;
+const SHEET_TAB       = CAD.sheetTab;
+const PRESENTATION_ID = CAD.presentationId;
+const COLUMNS         = CAD.columns;   // عدد الأعمدة في التقرير والسلايدز
 
 // LAG_DAYS دلوقتي احتياطي بس: الأوتوميشن بيسأل جوجل نفسه آخر يوم فيه بيانات
 // نهائية (نود GSC Freshness)، ولو السؤال ده فشل بنرجع للرقم ده.
@@ -21,26 +33,26 @@ const MAX_HOLES       = 12;
 const GSC_ROW_LIMIT   = 1000;     // عدد الصفحات اللي بنطلبها لكل كلمة
 const GSC_DATA_STATE  = 'final';  // بيانات نهائية بس — مش تقديرية
 // إزاي بنحسب رقم الكلمة:
-//   • الكلمة ليها رابط صفحة والصفحة ظاهرة → رقم الصفحة دي بالظبط.
+//   • الصفحة المستهدفة ظاهرة → رقم الصفحة دي بالظبط.
 //     ده اللي بتشوفه في الواجهة لما تفلتر Query + Page.
-//   • مفيش رابط (أو الصفحة مش ظاهرة و PAGE_MATCH = 'prefer') → رقم الموقع
-//     كله للكلمة: الظهور = مجموع كل الصفحات، والموضع = المتوسط الموزون
-//     بالظهور. ده اللي بتشوفه في الواجهة لما تفلتر بالكلمة لوحدها.
-// 'prefer' = لو الصفحة المستهدفة مش ظاهرة، نرجّع رقم الموقع كله ونعلّمها.
-// 'strict' = الصفحة المستهدفة بس — وده الافتراضي دلوقتي لأن كل كلمة ليها رابط.
-// 'strict' = الصفحة المحددة بس، وأي حاجة تانية تتحسب "مفيش ظهور".
+//   • الصفحة مش ظاهرة و PAGE_MATCH = 'strict' → الخانة "مفيش ظهور" ('-').
+//   • الصفحة مش ظاهرة و PAGE_MATCH = 'prefer' → رقم الموقع كله للكلمة
+//     (المتوسط الموزون بالظهور)، ويتعلّم في التقرير إنه رقم موقع مش صفحة.
+//
+// 'strict' هو الافتراضي دلوقتي لأن كل كلمة في القائمة ليها رابط: الرقم بيوصف
+// الصفحة دي وبس، ولو مش ظاهرة يبقى ظهورها صفر فعلًا — مش رقم صفحة تانية.
 const PAGE_MATCH      = 'strict';
 // الأعمدة الأحدث دي بس هي اللي مسموح لسحبة جديدة إنها تمسح رقم قديم منها.
 // أي عمود أقدم من كده بياناته في جوجل مقفولة ومش بتتغير — فلو السحبة رجعت
 // فاضية والأرشيف فيه رقم، بنمسك الأرشيف ونعلّمها.
 const VOLATILE_TAIL   = 2;
 
-const COMPANY   = 'مركز العوجان لجراحة المخ والأعصاب';
-const MANAGER   = 'بشمهندس أيمن مصطفى';
+const COMPANY   = CLIENT.company;
+const MANAGER   = CLIENT.manager;
 
 // ---- الإيميل ----
-const MAIL_FROM      = 'M.gamal@rabeh.org';       // لازم يساوي المستخدم في كريدنشيال SMTP
-const MAIL_FROM_NAME = 'رابح — تقارير SEO';  // الاسم اللي بيظهر للمستلم
+const MAIL_FROM      = CLIENT.mailFrom;          // لازم يساوي المستخدم في كريدنشيال SMTP
+const MAIL_FROM_NAME = CLIENT.mailFromName;      // الاسم اللي بيظهر للمستلم
 const MAIL_REPLY_TO  = '';   // سيبه فاضي عشان يستخدم MAIL_FROM
 
 // مسار إرسال بديل عبر Gmail API لما SMTP يرفض المستلمين الخارجيين.
@@ -103,12 +115,7 @@ const MAIL_FROM_DOMAIN = String(MAIL_FROM).split('@')[1] || '';
 const MAIL_EXTERNAL = to.list.concat(ccList)
   .filter(e => (e.split('@')[1] || '').toLowerCase() !== MAIL_FROM_DOMAIN.toLowerCase());
 
-const COUNTRIES = [
-  {
-    "code": "sau",
-    "name": "السعودية"
-  }
-];
+const COUNTRIES = CLIENT.countries;
 // =======================================
 
 return [{ json: {
@@ -118,7 +125,7 @@ return [{ json: {
   minCoverage: MIN_COVERAGE, maxHoles: MAX_HOLES,
   gscRowLimit: GSC_ROW_LIMIT, gscDataState: GSC_DATA_STATE,
   pageMatch: PAGE_MATCH, volatileTail: VOLATILE_TAIL,
-  cadence: 'weekly',
+  cadence: CADENCE,
   company: COMPANY, manager: MANAGER,
   mailFrom: MAIL_FROM,
   mailFromDisplay: MAIL_FROM_NAME ? ('"' + MAIL_FROM_NAME + '" <' + MAIL_FROM + '>') : MAIL_FROM,

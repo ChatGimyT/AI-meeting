@@ -7,7 +7,7 @@
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { TARGET, SITE_WIDE_POSITION, SITE_WIDE_IMPRESSIONS } from './fixtures.mjs';
+import { TARGET, isHomepage } from './fixtures.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 let pass = 0, fail = 0;
@@ -18,9 +18,15 @@ const T = (label, cond, extra) => {
 const head = (t) => console.log('\n' + t);
 
 /* المحاكي بيتنفّذ في عملية منفصلة ويرجّع الحالة كاملة كـ JSON */
-function run(cadence, scenario) {
+/* كل التقارير الأربعة: عميلين × إيقاعين */
+const ALL = [];
+for (const client of ['alojan', 'shoug'])
+  for (const cadence of ['monthly', 'weekly']) ALL.push({ client, cadence, tag: client + '/' + cadence });
+
+function run(cadence, scenario, client) {
+  client = client || 'alojan';
   const code = `
-    process.argv.push('--cadence=${cadence}', '--scenario=${scenario}', '--quiet');
+    process.argv.push('--client=${client}', '--cadence=${cadence}', '--scenario=${scenario}', '--quiet');
     const m = await import(${JSON.stringify(path.join(ROOT, 'tools', 'simulate.mjs'))});
     const r = m.result;
     const pick = (n) => (r.runs[n] || []).map(x => x.json);
@@ -36,6 +42,8 @@ function run(cadence, scenario) {
       delivery: pick('Delivery Report')[0] || null,
       diagnose: pick('GSC Diagnose')[0]    || null,
       keywords: pick('Keywords')[0]        || null,
+      config:   pick('Config')[0]          || null,
+      pageCheckNode: pick('Page Check Report')[0] || null,
     }));
   `;
   const out = execFileSync('node', ['--input-type=module', '-e', code],
@@ -43,32 +51,83 @@ function run(cadence, scenario) {
   return JSON.parse(out);
 }
 
+/* ══════════ ضمانة عدم الانحراف بين التقارير ══════════ */
+head('بنية الملفات — التقارير الأربعة على كود واحد');
+{
+  const fs2 = await import('node:fs');
+  const crypto = await import('node:crypto');
+  const sha = (t) => crypto.createHash('sha1').update(t).digest('hex');
+  const files = ALL.map(({ client, cadence, tag }) => ({
+    tag,
+    wf: JSON.parse(fs2.readFileSync(
+      path.join(ROOT, 'dist', client.toUpperCase() + '-' +
+        (cadence === 'weekly' ? 'Weekly' : 'Monthly') + '-v4.json'), 'utf8')),
+  }));
+
+  const codes = {};
+  files.forEach(({ tag, wf }) => {
+    wf.nodes.filter((n) => n.type === 'n8n-nodes-base.code')
+      .forEach((n) => { (codes[n.name] = codes[n.name] || {})[tag] = sha(n.parameters.jsCode); });
+  });
+
+  /* Config و Keywords بيختلفوا في البيانات المحقونة بس — المنطق واحد.
+   * أي نود تاني بيختلف معناه إن التقارير بدأت تنحرف تاني. */
+  const dataDriven = ['Config', 'Keywords'];
+  const drifted = Object.keys(codes).filter((n) =>
+    dataDriven.indexOf(n) === -1 && new Set(Object.values(codes[n])).size > 1);
+  T('كل نودات المنطق بنفس الكود بالحرف في الأربعة', drifted.length === 0,
+    JSON.stringify(drifted));
+  T('عدد النودات المشتركة = ' + (Object.keys(codes).length - dataDriven.length),
+    Object.keys(codes).length - dataDriven.length >= 16);
+
+  files.forEach(({ tag, wf }) => {
+    const cs = wf.nodes.find((n) => n.name === 'Create Slides');
+    T(tag + ': Create Slides من غير retry (الطلب مش idempotent)', !cs.retryOnFail);
+    const q = wf.nodes.find((n) => n.name === 'GSC Query');
+    T(tag + ': طلب GSC فيه aggregationType byPage',
+      /aggregationType: 'byPage'/.test(q.parameters.jsonBody));
+    const names = new Set(wf.nodes.map((n) => n.name));
+    const targets = new Set();
+    Object.values(wf.connections).forEach((spec) =>
+      (spec.main || []).forEach((outs) => (outs || []).forEach((t) => targets.add(t.node))));
+    const orphans = [...names].filter((n) =>
+      !targets.has(n) && n !== 'Manual Trigger' && n !== 'Schedule Trigger');
+    T(tag + ': مفيش نود مش موصول', orphans.length === 0, JSON.stringify(orphans));
+  });
+}
+
 /* ══════════ قائمة الكلمات ══════════ */
 head('قائمة الكلمات — قاعدة «مفيش رابط يبقى مفيش صف»');
 {
-  const r = run('monthly', 'happy');
-  const k = r.keywords;
-  T('كل كلمة في التقرير ليها رابط صفحة',
-    k.keywords.every((x) => x.page && /^https?:\/\//.test(x.page)),
-    JSON.stringify(k.keywords.filter((x) => !x.page).map((x) => x.keyword)));
-  T('الكلمات اللي مالهاش رابط اتشالت من الحساب', k.excludedCount === 8, k.excludedCount);
-  T('لكن اتسجّلت بالاسم عشان متتنسيش',
-    k.excluded.length === 8 && k.excluded.every((e) => e.keyword), JSON.stringify(k.excluded[0]));
-  T('التقرير الأسبوعي على نفس القائمة بالحرف',
-    JSON.stringify(run('weekly', 'happy').keywords.keywords) === JSON.stringify(k.keywords));
+  for (const client of ['alojan', 'shoug']) {
+    const k = run('monthly', 'happy', client).keywords;
+    T(client + ': كل كلمة في التقرير ليها رابط صفحة',
+      k.keywords.length > 0 && k.keywords.every((x) => x.page && /^https?:\/\//.test(x.page)),
+      JSON.stringify(k.keywords.filter((x) => !x.page).map((x) => x.keyword)));
+    T(client + ': كل كلمة مستبعدة مسجّلة بالاسم',
+      k.excluded.every((e) => e.keyword && e.why), JSON.stringify(k.excluded[0] || null));
+    T(client + ': الشهري والأسبوعي على نفس القائمة بالحرف',
+      JSON.stringify(run('weekly', 'happy', client).keywords.keywords) === JSON.stringify(k.keywords));
+  }
+  T('عوجان: 27 معتمدة و8 مستبعدة',
+    run('monthly', 'happy', 'alojan').keywords.keywordCount === 27 &&
+    run('monthly', 'happy', 'alojan').keywords.excludedCount === 8);
+  T('شوق: 25 معتمدة و0 مستبعدة',
+    run('monthly', 'happy', 'shoug').keywords.keywordCount === 25 &&
+    run('monthly', 'happy', 'shoug').keywords.excludedCount === 0);
 }
 
 /* ══════════ الحساب اللي كان بيطلع غلط ══════════ */
 head('حساب الموضع والظهور — الحالة اللي كانت بتطلّع «POS 10 / IMP 1»');
-for (const cadence of ['monthly', 'weekly']) {
-  const r = run(cadence, 'threePages');
+for (const { client, cadence, tag } of ALL) {
+  const r = run(cadence, 'threePages', client);
   const row = r.merge.data[0];
   const li = row.positions.length - 1;
-  T(cadence + ': الموضع = رقم الصفحة المستهدفة (20.9) مش أحسن صفحة (10)',
+  T(tag + ': الموضع = رقم الصفحة المستهدفة (20.9) مش أحسن صفحة (10)',
     row.positions[li] === 20.9, row.positions[li]);
-  T(cadence + ': الظهور = ظهور الصفحة المستهدفة (144) مش (1)',
+  T(tag + ': الظهور = ظهور الصفحة المستهدفة (144) مش (1)',
     row.impressionsAll[li] === 144, row.impressionsAll[li]);
-  T(cadence + ': الرقم متعلّم إنه على مستوى الصفحة',
+  T(tag + ': الرقم متعلّم إنه على مستوى الصفحة',
     row.scope === 'page', row.scope);
 }
 
@@ -84,13 +143,13 @@ head('نفس البيانات → نفس الرقم في التقريرين');
 
 /* ══════════ الصفحة المستهدفة مش ظاهرة ══════════ */
 head('الصفحة المستهدفة مش ظاهرة — ممنوع نطلّع رقم صفحة تانية');
-for (const cadence of ['monthly', 'weekly']) {
-  const r = run(cadence, 'pageMissing');
+for (const { client, cadence, tag } of ALL) {
+  const r = run(cadence, 'pageMissing', client);
   const row = r.merge.data[0];
   const li = row.positions.length - 1;
-  T(cadence + ': الخانة "مفيش ظهور" مش رقم صفحة تانية',
+  T(tag + ': الخانة "مفيش ظهور" مش رقم صفحة تانية',
     row.positions[li] === null && row.cellsPos[li] === '-', JSON.stringify([row.positions[li], row.cellsPos[li]]));
-  T(cadence + ': الظهور صفر', row.impressionsAll[li] === 0, row.impressionsAll[li]);
+  T(tag + ': الظهور صفر', row.impressionsAll[li] === 0, row.impressionsAll[li]);
 }
 
 /* ══════════ الفرق بين "فشل السحب" و"اختفت" ══════════ */
@@ -111,19 +170,21 @@ head('فشل السحب ≠ الكلمة اختفت');
 
 /* ══════════ فحص الروابط الفعلي ══════════ */
 head('فحص الروابط قبل ما جوجل يتسأل');
-for (const cadence of ['monthly', 'weekly']) {
-  const r = run(cadence, 'redirectingUrl');
+for (const { client, cadence, tag } of ALL) {
+  const r = run(cadence, 'redirectingUrl', client);
   const pc = r.validate.pageCheck;
-  T(cadence + ': الروابط اللي بتعمل تحويل اتمسكت', (pc.tally.redirected || 0) === 12,
-    JSON.stringify(pc.tally));
-  T(cadence + ': ومعاها الرابط النهائي الصح',
-    /\/public\/news\//.test((pc.problems[0] || {}).suggested || ''),
+  const uniquePages = [...new Set(r.keywords.keywords.map((k) => k.page))];
+  const expectRedirect = uniquePages.filter((u) => !isHomepage(u)).length;
+  T(tag + ': الروابط اللي بتعمل تحويل اتمسكت (' + expectRedirect + ')',
+    (pc.tally.redirected || 0) === expectRedirect, JSON.stringify(pc.tally));
+  T(tag + ': ومعاها الرابط النهائي الصح',
+    /\/public\//.test((pc.problems[0] || {}).suggested || ''),
     (pc.problems[0] || {}).suggested);
-  T(cadence + ': التحذير وصل لبوابة الجودة',
+  T(tag + ': التحذير وصل لبوابة الجودة',
     (r.validate.warnings || []).some((w) => /بيعمل تحويل/.test(w)));
-  T(cadence + ': والإيميل بيقول الكلمات بالاسم',
+  T(tag + ': والإيميل بيقول الكلمات بالاسم',
     /رابط صفحة محتاج تصحيح/.test(r.email.emailText));
-  T(cadence + ': لكن الرن ما وقفش — الأرقام التانية لسه صالحة', r.validate.ok === true);
+  T(tag + ': لكن الرن ما وقفش — الأرقام التانية لسه صالحة', r.validate.ok === true);
 }
 {
   const r = run('monthly', 'happy');
@@ -134,23 +195,27 @@ for (const cadence of ['monthly', 'weekly']) {
 
 /* ══════════ رابط غلط في ملف الكلمات ══════════ */
 head('رابط غلط ≠ الصفحة مالهاش ترتيب');
-for (const cadence of ['monthly', 'weekly']) {
-  const r = run(cadence, 'wrongUrl');
+for (const { client, cadence, tag } of ALL) {
+  const r = run(cadence, 'wrongUrl', client);
   const pa = r.merge.quality.pageAudit;
-  /* السيناريو بيغيّر مسار صفحات المقالات بس (اللي فيها /news/)، والـ 15 كلمة
-   * اللي مستهدفة الصفحة الرئيسية رابطها ما اتغيرش — فالمتوقع 12 بالظبط. */
-  T(cadence + ': الـ 12 رابط المكسور اتحددوا بالاسم', (pa.suspect || []).length === 12,
-    (pa.suspect || []).length);
-  T(cadence + ': والـ 15 كلمة اللي رابطها سليم ما اتبلّغش عنها', pa.ok === 15, pa.ok);
-  T(cadence + ': ومعاها الرابط اللي جوجل شايفه فعلًا',
-    (pa.suspect[0].samples || []).length > 0 && /\/public\/news\//.test(pa.suspect[0].samples[0].topPage),
+  /* السيناريو بيغيّر مسار صفحات المقالات بس — الصفحة الرئيسية مالهاش مسار
+   * يتغيّر، فبتفضل سليمة. المتوقع بيتحسب من قائمة كل عميل مش رقم متثبّت. */
+  const kws = r.keywords.keywords;
+  const expectSuspect = kws.filter((k) => !isHomepage(k.page)).length;
+  const expectOk = kws.length - expectSuspect;
+  T(tag + ': كل رابط مكسور اتحدد بالاسم (' + expectSuspect + ')',
+    (pa.suspect || []).length === expectSuspect, (pa.suspect || []).length);
+  T(tag + ': والروابط السليمة ما اتبلّغش عنها (' + expectOk + ')', pa.ok === expectOk, pa.ok);
+  T(tag + ': ومعاها الرابط اللي جوجل شايفه فعلًا',
+    (((pa.suspect[0] || {}).samples || [])[0] || {}).topPage
+      ? /\/public\//.test(pa.suspect[0].samples[0].topPage) : false,
     JSON.stringify((pa.suspect[0] || {}).samples));
-  T(cadence + ': التحذير وصل لبوابة الجودة',
+  T(tag + ': التحذير وصل لبوابة الجودة',
     (r.validate.warnings || []).some((w) => /الرابط الكانوني|ما ظهرتش عند جوجل/.test(w)),
     JSON.stringify(r.validate.warnings).slice(0, 200));
-  T(cadence + ': والإيميل بيقول الكلمات بالاسم',
+  T(tag + ': والإيميل بيقول الكلمات بالاسم',
     /رابطها محتاج مراجعة/.test(r.email.emailText));
-  T(cadence + ': ما اتقالش إن الكلمة "اختفت"', r.stats.gone === 0, r.stats.gone);
+  T(tag + ': ما اتقالش إن الكلمة "اختفت"', r.stats.gone === 0, r.stats.gone);
 }
 
 /* ══════════ حارس اتقصاص الرد ══════════ */
@@ -166,15 +231,21 @@ head('حارس اتقصاص رد جوجل');
 
 /* ══════════ التحقق: كل رقم قابل للمراجعة ══════════ */
 head('بلوك «راجع الرقم بنفسك» في الإيميل');
-for (const cadence of ['monthly', 'weekly']) {
-  const r = run(cadence, 'happy');
+for (const { client, cadence, tag } of ALL) {
+  const r = run(cadence, 'happy', client);
   const html = r.email.emailHtml, text = r.email.emailText;
-  T(cadence + ': الإيميل فيه خطوات المراجعة على Search Console',
+  T(tag + ': الإيميل فيه خطوات المراجعة على Search Console',
     /تراجع أي رقم بنفسك/.test(html));
-  T(cadence + ': بيقول المدى الزمني بالظبط', /Date: Custom/.test(text));
-  T(cadence + ': بيقول فلتر الدولة', /Country:/.test(text));
-  T(cadence + ': بيقول فلتر الصفحة', /Page: Exact URL/.test(text));
-  T(cadence + ': الكلمات المستبعدة مذكورة بالاسم', /كلمات خارج التقرير \(8\)/.test(text));
+  T(tag + ': بيقول المدى الزمني بالظبط', /Date: Custom/.test(text));
+  T(tag + ': بيقول فلتر الدولة', /Country:/.test(text));
+  T(tag + ': بيقول فلتر الصفحة', /Page: Exact URL/.test(text));
+  /* شوق مالوش كلمات مستبعدة، فالقسم ده المفروض ما يظهرش أصلًا */
+  const nExcluded = r.keywords.excludedCount;
+  T(tag + ': ' + (nExcluded ? 'الكلمات المستبعدة مذكورة بالاسم (' + nExcluded + ')'
+                            : 'مفيش قسم كلمات مستبعدة لأن مفيش ولا واحدة'),
+    nExcluded
+      ? new RegExp('كلمات خارج التقرير \\(' + nExcluded + '\\)').test(text)
+      : !/كلمات خارج التقرير/.test(text));
 }
 
 /* ══════════ لا صلاحية ══════════ */

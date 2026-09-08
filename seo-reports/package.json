@@ -1,7 +1,7 @@
 {
-  "name": "alojan-seo-reports",
+  "name": "rabeh-seo-reports",
   "version": "4.0.0",
-  "description": "تقارير SEO لمركز العوجان — الأسبوعي والشهري، على محرك واحد.",
+  "description": "تقارير SEO لعملاء رابح — عوجان وشوق، أسبوعي وشهري، على محرك واحد.",
   "type": "module",
   "private": true,
   "scripts": {

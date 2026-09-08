@@ -16,6 +16,18 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)));
 const CADENCES = ['monthly', 'weekly'];
 const CHECK = process.argv.includes('--check');
+const arg = (k) => {
+  const hit = process.argv.find((a) => a.startsWith('--' + k + '='));
+  return hit ? hit.slice(k.length + 3) : '';
+};
+
+/* العملاء: كل ملف في clients/ = تقريران (شهري وأسبوعي) */
+const CLIENTS = fs.readdirSync(path.join(ROOT, 'clients'))
+  .filter((f) => f.endsWith('.json'))
+  .map((f) => JSON.parse(fs.readFileSync(path.join(ROOT, 'clients', f), 'utf8')))
+  .filter((c) => !arg('client') || c.id === arg('client'));
+
+const TITLE = (id) => id.toUpperCase();
 
 const slug = (name) => String(name).trim().replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
@@ -51,14 +63,24 @@ if (fs.existsSync(patchPath)) {
   patch = Object.assign(patch, await import(pathToFileURL(patchPath).href));
 }
 
-let failed = 0;
+let failed = 0, built = 0;
+for (const client of CLIENTS)
 for (const cadence of CADENCES) {
-  const basePath = path.join(ROOT, 'base', cadence + '.json');
+  const tag = client.id + '/' + cadence;
+  const basePath = path.join(ROOT, 'base', client.id, cadence + '.json');
   const wf = JSON.parse(fs.readFileSync(basePath, 'utf8'));
-  const nodeDir = path.join(ROOT, 'src', 'nodes', cadence);
+  const nodeDir = path.join(ROOT, 'src', 'nodes', client.id + '-' + cadence);
+
+  /* كتلة إعدادات العميل اللي بتتحقن في نود Config */
+  const clientLiteral =
+    '/* ===== إعدادات العميل (تتولّد من clients/' + client.id + '.json) ===== */\n' +
+    'const CLIENT = ' + JSON.stringify(client, null, 2) + ';\n' +
+    'const CADENCE = ' + JSON.stringify(cadence) + ';\n' +
+    'const CAD = CLIENT.cadences[CADENCE];\n' +
+    'const KEYWORDS_SOURCE = ' + JSON.stringify(client.keywordsFile) + ';';
 
   /* 1) نودات جديدة — قبل الحقن عشان كودها يتحقن هي كمان */
-  const added = patch.nodes(cadence, wf) || [];
+  const added = patch.nodes(cadence, wf, client) || [];
   for (const n of added) {
     const i = wf.nodes.findIndex((x) => x.name === n.name);
     if (i >= 0) wf.nodes[i] = n; else wf.nodes.push(n);
@@ -80,24 +102,33 @@ for (const cadence of CADENCES) {
     let file;
     if (fs.existsSync(sharedFile)) {
       if (fs.existsSync(ownFile)) {
-        throw new Error(cadence + ': النود «' + node.name + '» موجود في shared/ و' + cadence +
+        throw new Error(tag + ': النود «' + node.name + '» موجود في shared/ و' + client.id + '-' + cadence +
                         '/ مع بعض — امسح واحد منهم عشان مايحصلش لبس.');
       }
       file = sharedFile; seenShared.add(base); fromShared++;
     } else if (fs.existsSync(ownFile)) {
       file = ownFile; seenOwn.add(base);
     } else {
-      throw new Error(cadence + ': مفيش ملف كود للنود «' + node.name + '»');
+      throw new Error(tag + ': مفيش ملف كود للنود «' + node.name + '»');
     }
-    const raw = fs.readFileSync(file, 'utf8');
-    const { code, used } = injectLibs(raw, cadence + '/' + node.name);
+    let raw = fs.readFileSync(file, 'utf8');
+    if (raw.includes('/* @client */')) raw = raw.replace('/* @client */', clientLiteral);
+    if (raw.includes('/* @keywords */')) {
+      const kw = JSON.parse(fs.readFileSync(path.join(ROOT, client.keywordsFile), 'utf8'));
+      raw = raw.replace('/* @keywords */',
+        'const KW = ' + JSON.stringify({ keywords: kw.keywords, dropped: kw.dropped,
+                                         source: kw.source, extractedAt: kw.extractedAt }, null, 2) + ';');
+    }
+    const { code, used } = injectLibs(raw, tag + '/' + node.name);
     libUses += used.length;
     node.parameters = Object.assign({}, node.parameters, { jsCode: code.trimEnd() + '\n' });
     injected++;
   }
   /* ملف كود مالوش نود = خطأ صامت لو سكتنا عنه */
-  for (const f of fs.readdirSync(nodeDir).filter((x) => x.endsWith('.js'))) {
-    if (!seenOwn.has(f)) throw new Error(cadence + ': ملف كود مالوش نود مقابل: ' + f);
+  if (fs.existsSync(nodeDir)) {
+    for (const f of fs.readdirSync(nodeDir).filter((x) => x.endsWith('.js'))) {
+      if (!seenOwn.has(f)) throw new Error(tag + ': ملف كود مالوش نود مقابل: ' + f);
+    }
   }
   if (fs.existsSync(sharedDir)) {
     for (const f of fs.readdirSync(sharedDir).filter((x) => x.endsWith('.js'))) {
@@ -106,11 +137,11 @@ for (const cadence of CADENCES) {
   }
 
   /* 3) وصلات */
-  Object.assign(wf.connections, patch.connections(cadence, wf) || {});
+  Object.assign(wf.connections, patch.connections(cadence, wf, client) || {});
 
   /* 4) إعدادات + تعديلات حرة */
-  Object.assign(wf.settings, patch.settings(cadence, wf) || {});
-  patch.rewrite(cadence, wf);
+  Object.assign(wf.settings, patch.settings(cadence, wf, client) || {});
+  patch.rewrite(cadence, wf, client);
 
   /* 5) فحص بنيوي قبل الكتابة */
   const names = new Set(wf.nodes.map((n) => n.name));
@@ -124,6 +155,11 @@ for (const cadence of CADENCES) {
       }
     }
   }
+  /* حارس دائم: أي بناء يرجّع retry على Create Slides يتوقف */
+  const cs2 = wf.nodes.find((n) => n.name === 'Create Slides');
+  if (cs2 && cs2.retryOnFail) {
+    errs.push('Create Slides عليه retryOnFail — الطلب مش idempotent وجوجل هيرد 400.');
+  }
   for (const n of wf.nodes) {
     if (n.type !== 'n8n-nodes-base.code') continue;
     try { new Function(n.parameters.jsCode); }
@@ -134,23 +170,27 @@ for (const cadence of CADENCES) {
   }
   if (errs.length) {
     failed++;
-    console.error('❌ ' + cadence + ':\n   ' + errs.join('\n   '));
+    console.error('❌ ' + tag + ':\n   ' + errs.join('\n   '));
     continue;
   }
 
-  wf.name = 'ALOJAN - ' + (cadence === 'monthly' ? 'Monthly' : 'Weekly') + ' v4';
-  const outFile = path.join(ROOT, 'dist', 'ALOJAN-' + (cadence === 'monthly' ? 'Monthly' : 'Weekly') + '-v4.json');
+  const cadTitle = cadence === 'monthly' ? 'Monthly' : 'Weekly';
+  wf.name = TITLE(client.id) + ' - ' + cadTitle + ' v4';
+  const outFile = path.join(ROOT, 'dist', TITLE(client.id) + '-' + cadTitle + '-v4.json');
   const json = JSON.stringify(wf, null, 2);
 
   if (CHECK && fs.existsSync(outFile) && fs.readFileSync(outFile, 'utf8') !== json) {
     failed++;
-    console.error('❌ ' + cadence + ': الملف المبني مختلف عن الموجود في dist — شغّل البناء.');
+    console.error('❌ ' + tag + ': الملف المبني مختلف عن الموجود في dist — شغّل البناء.');
     continue;
   }
   fs.writeFileSync(outFile, json, 'utf8');
-  console.log('✅ ' + cadence + ' → ' + path.relative(process.cwd(), outFile) +
+  built++;
+  console.log('✅ ' + tag.padEnd(16) + ' → ' + path.relative(process.cwd(), outFile) +
               '  (نودات: ' + wf.nodes.length + ' | كود: ' + injected +
               ' منهم ' + fromShared + ' مشترك | حقن مكتبات: ' + libUses +
               ' | ' + (json.length / 1024).toFixed(0) + ' KB)');
 }
+console.log((failed ? '\n❌ فشل ' + failed : '\n✅ اتبنى ' + built) + ' من ' +
+            (CLIENTS.length * CADENCES.length) + ' تقرير.');
 process.exit(failed ? 1 : 0);

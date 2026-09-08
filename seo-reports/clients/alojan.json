@@ -1,0 +1,40 @@
+{
+  "id": "alojan",
+  "cadences": {
+    "monthly": {
+      "spreadsheetId": "13X32MF8WigiF0guqEfLk4H203Z8x4dSerK9Rg2f78kc",
+      "sheetTab": "الورقة1",
+      "presentationId": "1GtTpO3_8HlbwDR656qVeSdRAo_kTJC_8rtRHrOB-sAA",
+      "columns": 15
+    },
+    "weekly": {
+      "spreadsheetId": "1llEe4oHQyDO2FDavXP4azh-AoFYmc1HQIDFWP5WdRKw",
+      "sheetTab": "الورقة1",
+      "presentationId": "1SMs_8ZoBkUrulcS9bZVlGRdLUKBSV5wg5aPMqjeio4I",
+      "columns": 15
+    }
+  },
+  "siteUrl": "https://www.aaalojan.com/",
+  "company": "مركز العوجان لجراحة المخ والأعصاب",
+  "manager": "بشمهندس أيمن مصطفى",
+  "mailFrom": "M.gamal@rabeh.org",
+  "mailFromName": "رابح — تقارير SEO",
+  "countries": [
+    {
+      "code": "sau",
+      "name": "السعودية"
+    }
+  ],
+  "recipients": {
+    "to": [
+      "m.gamal.zaid1@gmail.com"
+    ],
+    "cc": [
+      "M.gamal@rabeh.org",
+      "gm@rabeh.org",
+      "soaad@rabeh.org",
+      "mohamedamarawork@gmail.com"
+    ]
+  },
+  "keywordsFile": "keywords/alojan.json"
+}

@@ -19,10 +19,17 @@ const arg = (k, d) => {
   const hit = process.argv.find((a) => a.startsWith('--' + k + '='));
   return hit ? hit.slice(k.length + 3) : d;
 };
-const XLSX  = arg('xlsx', '');
-const SHEET = arg('sheet', 'العوجان');
-const OUT   = path.join(ROOT, 'keywords', 'alojan.json');
-if (!XLSX) { console.error('لازم --xlsx=<path>'); process.exit(1); }
+const XLSX   = arg('xlsx', '');
+const CLIENT = arg('client', '');
+const SHEET  = arg('sheet', '');
+if (!XLSX || !CLIENT) {
+  console.error('لازم --xlsx=<path> --client=<alojan|shoug> [--sheet=<اسم الورقة>]');
+  process.exit(1);
+}
+/* اسم الورقة الافتراضي لكل عميل — عشان الأمر يبقى قصير */
+const DEFAULT_SHEET = { alojan: 'العوجان', shoug: 'شوق' };
+const SHEET_NAME = SHEET || DEFAULT_SHEET[CLIENT] || CLIENT;
+const OUT = path.join(ROOT, 'keywords', CLIENT + '.json');
 
 /* openpyxl هو اللي بيقرا الروابط المخفية في الخلايا (hyperlink target) */
 const py = `
@@ -47,15 +54,16 @@ for r in range(2, ws.max_row + 1):
     })
 print(json.dumps(rows, ensure_ascii=False))
 `;
-const raw = JSON.parse(execFileSync('python3', ['-c', py, XLSX, SHEET], { encoding: 'utf8', maxBuffer: 1 << 26 }));
+const raw = JSON.parse(execFileSync('python3', ['-c', py, XLSX, SHEET_NAME], { encoding: 'utf8', maxBuffer: 1 << 26 }));
 
 /* الأقسام: الصفوف الفاضية في الإكسل هي الفاصل بين المجموعات.
  * اسم القسم بيتاخد من المجموعة الحالية في الأوتوميشن (لو الكلمة موجودة)،
  * وإلا من عنوان أول مقالة في المجموعة. */
 const prevGroups = {};
 try {
-  const cur = fs.readFileSync(path.join(ROOT, 'src', 'nodes', 'weekly', 'Keywords.js'), 'utf8');
-  const m = cur.match(/const keywords = (\[[\s\S]*?\n\]);/);
+  const cur = JSON.parse(fs.readFileSync(path.join(ROOT, 'base', CLIENT, 'weekly.json'), 'utf8'));
+  const node = cur.nodes.find((n) => n.name === 'Keywords');
+  const m = node.parameters.jsCode.match(/const keywords = (\[[\s\S]*?\n\]);/);
   if (m) JSON.parse(m[1]).forEach((k) => { prevGroups[k.keyword] = k.group; });
 } catch (e) { /* أول تشغيل */ }
 
@@ -108,15 +116,16 @@ if (dupes.length) { console.error('❌ كلمات مكررة: ' + dupes.join(', 
 
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
 fs.writeFileSync(OUT, JSON.stringify({
+  client: CLIENT,
   source: path.basename(XLSX),
-  sheet: SHEET,
+  sheet: SHEET_NAME,
   extractedAt: new Date().toISOString().slice(0, 10),
   rule: 'أي كلمة من غير رابط صفحة مستهدفة تُستبعد — عشان كل رقم يبقى قابل للمراجعة بفلتر Query + Page',
   keywords: kept,
   dropped,
 }, null, 2), 'utf8');
 
-console.log('✅ ' + kept.length + ' كلمة ليها رابط → keywords/alojan.json');
+console.log('✅ ' + kept.length + ' كلمة ليها رابط → keywords/' + CLIENT + '.json');
 console.log('⛔ ' + dropped.length + ' كلمة اتستبعدت (مفيش رابط):');
 dropped.forEach((d) => console.log('   - ' + d.keyword + '  (صف ' + d.row + ' — ' + d.why + ')'));
 const byGroup = {};

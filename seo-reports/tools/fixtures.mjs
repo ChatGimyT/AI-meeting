@@ -5,6 +5,7 @@
  * السيناريوهات مبنية على حالات حصلت فعلًا في التقارير، مش حالات نظرية.
  * ============================================================= */
 
+/* الصفحة المستهدفة بتتاخد من الطلب نفسه، فالسيناريوهات بتشتغل مع أي عميل */
 const SITE = 'https://www.aaalojan.com';
 
 /* آخر يوم عند جوجل فيه بيانات نهائية — ثابت عشان الاختبارات تبقى متكررة */
@@ -47,6 +48,19 @@ function steadyResponse(task, offsetByPeriod) {
   };
 }
 
+/* هل الرابط ده الصفحة الرئيسية؟ (مالهاش مسار نغيّره) */
+export const isHomepage = (u) => {
+  const m = String(u).match(/^https?:\/\/[^/]+(\/.*)?$/);
+  const path = (m && m[1]) || '/';
+  return path.replace(/\/+$/, '') === '';
+};
+
+/* بيحوّل الرابط لمسار تاني — يحاكي رابط في الإكسل مش الكانوني.
+ * محايد بالنسبة للعميل: بيشتغل مع aaalojan.com و shoug-lawyer.com وأي موقع. */
+export const mangle = (u) => isHomepage(u)
+  ? u
+  : String(u).replace(/^(https?:\/\/[^/]+)\//, '$1/public/');
+
 /* الافتراضي: كل الروابط سليمة وكانونية */
 const healthyPage = (url) => ({ statusCode: 200, body: '<link rel="canonical" href="' + url + '">' });
 
@@ -68,9 +82,9 @@ export const SCENARIOS = {
     sheet: emptySheet,
     existingSlides: [],
     gscResponse: (task) => steadyResponse(task),
-    pageCheck: (url) => /\/news\//.test(url)
-      ? { statusCode: 301, headers: { location: url.replace('/news/', '/public/news/') }, body: '' }
-      : { statusCode: 200, body: '<link rel="canonical" href="' + url + '">' },
+    pageCheck: (url) => isHomepage(url)
+      ? { statusCode: 200, body: '<link rel="canonical" href="' + url + '">' }
+      : { statusCode: 301, headers: { location: mangle(url) }, body: '' },
     smtpAccepts: () => true,
   },
 
@@ -79,7 +93,11 @@ export const SCENARIOS = {
     freshnessDates,
     sheet: emptySheet,
     existingSlides: [],
-    gscResponse: () => ({ rows: THREE_PAGES }),
+    gscResponse: (task) => ({ rows: [
+      { keys: [task.page || TARGET],   position: 20.9, impressions: 144, clicks: 6 },
+      { keys: [SITE + '/tag/brain'],   position: 10.0, impressions: 1,   clicks: 0 },
+      { keys: [SITE + '/news/9/other'],position: 45.0, impressions: 20,  clicks: 1 },
+    ] }),
     pageCheck: healthyPage,
     smtpAccepts: () => true,
   },
@@ -134,9 +152,10 @@ export const SCENARIOS = {
     sheet: emptySheet,
     existingSlides: [],
     gscResponse: (task) => ({ rows: [
-      /* نفس الصفحة بس على مسار /public/ — الرابط اللي عندنا من غير /public/ */
-      { keys: [String(task.page || TARGET).replace('/news/', '/public/news/')],
-        position: 14.2, impressions: 210, clicks: 9 },
+      /* نفس الصفحة بس على مسار مختلف — يحاكي رابط بيعمل تحويل أو كانوني مختلف.
+       * الصفحة الرئيسية مالهاش مسار تغيّره، فبتفضل مطابقة — وده المقصود:
+       * السيناريو بيأثر على صفحات المقالات بس. */
+      { keys: [mangle(task.page || TARGET)], position: 14.2, impressions: 210, clicks: 9 },
     ] }),
     pageCheck: healthyPage,
     smtpAccepts: () => true,
