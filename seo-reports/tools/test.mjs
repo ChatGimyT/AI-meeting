@@ -53,7 +53,7 @@ function run(cadence, scenario, client) {
 }
 
 /* ══════════ ضمانة عدم الانحراف بين التقارير ══════════ */
-head('بنية الملفات — التقارير الأربعة على كود واحد');
+head('بنية الملفات — الست تقارير على كود واحد');
 {
   const fs2 = await import('node:fs');
   const crypto = await import('node:crypto');
@@ -76,10 +76,54 @@ head('بنية الملفات — التقارير الأربعة على كود 
   const dataDriven = ['Config', 'Keywords'];
   const drifted = Object.keys(codes).filter((n) =>
     dataDriven.indexOf(n) === -1 && new Set(Object.values(codes[n])).size > 1);
-  T('كل نودات المنطق بنفس الكود بالحرف في الأربعة', drifted.length === 0,
+  T('كل نودات المنطق بنفس الكود بالحرف في الستة', drifted.length === 0,
     JSON.stringify(drifted));
   T('عدد النودات المشتركة = ' + (Object.keys(codes).length - dataDriven.length),
     Object.keys(codes).length - dataDriven.length >= 16);
+
+  /* ═══ عزل العملاء ═══
+   * البنية بتتنسخ من عميل لعميل، فأي معرّف بتاع عميل تاني فاضل في الملف
+   * (كريدنشيال · شيت · عرض تقديمي · موقع) — حتى لو جوه رسالة تشخيص — بيوجّه
+   * حد لحساب مش بتاعه. الفحص ده بيمسح **الملف كله** مش خانة الكريدنشيال بس. */
+  {
+    const clients = JSON.parse(fs2.readFileSync(path.join(ROOT, 'clients', 'alojan.json'), 'utf8'));
+    const all = ['alojan', 'alrawda', 'shoug'].map((id) =>
+      JSON.parse(fs2.readFileSync(path.join(ROOT, 'clients', id + '.json'), 'utf8')));
+
+    files.forEach(({ tag, wf }) => {
+      const myId = tag.split('/')[0];
+      const me = all.find((c) => c.id === myId);
+      const others = all.filter((c) => c.id !== myId);
+      const blob = JSON.stringify(wf);
+
+      /* القيم اللي العميل ده بيشاركها فعلًا مع غيره (زي كريدنشيال جوجل
+       * المشترك بين العوجان وشوق) مش تلوث — بنستثنيها بالمقارنة مش بالاسم. */
+      const own = new Set([me.googleCredential.id, me.googleCredential.name, me.siteUrl, me.company]
+        .concat(Object.values(me.cadences).map((c) => c.spreadsheetId))
+        .concat(Object.values(me.cadences).map((c) => c.presentationId))
+        .filter(Boolean));
+
+      const marks = [];
+      others.forEach((o) => {
+        const ids = [o.googleCredential && o.googleCredential.id,
+                     o.googleCredential && o.googleCredential.name,
+                     o.siteUrl, o.company]
+          .concat(Object.values(o.cadences).map((c) => c.spreadsheetId))
+          .concat(Object.values(o.cadences).map((c) => c.presentationId))
+          .filter(Boolean)
+          .filter((v) => !own.has(v));
+        ids.forEach((v) => { if (blob.indexOf(v) !== -1) marks.push(o.id + ':' + String(v).slice(0, 24)); });
+      });
+      T(tag + ': مفيش أي معرّف بتاع عميل تاني في الملف', marks.length === 0,
+        JSON.stringify(marks));
+
+      /* والعكس: الملف لازم يكون فيه معرّفات صاحبه فعلًا */
+      const mine = [me.googleCredential.id, me.siteUrl,
+                    me.cadences[tag.split('/')[1]].spreadsheetId];
+      T(tag + ': معرّفات العميل نفسه موجودة',
+        mine.every((v) => blob.indexOf(v) !== -1), JSON.stringify(mine.map((v) => blob.indexOf(v))));
+    });
+  }
 
   files.forEach(({ tag, wf }) => {
     const cs = wf.nodes.find((n) => n.name === 'Create Slides');

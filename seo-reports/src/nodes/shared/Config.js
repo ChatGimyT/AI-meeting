@@ -134,6 +134,9 @@ return [{ json: {
   mailFromDomain: MAIL_FROM_DOMAIN,
   gmailFallback: MAIL_GMAIL_FALLBACK,
   aiComment: !!CLIENT.aiComment,
+  // اسم كريدنشيال جوجل بتاع العميل ده — عشان رسايل التشخيص تقول الاسم الصح.
+  // كان متثبّت في نود GSC Diagnose، فكان بيبعت صاحب عميل يعيد ربط حساب عميل تاني.
+  googleCredentialName: (CLIENT.googleCredential && CLIENT.googleCredential.name) || '(كريدنشيال جوجل)',
   mailExternal: MAIL_EXTERNAL,
   mailToList: to.list, mailCcList: ccList,
   mailAllList: to.list.concat(ccList),

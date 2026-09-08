@@ -44,7 +44,7 @@ if (/invalid_grant|invalid_token|Token has been expired|revoked|unauthorized_cli
   cause = 'صلاحية حساب جوجل المربوط بالأوتوميشن انتهت أو اتسحبت. '
         + 'ده بيحصل لما الباسورد يتغيّر، أو حد يشيل صلاحية n8n من إعدادات الحساب، '
         + 'أو التوكن يقعد فترة طويلة من غير استخدام.';
-  action = 'افتح n8n ← Credentials ← "' + 'rabeh.seven.b' + '" ← اضغط Reconnect وسجّل دخول '
+  action = 'افتح n8n ← Credentials ← "' + cfg.googleCredentialName + '" ← اضغط Reconnect وسجّل دخول '
          + 'بحساب جوجل اللي عنده صلاحية على الموقع، وبعدين شغّل الأوتوميشن يدويًا من Manual Trigger.';
 } else if (sameHost.length) {
   cause = 'الرابط المكتوب في إعدادات الأوتوميشن مش مطابق لشكل الموقع المسجّل في '
