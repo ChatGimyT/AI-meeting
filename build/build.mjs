@@ -49,15 +49,36 @@ const uid = (seed) => {
 const helpersSrc = fs.readFileSync(path.join(SRC, 'lib', 'helpers.js'), 'utf8');
 /* تُحقن كتلة المساعدات في 22 عقدة، فتُنزع منها أسطر التعليقات المستقلة فقط
    (لا يُمس أي سطر يحتوي كودًا، فتبقى الصياغات النظامية regex سليمة). */
-const helpers = helpersSrc
-  .split('\n')
-  .filter((l) => {
-    const t = l.trim();
-    if (t === '') return false;
-    return !(t.startsWith('//') || t.startsWith('/*') || t.startsWith('*/') || t.startsWith('* ') || t === '*');
-  })
-  .join('\n')
-  .trimEnd();
+const stripComments = (src) => {
+  const out = [];
+  let inBlock = false;
+  for (const line of src.split('\n')) {
+    const t = line.trim();
+    if (inBlock) {
+      const close = t.indexOf('*/');
+      if (close >= 0) {
+        inBlock = false;
+        const rest = t.slice(close + 2).trim();
+        if (rest) out.push(rest);           /* كود بعد نهاية التعليق */
+      }
+      continue;
+    }
+    if (t === '') continue;
+    if (t.startsWith('//')) continue;
+    if (t.startsWith('/*')) {
+      const close = t.indexOf('*/');
+      if (close < 0) { inBlock = true; continue; }
+      const rest = t.slice(close + 2).trim();
+      if (!rest) continue;                  /* تعليق كامل في سطر واحد */
+      out.push(line);                       /* تعليق ثم كود على السطر نفسه */
+      continue;
+    }
+    out.push(line);
+  }
+  return out.join('\n').trimEnd();
+};
+
+const helpers = stripComments(helpersSrc);
 
 /* 2) الملفات التعريفية */
 const profileDir = path.join(SRC, 'profiles');
@@ -72,6 +93,10 @@ for (const f of profileFiles) {
 const profilesLiteral =
   '/* ===== PROFILES — عدّل هنا فقط ===== */\nconst PROFILES = ' +
   JSON.stringify(PROFILES, null, 2) + ';';
+
+/* 1b) مختبر الأرقام — يُحقن في العقد التي تدقّق الأرقام فقط (لا في كل عقدة) */
+const numbersSrc = fs.readFileSync(path.join(SRC, 'lib', 'numbers.js'), 'utf8');
+const numbersLib = stripComments(numbersSrc);
 
 /* 2b) المقال المرجعي — يُحقن في عقدة المقارنة */
 const refPath = path.join(ROOT, arg('reference', 'benchmark/gold/google-ads-ar.md'));
@@ -92,7 +117,7 @@ const banner = (title) =>
   ' * ═══════════════════════════════════════════════════════════ */\n';
 
 const out = [];
-let codeNodes = 0, llmNodes = 0;
+let codeNodes = 0, llmNodes = 0, numberNodes = 0;
 
 for (const n of nodes) {
   const node = {
@@ -142,6 +167,7 @@ for (const n of nodes) {
     const file = path.join(SRC, 'stages', n.stage + '.js');
     let stageCode = fs.readFileSync(file, 'utf8');
     if (stageCode.includes('/* __PROFILES__ */')) stageCode = stageCode.replace('/* __PROFILES__ */', profilesLiteral);
+    if (stageCode.includes('/* __NUMBERS__ */')) { stageCode = stageCode.replace('/* __NUMBERS__ */', numbersLib); numberNodes++; }
     if (stageCode.includes('/* __REFERENCE__ */')) stageCode = stageCode.replace('/* __REFERENCE__ */', referenceLiteral);
     if (stageCode.includes('/* __SHEET__ */')) {
       let sheetSrc = fs.readFileSync(path.join(SRC, 'stages', '02b-sheet-config.js'), 'utf8');
@@ -192,7 +218,7 @@ const kb = (fs.statSync(OUT_FILE).size / 1024).toFixed(0);
 console.log('✅ تم البناء: ' + path.relative(ROOT, OUT_FILE) + (VARIANT !== 'default' ? '   [' + VARIANT + ']' : ''));
 console.log('   الاعتماد: ' + CRED_TYPE + ' → id=' + CRED_ID + ' name="' + CRED_NAME + '"');
 console.log('   الملف الافتراضي في الطلب: ' + DEF_PROF);
-console.log('   العقد: ' + out.length + ' (كود: ' + codeNodes + ' | نداءات نموذج: ' + llmNodes + ')');
+console.log('   العقد: ' + out.length + ' (كود: ' + codeNodes + ' | نداءات نموذج: ' + llmNodes + ' | عقد تدقيق أرقام: ' + numberNodes + ')');
 console.log('   الملفات التعريفية: ' + Object.keys(PROFILES).join(', '));
 console.log('   الشخصيات المعرَّفة: ' + personaCount);
 console.log('   الحجم: ' + kb + ' KB');

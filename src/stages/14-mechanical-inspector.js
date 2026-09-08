@@ -2,6 +2,8 @@
  * لا يقرأ المعنى. يقيس فقط. مخرجاته حقائق رقمية غير قابلة للنقاش،
  * ويستحيل على أي عضو في الاجتماع أن يجادل فيها.
  * ─────────────────────────────────────────────────────────────── */
+/* __NUMBERS__ */
+
 const REG = $('📚 Profiles Registry').first().json.profiles;
 const s   = $input.first().json.state;
 const cfg = H.cfgOf(REG, s);
@@ -236,11 +238,59 @@ const dial = (R.banned_dialect_markers || []).filter(function (w) {
 chk('dialect', dial.length === 0,
   dial.length ? ('مفردات عامية: ' + dial.join('، ')) : 'اللغة فصحى بلا مفردات عامية', 'medium');
 
-const nums = (H.stripMd(A.body).match(/\d+(?:[.,]\d+)?\s*%/g) || []).length;
-chk('numbers_have_evidence', !(nums > 0 && (s.evidence.approved || []).length === 0),
-  nums > 0 && (s.evidence.approved || []).length === 0
-    ? ('النص يحتوي ' + nums + ' نسبة مئوية ولا توجد أدلة معتمدة إطلاقًا')
-    : 'النسب المئوية مسنودة بحزمة أدلة معتمدة');
+/* ══════════ تدقيق الأرقام (الطبقات L0→L5) ══════════
+ * يعمل داخل دورة التعديل لا بعدها: كل رقم مخالف يدخل موجز التعديل
+ * إجباريًا فيُصلَّح، بدل أن يُكتشف بعد أن يكون التقرير قد أُرسل. */
+const NUMCFG = H.N.conf(cfg);
+if (NUMCFG.enabled !== false) {
+  const na = H.N.auditArticle(s, cfg);
+  s.numeric = na;
+
+  const byCode = function (code) { return na.findings.filter(function (f) { return f.code === code; }); };
+  const brief  = function (list, n) {
+    return list.slice(0, n || 4).map(function (f) {
+      return 'سطر ' + f.line + ' «' + f.raw + '» — ' + f.message;
+    }).join(' | ') + (list.length > (n || 4) ? ' | +' + (list.length - (n || 4)) + ' أخرى' : '');
+  };
+
+  const mismatch = byCode('value_mismatch');
+  chk('numbers_match_source', mismatch.length === 0,
+    mismatch.length ? ('أرقام لا تطابق مصادرها المنسوبة إليها: ' + brief(mismatch))
+                    : 'كل رقم منسوب لمصدر يطابق قيمة المصدر حرفيًا');
+
+  const orphan = byCode('orphan_number').filter(function (f) { return f.severity === 'high'; });
+  chk('numbers_sourced', orphan.length === 0,
+    orphan.length ? ('أرقام إحصائية بلا دليل معتمد: ' + brief(orphan))
+                  : 'كل رقم إحصائي مسنود بدليل معتمد (' + na.verified_count + ' من ' + na.audited + ')');
+
+  const uncited = byCode('uncited_inline');
+  chk('numbers_cited_inline', uncited.length === 0,
+    uncited.length ? ('أرقام صحيحة لكن رابط مصدرها ليس بجوارها: ' + brief(uncited))
+                   : 'كل رقم مستشهد به في موضعه', 'medium');
+
+  const sanity = na.findings.filter(function (f) {
+    return ['impossible_percent', 'inverted_range', 'contradiction', 'future_year'].indexOf(f.code) !== -1;
+  });
+  chk('numbers_sanity', sanity.length === 0,
+    sanity.length ? ('مخالفات منطق رقمي: ' + brief(sanity))
+                  : 'لا نسب مستحيلة ولا نطاقات مقلوبة ولا تناقض داخلي',
+    sanity.some(function (f) { return f.severity === 'high'; }) ? 'high' : 'medium');
+
+  chk('numbers_coverage', na.audited === 0 || na.coverage_pct >= (NUMCFG.min_coverage_pct || 100),
+    'تغطية العهدة الرقمية = ' + na.coverage_pct + '% (' + na.verified_count + ' موثّق من ' + na.audited + ' رقمًا يحتاج توثيقًا)',
+    'medium');
+
+  H.minute(s, {
+    stage: 'numeric_audit', actor: '🔢 مختبر الأرقام — Numeric Lab',
+    headline: 'فُحص ' + na.scanned + ' رقمًا، منها ' + na.audited + ' تحتاج عهدة — ' +
+              na.high + ' مخالفة حرجة، ' + na.medium + ' متوسطة، ' + na.low + ' ملاحظة',
+    detail: na.findings.length
+      ? na.findings.slice(0, 12).map(function (f) { return '[' + f.severity + '] ' + f.code + ' · سطر ' + f.line + ' «' + f.raw + '»: ' + f.message; }).join(' | ')
+      : 'كل رقم في النص مطابق لمصدره ومستشهد به في موضعه.'
+  });
+} else {
+  s.numeric = { enabled: false, scanned: 0, audited: 0, verified_count: 0, findings: [], high: 0, medium: 0, low: 0, pass: true, coverage_pct: 100, verified: [], grey: [] };
+}
 
 /* ══════════ الحكم ══════════ */
 const hard   = checks.filter(function (c) { return !c.pass && c.severity === 'high'; });
@@ -257,7 +307,10 @@ s.mechanical = {
     lists: A.blocks.filter(function (b) { return b.type === 'list'; }).length,
     tables: A.blocks.filter(function (b) { return b.type === 'table'; }).length,
     links: A.links.length,
-    faq: A.faq.length
+    faq: A.faq.length,
+    numbers_scanned: (s.numeric || {}).scanned || 0,
+    numbers_audited: (s.numeric || {}).audited || 0,
+    numbers_verified: (s.numeric || {}).verified_count || 0
   },
   frontmatter: A.frontmatter
 };
