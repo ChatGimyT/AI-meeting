@@ -125,6 +125,8 @@ const verifySteps = [
     (siteWideCount ? ' الكلمات اللي جنبها * مالهاش صفحة مستهدفة، فسيب فلتر Page فاضي.' : ''),
 ];
 const excluded = ($('Keywords').first().json.excluded) || [];
+const suspectPages = (((res.quality || {}).pageAudit) || {}).suspect || [];
+const brokenLinks = ((res.pageCheck || {}).problems) || [];
 const verifyNote = 'ملحوظة: بيانات جوجل نهائية (final) بس، وأي فلتر ناقص أو زايد ' +
   'بيغيّر الرقم — خصوصًا فلتر الدولة وفلتر الصفحة.' +
   (siteWideCount ? ' في التقرير ده ' + siteWideCount + ' كلمة من غير صفحة مستهدفة (*).' : '') +
@@ -162,6 +164,22 @@ const html =
     verifySteps.map(t => '<li>' + esc(t) + '</li>').join('') + '</ol>' +
     '<div style="margin-top:8px;color:' + GREY + ';">' + esc(verifyNote) + '</div>' +
   '</div>' +
+  (brokenLinks.length ? '<div style="margin-top:12px;background:#fdf3f1;border:1px solid #e6b9b0;' +
+    'border-radius:6px;padding:10px 14px;font-size:12px;line-height:1.9;color:' + INK + ';">' +
+    '<b>' + brokenLinks.length + ' رابط صفحة محتاج تصحيح</b> — الرابط اللي في ملف الكلمات مش ' +
+    'الرابط النهائي للصفحة، وفلتر الصفحة في Search Console مش هيطابقه:<br>' +
+    brokenLinks.slice(0, 8).map(function (x) {
+      return '• ' + esc(x.keyword) + ' — ' + esc(x.note);
+    }).join('<br>') + '</div>' : '') +
+  (suspectPages.length ? '<div style="margin-top:12px;background:#fdf3f1;border:1px solid #e6b9b0;' +
+    'border-radius:6px;padding:10px 14px;font-size:12px;line-height:1.9;color:' + INK + ';">' +
+    '<b>' + suspectPages.length + ' كلمة رابطها محتاج مراجعة</b> — الصفحة المستهدفة ما ظهرتش ' +
+    'عند جوجل ولا مرة رغم إن الكلمة ليها ترتيب بصفحات تانية. يعني الرابط اللي في ملف ' +
+    'الكلمات غالبًا مش اللي جوجل مسجّله، والخانة بتطلع «مفيش ظهور» وهي مش صح:<br>' +
+    suspectPages.slice(0, 8).map(function (x) {
+      const sample = (x.samples || [])[0];
+      return '• ' + esc(x.keyword) + (sample ? ' — جوجل شايف: ' + esc(sample.topPage) : '');
+    }).join('<br>') + '</div>' : '') +
   (excluded.length ? '<div style="margin-top:12px;border:1px dashed ' + LINE + ';border-radius:6px;' +
     'padding:10px 14px;font-size:12px;line-height:1.9;color:' + GREY + ';">' +
     '<b style="color:' + INK + ';">كلمات خارج التقرير (' + excluded.length + ')</b> — ' +
@@ -189,6 +207,14 @@ const text = ['تقرير SEO ' + CAD_ADJ + ' — ' + cfg.company,
   .concat(['', 'مراجعة الأرقام على Search Console:'])
   .concat(verifySteps.map((t, i) => (i + 1) + ') ' + t))
   .concat([verifyNote])
+  .concat(brokenLinks.length
+    ? ['', brokenLinks.length + ' رابط صفحة محتاج تصحيح:']
+        .concat(brokenLinks.slice(0, 8).map(function (x) { return '- ' + x.keyword + ' — ' + x.note; }))
+    : [])
+  .concat(suspectPages.length
+    ? ['', suspectPages.length + ' كلمة رابطها محتاج مراجعة (الصفحة ما ظهرتش عند جوجل ولا مرة):']
+        .concat(suspectPages.slice(0, 8).map(function (x) { return '- ' + x.keyword; }))
+    : [])
   .concat(excluded.length
     ? ['', 'كلمات خارج التقرير (' + excluded.length + ') — مالهاش صفحة منشورة:']
         .concat(excluded.map(function (e) { return '- ' + e.keyword; }))

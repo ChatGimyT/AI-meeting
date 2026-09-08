@@ -68,6 +68,8 @@ function evalIf(node, items) {
     case 'Data Quality Gate':  return j.ok === true;
     case 'Has Old Slides?':    return (j.requests || []).length > 0;
     case 'Needs Resend?':      return j.__resend === true;
+    case 'Delivery Alert?':    return j.__silent !== true;
+    case 'Gmail Fallback?':    return j.__gmailSend === true;
     default: throw new Error('مفيش تقييم للنود الشرطي: ' + node.name);
   }
 }
@@ -92,6 +94,23 @@ function httpFor(node, items) {
     return items.map((it, i) => {
       httpCalls.gsc++;
       return { json: scenario.gscResponse(it.json, { retry, index: i }), pairedItem: { item: i } };
+    });
+  }
+  if (node.name === 'Send via Gmail API') {
+    return items.map((it, i) => {
+      httpCalls.mail++;
+      const ok = scenario.gmailApiAccepts ? scenario.gmailApiAccepts(it.json.recipient) : true;
+      mailSent.push({ node: node.name, to: it.json.recipient, cc: '', subject: '(Gmail API)',
+                      accepted: ok ? [it.json.recipient] : [], rejected: ok ? [] : [it.json.recipient] });
+      return { json: ok ? { id: 'gmail-' + i, labelIds: ['SENT'] }
+                        : { error: { code: 403, message: 'Insufficient Permission' } },
+               pairedItem: { item: i } };
+    });
+  }
+  if (node.name === 'Check Target Pages') {
+    return items.map((it, i) => {
+      const r = (scenario.pageCheck || (() => ({ statusCode: 200, body: '' })))(it.json.url);
+      return { json: r, pairedItem: { item: i } };
     });
   }
   if (node.name === 'Fetch Sheet') {
@@ -162,9 +181,14 @@ while (queue.length) {
         outputs = [[{ json: Object.assign({}, items[0].json, obj) }]];
         break;
       }
-      case 'n8n-nodes-base.code':
+      case 'n8n-nodes-base.code': {
         outputs = [runCode(node, items)];
+        /* السيناريو يقدر يقلب فلاج المسار البديل من غير ما نلمس الملف المبني */
+        if (node.name === 'Config' && scenario.enableGmailFallback) {
+          outputs[0].forEach((it) => { it.json.gmailFallback = true; });
+        }
         break;
+      }
       case 'n8n-nodes-base.if': {
         const t = evalIf(node, items);
         outputs = t ? [items, []] : [[], items];

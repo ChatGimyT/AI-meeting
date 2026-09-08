@@ -38,11 +38,41 @@ const missing = sendError
   ? expected.slice()
   : (knowsAccepted ? expected.filter(e => accepted.indexOf(e) === -1) : []);
 
+// ---- تشخيص: هل الرفض على أساس الدومين؟ ----
+// لو كل اللي اترفض بره دومين المُرسِل وكل اللي اتقبل جواه، فدي مش مشكلة
+// عنوان ولا مشكلة شبكة — دي **سياسة الناقل**: خدمة SMTP relay مضبوطة على
+// "Only addresses in my domains". إعادة الإرسال على نفس السيرفر هتفشل بنفس
+// الطريقة بالظبط، فمفيش أي فايدة من المحاولة.
+const fromDomain = String(cfg.mailFromDomain || '').toLowerCase();
+const domainOf = (e) => String(e).split('@')[1] || '';
+const externalMissing = missing.filter(e => domainOf(e) !== fromDomain);
+const internalMissing = missing.filter(e => domainOf(e) === fromDomain);
+const acceptedExternal = accepted.filter(e => domainOf(e) !== fromDomain);
+
+const relayBlocksExternal = knowsAccepted && !sendError &&
+  externalMissing.length > 0 && internalMissing.length === 0 && acceptedExternal.length === 0;
+
+// المستلمين اللي إعادة الإرسال ليها معنى معاهم: أي حد اترفض لسبب غير
+// سياسة الدومين. لو السبب هو السياسة، مفيش إعادة إرسال — فيه تشخيص.
+const retryable = relayBlocksExternal ? [] : missing;
+
+const relayDiagnosis = relayBlocksExternal
+  ? ('الناقل قبل كل المستلمين على دومين ' + fromDomain + ' ورفض كل اللي بره الدومين (' +
+     externalMissing.join(', ') + '). ده مش خطأ في العناوين ولا في الأوتوميشن — ده إعداد ' +
+     'خدمة SMTP relay مضبوط على «Only addresses in my domains». ' +
+     'الحل: Google Admin console ← Apps ← Google Workspace ← Gmail ← Routing ← SMTP relay ' +
+     'service ← غيّر Allowed recipients لـ «Any addresses». ' +
+     'إعادة الإرسال على نفس السيرفر هتفشل بنفس الطريقة فمابنعملهاش.')
+  : '';
+
 const base = {
   expected,
   accepted,
   rejected,
   missing,
+  externalMissing,
+  relayBlocksExternal,
+  relayDiagnosis,
   knowsAccepted,
   sendError,
   messageId: info.messageId || '',
@@ -51,13 +81,13 @@ const base = {
   subject: $('Build Email').first().json.subject,
 };
 
-if (!missing.length) {
+if (!retryable.length) {
   return [{ json: Object.assign({ __resend: false, resendCount: 0 }, base) }];
 }
 
-return missing.map((recipient, i) => ({ json: Object.assign({
+return retryable.map((recipient, i) => ({ json: Object.assign({
   __resend: true,
   recipient,
   resendIndex: i,
-  resendCount: missing.length,
+  resendCount: retryable.length,
 }, base) }));

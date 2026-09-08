@@ -109,6 +109,50 @@ head('فشل السحب ≠ الكلمة اختفت');
   T('ولا كلمة اتقالت "اختفت"', !r.stats, 'Report Stats المفروض ماتشتغلش أصلًا');
 }
 
+/* ══════════ فحص الروابط الفعلي ══════════ */
+head('فحص الروابط قبل ما جوجل يتسأل');
+for (const cadence of ['monthly', 'weekly']) {
+  const r = run(cadence, 'redirectingUrl');
+  const pc = r.validate.pageCheck;
+  T(cadence + ': الروابط اللي بتعمل تحويل اتمسكت', (pc.tally.redirected || 0) === 12,
+    JSON.stringify(pc.tally));
+  T(cadence + ': ومعاها الرابط النهائي الصح',
+    /\/public\/news\//.test((pc.problems[0] || {}).suggested || ''),
+    (pc.problems[0] || {}).suggested);
+  T(cadence + ': التحذير وصل لبوابة الجودة',
+    (r.validate.warnings || []).some((w) => /بيعمل تحويل/.test(w)));
+  T(cadence + ': والإيميل بيقول الكلمات بالاسم',
+    /رابط صفحة محتاج تصحيح/.test(r.email.emailText));
+  T(cadence + ': لكن الرن ما وقفش — الأرقام التانية لسه صالحة', r.validate.ok === true);
+}
+{
+  const r = run('monthly', 'happy');
+  T('الروابط السليمة ما بتولّدش أي تحذير',
+    ((r.validate.pageCheck || {}).problems || []).length === 0,
+    JSON.stringify((r.validate.pageCheck || {}).tally));
+}
+
+/* ══════════ رابط غلط في ملف الكلمات ══════════ */
+head('رابط غلط ≠ الصفحة مالهاش ترتيب');
+for (const cadence of ['monthly', 'weekly']) {
+  const r = run(cadence, 'wrongUrl');
+  const pa = r.merge.quality.pageAudit;
+  /* السيناريو بيغيّر مسار صفحات المقالات بس (اللي فيها /news/)، والـ 15 كلمة
+   * اللي مستهدفة الصفحة الرئيسية رابطها ما اتغيرش — فالمتوقع 12 بالظبط. */
+  T(cadence + ': الـ 12 رابط المكسور اتحددوا بالاسم', (pa.suspect || []).length === 12,
+    (pa.suspect || []).length);
+  T(cadence + ': والـ 15 كلمة اللي رابطها سليم ما اتبلّغش عنها', pa.ok === 15, pa.ok);
+  T(cadence + ': ومعاها الرابط اللي جوجل شايفه فعلًا',
+    (pa.suspect[0].samples || []).length > 0 && /\/public\/news\//.test(pa.suspect[0].samples[0].topPage),
+    JSON.stringify((pa.suspect[0] || {}).samples));
+  T(cadence + ': التحذير وصل لبوابة الجودة',
+    (r.validate.warnings || []).some((w) => /الرابط الكانوني|ما ظهرتش عند جوجل/.test(w)),
+    JSON.stringify(r.validate.warnings).slice(0, 200));
+  T(cadence + ': والإيميل بيقول الكلمات بالاسم',
+    /رابطها محتاج مراجعة/.test(r.email.emailText));
+  T(cadence + ': ما اتقالش إن الكلمة "اختفت"', r.stats.gone === 0, r.stats.gone);
+}
+
 /* ══════════ حارس اتقصاص الرد ══════════ */
 head('حارس اتقصاص رد جوجل');
 {
@@ -141,6 +185,49 @@ head('مفيش صلاحية على الموقع');
   T('اتبعت تشخيص', r.mailSent.some((m) => m.node === 'GSC Alert Email'),
     JSON.stringify(r.mailSent.map((m) => m.node)));
   T('الشيت ما اتلمسش', !r.trace.includes('Write To Sheet'));
+}
+
+/* ══════════ التسليم بالبريد ══════════ */
+head('البريد — الناقل رافض يوصّل بره الدومين');
+{
+  const r = run('monthly', 'domainOnlySmtp');
+  const a = r.audit[0];
+  T('اتشخّص إن الرفض على أساس الدومين', a.relayBlocksExternal === true);
+  T('العناوين الخارجية اتحددت بالاسم',
+    (a.externalMissing || []).length === 2, JSON.stringify(a.externalMissing));
+  T('ما اتعادتش المحاولة على نفس السيرفر الرافض',
+    !r.trace.includes('Resend Individually'));
+  T('التشخيص فيه الحل بالخطوات', /Admin console/.test(a.relayDiagnosis || ''));
+  T('التنبيه اتبعت', r.mailSent.some((m) => m.node === 'Delivery Alert Email'));
+  T('والتنبيه راح لكل المستلمين مش لدومين رابح بس',
+    r.mailSent.filter((m) => m.node === 'Delivery Alert Email')
+      .every((m) => /gmail\.com/.test(m.to)),
+    JSON.stringify(r.mailSent.filter((m) => m.node === 'Delivery Alert Email').map((m) => m.to)));
+  T('عنوان التنبيه بيقول السبب', /الناقل رافض/.test(r.delivery.alertSubject));
+}
+
+head('البريد — المسار البديل (Gmail API) لما SMTP يرفض الخارجيين');
+{
+  const r = run('monthly', 'gmailFallback');
+  T('المسار البديل اشتغل', r.trace.includes('Send via Gmail API'));
+  T('العنوانين اللي على جيميل وصلوا',
+    r.delivery.deliveryRows.length === 2 && r.delivery.deliveryRows.every((x) => x.ok),
+    JSON.stringify(r.delivery.deliveryRows));
+  T('واتسجّل إنهم راحوا عبر Gmail API',
+    r.delivery.deliveryRows.every((x) => x.via === 'gmail-api'));
+  T('وما اتبعتش تنبيه لأن كله وصل', r.delivery.__silent === true);
+  T('ما اتعادتش محاولة SMTP فاشلة', !r.trace.includes('Resend Individually'));
+}
+
+head('البريد — كل حاجة تمام');
+{
+  const r = run('monthly', 'happy');
+  T('التقرير اتبعت', r.mailSent.some((m) => m.node === 'Send Report Email'));
+  T('عنوان الجيميل ضمن المستلمين', /gmail\.com/.test(r.mailSent[0].to + r.mailSent[0].cc));
+  T('ما اتبعتش تنبيه توصيل بلا داعي',
+    !r.mailSent.some((m) => m.node === 'Delivery Alert Email'),
+    JSON.stringify(r.mailSent.map((m) => m.node)));
+  T('ما اتعادتش أي محاولة إرسال', !r.trace.includes('Resend Individually'));
 }
 
 console.log('\n' + (fail ? '❌ ' : '✅ ') + pass + ' نجح، ' + fail + ' فشل.\n');

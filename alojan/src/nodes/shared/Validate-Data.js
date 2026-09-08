@@ -84,6 +84,47 @@ if ((q.pageMisses || []).length) {
                 'فالرقم اتحسب على مستوى الموقع كله للكلمة (زي فلتر الكلمة لوحدها ' +
                 'في واجهة Search Console) — مش من صفحة تانية.');
 }
+// --- فحص الروابط الفعلي (نود Check Target Pages) ---
+// ده بيمسك الرابط اللي بيعمل تحويل أو مكسور **قبل** ما جوجل يتسأل عنه أصلًا.
+let pageCheck = { problems: [], tally: {}, networkBlocked: false, checked: 0 };
+try { pageCheck = $('Page Check Report').first().json.pageCheck || pageCheck; } catch (e) { /* نود مش موجود */ }
+if (pageCheck.networkBlocked) {
+  warnings.push('مقدرناش نفحص روابط الصفحات من السيرفر (كل الطلبات اترفضت) — ' +
+                'النتيجة اتجاهلت بدل ما نعلن روابط سليمة "مكسورة". راجع خروج n8n للإنترنت.');
+} else if ((pageCheck.problems || []).length) {
+  const byVerdict = {};
+  pageCheck.problems.forEach(function (x) { (byVerdict[x.verdict] = byVerdict[x.verdict] || []).push(x); });
+  const label = { redirected: 'بيعمل تحويل', canonical: 'كانوني مختلف',
+                  broken: 'مكسور', 'server-error': 'خطأ سيرفر', unreachable: 'مش راجع' };
+  Object.keys(byVerdict).forEach(function (v) {
+    const list = byVerdict[v];
+    warnings.push(list.length + ' رابط ' + (label[v] || v) + ' — فلتر الصفحة في Search Console ' +
+      'مش هيطابقه فالخانة هتطلع "مفيش ظهور" وهي غلط. ' +
+      list.slice(0, 4).map(function (x) { return x.keyword + ' → ' + (x.suggested || x.note); }).join(' | ') +
+      (list.length > 4 ? ' …' : ''));
+  });
+}
+
+// --- شهادة الروابط من جوجل نفسه: رابط غلط بيطلّع "مفيش ظهور" لصفحة شغالة ---
+// دي مش ملاحظة تجميلية: الكلمة اللي ليها ترتيب بصفحات تانية والصفحة
+// المستهدفة ما ظهرتش ولا مرة في كل الفترات معناها إن الرابط اللي عندنا
+// مش الرابط اللي جوجل بيسجّله. الرقم اللي بيتبعت للعميل ساعتها '-' وهو غلط.
+const pa = q.pageAudit || {};
+const suspect = pa.suspect || [];
+if (suspect.length) {
+  warnings.push(suspect.length + ' كلمة صفحتها المستهدفة ما ظهرتش عند جوجل ولا مرة ' +
+    'رغم إن الكلمة نفسها ليها ترتيب بصفحات تانية — يعني الرابط في ملف الكلمات ' +
+    'غالبًا مش الرابط الكانوني اللي جوجل مسجّله، والخانة بتطلع "مفيش ظهور" وهي غلط. ' +
+    'راجع: ' + suspect.slice(0, 6).map(function (x) {
+      const sample = (x.samples || [])[0];
+      return x.keyword + (sample ? ' (جوجل شايف: ' + sample.topPage + ')' : '');
+    }).join(' | ') + (suspect.length > 6 ? ' …' : ''));
+}
+if ((pa.notRanking || []).length) {
+  warnings.push((pa.notRanking || []).length + ' كلمة مالهاش ولا ظهور واحد في أي فترة — ' +
+    'الرقم "مفيش ظهور" صح فيها، الصفحة لسه ما دخلتش نتائج البحث.');
+}
+
 const noPage = q.keywordsWithoutPage || [];
 if (noPage.length) {
   warnings.push(noPage.length + ' كلمة من غير رابط صفحة مستهدفة، فأرقامها على مستوى ' +
@@ -178,6 +219,7 @@ return [{ json: {
   sheetRange: cfg.sheetTab + '!A1',
   writtenRows: values.length, writtenCols: width,
   quality: q,
+  pageCheck: pageCheck,
   months, data: res.data, allMonths: res.allMonths, lastMonth: res.lastMonth,
   alertSubject, alertHtml, alertText,
   summaryLine: 'تغطية ' + Math.round(coverage * 1000) / 10 + '% • ' +

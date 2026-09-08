@@ -1,0 +1,17 @@
+{
+  "name": "alojan-seo-reports",
+  "version": "4.0.0",
+  "description": "تقارير SEO لمركز العوجان — الأسبوعي والشهري، على محرك واحد.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "node build.mjs",
+    "check": "node build.mjs --check",
+    "test": "node build.mjs && node tools/test.mjs",
+    "sim": "node tools/simulate.mjs",
+    "keywords": "node tools/extract-keywords.mjs",
+    "verify:pages": "node tools/verify-pages.mjs"
+  },
+  "engines": { "node": ">=18" },
+  "license": "UNLICENSED"
+}

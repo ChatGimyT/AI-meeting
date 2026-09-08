@@ -47,6 +47,9 @@ function steadyResponse(task, offsetByPeriod) {
   };
 }
 
+/* الافتراضي: كل الروابط سليمة وكانونية */
+const healthyPage = (url) => ({ statusCode: 200, body: '<link rel="canonical" href="' + url + '">' });
+
 export const SCENARIOS = {
 
   /* كل حاجة تمام: كل كلمة ظاهرة بصفحتها، والترتيب بيتحسّن آخر فترة */
@@ -55,6 +58,19 @@ export const SCENARIOS = {
     sheet: emptySheet,
     existingSlides: ['slide_old_1', 'slide_old_2'],
     gscResponse: (task) => steadyResponse(task, (p) => 0),
+    pageCheck: healthyPage,
+    smtpAccepts: () => true,
+  },
+
+  /* رابط في ملف الكلمات بيعمل تحويل — لازم يتمسك قبل ما يطلّع رقم غلط */
+  redirectingUrl: {
+    freshnessDates,
+    sheet: emptySheet,
+    existingSlides: [],
+    gscResponse: (task) => steadyResponse(task),
+    pageCheck: (url) => /\/news\//.test(url)
+      ? { statusCode: 301, headers: { location: url.replace('/news/', '/public/news/') }, body: '' }
+      : { statusCode: 200, body: '<link rel="canonical" href="' + url + '">' },
     smtpAccepts: () => true,
   },
 
@@ -64,6 +80,7 @@ export const SCENARIOS = {
     sheet: emptySheet,
     existingSlides: [],
     gscResponse: () => ({ rows: THREE_PAGES }),
+    pageCheck: healthyPage,
     smtpAccepts: () => true,
   },
 
@@ -76,6 +93,7 @@ export const SCENARIOS = {
       { keys: [SITE + '/tag/brain'],    position: 8.0,  impressions: 30, clicks: 1 },
       { keys: [SITE + '/news/99/other'],position: 12.0, impressions: 50, clicks: 2 },
     ] }),
+    pageCheck: healthyPage,
     smtpAccepts: () => true,
   },
 
@@ -89,6 +107,7 @@ export const SCENARIOS = {
       if (task.ki === 0) return { error: { code: 429, message: 'Quota exceeded' } };
       return steadyResponse(task);
     },
+    pageCheck: healthyPage,
     smtpAccepts: () => true,
   },
 
@@ -103,6 +122,23 @@ export const SCENARIOS = {
         position: 20 + (i % 30), impressions: 10, clicks: 0,
       })),
     }),
+    pageCheck: healthyPage,
+    smtpAccepts: () => true,
+  },
+
+  /* الرابط في ملف الكلمات مش الرابط اللي جوجل مسجّله (redirect أو كانوني
+   * مختلف). الكلمة ليها ترتيب كويس بس بصفحة تانية — والتقرير القديم كان
+   * بيقول "مفيش ظهور" وهو غلط. المفروض يتبلّغ عنه بالاسم. */
+  wrongUrl: {
+    freshnessDates,
+    sheet: emptySheet,
+    existingSlides: [],
+    gscResponse: (task) => ({ rows: [
+      /* نفس الصفحة بس على مسار /public/ — الرابط اللي عندنا من غير /public/ */
+      { keys: [String(task.page || TARGET).replace('/news/', '/public/news/')],
+        position: 14.2, impressions: 210, clicks: 9 },
+    ] }),
+    pageCheck: healthyPage,
     smtpAccepts: () => true,
   },
 
@@ -113,7 +149,20 @@ export const SCENARIOS = {
     sheet: emptySheet,
     existingSlides: [],
     gscResponse: () => ({ rows: [] }),
+    pageCheck: healthyPage,
     smtpAccepts: () => true,
+  },
+
+  /* نفس الحالة بس المسار البديل (Gmail API) مفتوح — لازم يوصل للجيميل */
+  gmailFallback: {
+    freshnessDates,
+    sheet: emptySheet,
+    existingSlides: [],
+    gscResponse: (task) => steadyResponse(task),
+    pageCheck: healthyPage,
+    smtpAccepts: (email) => /@rabeh\.org$/i.test(email),
+    gmailApiAccepts: () => true,
+    enableGmailFallback: true,
   },
 
   /* الناقل بيرفض أي مستلم بره الدومين — دي حالة SMTP relay المقفول */

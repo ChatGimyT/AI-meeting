@@ -57,7 +57,15 @@ for (const cadence of CADENCES) {
   const wf = JSON.parse(fs.readFileSync(basePath, 'utf8'));
   const nodeDir = path.join(ROOT, 'src', 'nodes', cadence);
 
-  /* 1) حقن كود النودات
+  /* 1) نودات جديدة — قبل الحقن عشان كودها يتحقن هي كمان */
+  const added = patch.nodes(cadence, wf) || [];
+  for (const n of added) {
+    const i = wf.nodes.findIndex((x) => x.name === n.name);
+    if (i >= 0) wf.nodes[i] = n; else wf.nodes.push(n);
+  }
+
+
+  /* 2) حقن كود النودات (الجديدة والقديمة)
    * الأولوية لـ src/nodes/shared/ — النود اللي هناك بيتحط في التقريرين
    * بنفس الكود بالحرف، فيستحيل يفترقوا. الفروق الحقيقية بين شهري وأسبوعي
    * بتتقرا من cfg.cadence جوه النود نفسه. */
@@ -95,13 +103,6 @@ for (const cadence of CADENCES) {
     for (const f of fs.readdirSync(sharedDir).filter((x) => x.endsWith('.js'))) {
       if (!seenShared.has(f)) throw new Error('shared: ملف كود مالوش نود مقابل: ' + f);
     }
-  }
-
-  /* 2) نودات جديدة */
-  const added = patch.nodes(cadence, wf) || [];
-  for (const n of added) {
-    const i = wf.nodes.findIndex((x) => x.name === n.name);
-    if (i >= 0) wf.nodes[i] = n; else wf.nodes.push(n);
   }
 
   /* 3) وصلات */

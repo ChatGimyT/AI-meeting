@@ -43,6 +43,12 @@ const MAIL_FROM      = 'M.gamal@rabeh.org';       // لازم يساوي الم�
 const MAIL_FROM_NAME = 'رابح — تقارير SEO';  // الاسم اللي بيظهر للمستلم
 const MAIL_REPLY_TO  = '';   // سيبه فاضي عشان يستخدم MAIL_FROM
 
+// مسار إرسال بديل عبر Gmail API لما SMTP يرفض المستلمين الخارجيين.
+// شغّله بعد ما تضيف صلاحية gmail.send على كريدنشيال جوجل المربوط
+// (نفس الكريدنشيال بتاع Search Console — مش محتاج واحد جديد).
+// سيبه false لحد ما تضيف الصلاحية، وإلا النداء هيفشل بـ 403.
+const MAIL_GMAIL_FALLBACK = false;
+
 // الإيميلات بتتقرأ من نود "Emails".
 // أي خانة اسمها بيبدأ بـ mailTo_ = مستلم أساسي | mailCc_ = نسخة CC.
 // الخانات الفاضية بتتجاهل، وتقدر تحط أكتر من إيميل في نفس الخانة بينهم فاصلة.
@@ -83,12 +89,19 @@ const ccList = cc.list.filter(e => !toKeys[e.toLowerCase()]);
 const MAIL_TO = to.list.join(', ');
 const MAIL_CC = ccList.join(', ');
 
-// إيميل التنبيهات التقنية: بنختار العناوين اللي على نفس دومين المُرسِل
-// (دي أضمن حاجة توصل)، ولو مفيش بنرجع للمُرسِل نفسه.
-const fromDomain = String(MAIL_FROM).split('@')[1] || '';
-const sameDomain = to.list.concat(ccList)
-  .filter(e => e.split('@')[1] && e.split('@')[1].toLowerCase() === fromDomain.toLowerCase());
-const MAIL_ALERT = (sameDomain.length ? sameDomain : [MAIL_FROM]).join(', ');
+// إيميل التنبيهات التقنية.
+//
+// كان بيتفلتر على دومين المُرسِل بس ("دي أضمن حاجة توصل")، والنتيجة إن أي
+// تنبيه — رن وقف، بيانات ناقصة، إيميل ما وصلش — كان بيروح لعناوين رابح بس
+// وعناوين الجيميل عمرها ما شافت حاجة. الفلتر ده اتشال: التنبيه بيروح لكل
+// المستلمين زي التقرير بالظبط.
+//
+// لو الناقل بتاعك فعلاً مش بيوصّل بره الدومين، الحل مش إننا نخفي التنبيه —
+// الحل في إعداد الناقل، ونود Delivery Audit بيشخّصه بالاسم.
+const MAIL_ALERT = (to.list.concat(ccList).length ? to.list.concat(ccList) : [MAIL_FROM]).join(', ');
+const MAIL_FROM_DOMAIN = String(MAIL_FROM).split('@')[1] || '';
+const MAIL_EXTERNAL = to.list.concat(ccList)
+  .filter(e => (e.split('@')[1] || '').toLowerCase() !== MAIL_FROM_DOMAIN.toLowerCase());
 
 const COUNTRIES = [
   {
@@ -111,6 +124,9 @@ return [{ json: {
   mailFromDisplay: MAIL_FROM_NAME ? ('"' + MAIL_FROM_NAME + '" <' + MAIL_FROM + '>') : MAIL_FROM,
   mailReplyTo: MAIL_REPLY_TO || MAIL_FROM,
   mailTo: MAIL_TO, mailCc: MAIL_CC, mailAlert: MAIL_ALERT,
+  mailFromDomain: MAIL_FROM_DOMAIN,
+  gmailFallback: MAIL_GMAIL_FALLBACK,
+  mailExternal: MAIL_EXTERNAL,
   mailToList: to.list, mailCcList: ccList,
   mailAllList: to.list.concat(ccList),
   mailInvalid: to.invalid.concat(cc.invalid),

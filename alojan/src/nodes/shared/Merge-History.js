@@ -46,8 +46,33 @@ const fresh = {};
 const requestStats = { requested: tasks.length, ranked: 0, noData: 0, failed: 0, truncated: 0,
                        scopePage: 0, scopeSite: 0 };
 const failures = [];      // تفاصيل كل خانة فشلت
-const pageMisses = [];    // الصفحة المستهدفة متحطة بس مكانتش ظاهرة الأسبوع ده
+const pageMisses = [];    // الصفحة المستهدفة متحطة بس مكانتش ظاهرة الفترة دي
 const noPageKws = {};     // كلمات من غير رابط صفحة مستهدفة أصلاً
+
+// ---- شهادة الرابط: هل الصفحة المستهدفة ظهرت عند جوجل ولا لأ؟ ----
+// الفحص ده مجاني: بيستخدم نفس الردود اللي سحبناها. وبيفرّق بين حالتين
+// بيدّوا نفس الخانة الفاضية ومعناهم مختلف تمامًا:
+//   • الكلمة مالهاش ترتيب أصلاً        → الرقم صح، الصفحة لسه ما ظهرتش
+//   • الكلمة ليها ترتيب بصفحات تانية    → الرابط اللي عندنا غالبًا غلط
+// التانية دي بتخلي التقرير يقول "مفيش ظهور" لصفحة شغالة فعلًا — رقم غلط
+// بيعدّي من غير ما حد يشك فيه، لأن الرابط بيفتح عادي لما تجربه بإيدك.
+const pageEvidence = {};  // keyword → { periods, seen, queryRanked, samples }
+function noteEvidence(j, cell) {
+  const e = pageEvidence[j.keyword] || (pageEvidence[j.keyword] = {
+    keyword: j.keyword, page: j.page || '', periods: 0, seen: 0,
+    queryRanked: 0, samples: [],
+  });
+  if (!j.page) return;
+  if (cell.verdict === 'failed') return;      // فشل السحب مش شهادة على الرابط
+  e.periods++;
+  if (cell.pageFound) { e.seen++; return; }
+  if (cell.pagesSeen > 0) {
+    e.queryRanked++;
+    if (e.samples.length < 3 && cell.topPage) {
+      e.samples.push({ period: j.period, topPage: cell.topPage, position: cell.topPagePosition });
+    }
+  }
+}
 
 if (!noFetch) {
   tasks.forEach(t => {
@@ -55,6 +80,7 @@ if (!noFetch) {
     if (!j.taskId) return;
     const cell = readCell(cells[j.taskId], j.page, cfg.pageMatch);
     fresh[j.taskId] = cell;
+    noteEvidence(j, cell);
     if (!j.page) noPageKws[j.keyword] = 1;
     if (cell.verdict === 'ranked') {
       requestStats.ranked++;
@@ -76,6 +102,17 @@ if (!noFetch) {
     }
   });
 }
+
+// ---------- 2b) حكم على كل رابط ----------
+const pageAudit = { ok: [], suspect: [], notRanking: [], unchecked: [] };
+Object.keys(pageEvidence).forEach(function (kw) {
+  const e = pageEvidence[kw];
+  if (!e.periods)        { pageAudit.unchecked.push(e); return; }
+  if (e.seen > 0)        { pageAudit.ok.push(e); return; }
+  // الصفحة ما ظهرتش ولا مرة، لكن الكلمة ليها ترتيب بصفحات تانية → شبهة رابط
+  if (e.queryRanked > 0) { pageAudit.suspect.push(e); return; }
+  pageAudit.notRanking.push(e);
+});
 
 // ---------- 3) الأعمدة: كل اللي في الشيت + أي عمود جديد ----------
 const allKeysSet = {};
@@ -200,6 +237,14 @@ return [{ json: {
     tally, requestStats, pairing,
     failures, suspicious, pageMisses,
     keywordsWithoutPage: Object.keys(noPageKws),
+    pageAudit: {
+      ok: pageAudit.ok.length,
+      notRanking: pageAudit.notRanking.map(function (e) { return e.keyword; }),
+      suspect: pageAudit.suspect.map(function (e) {
+        return { keyword: e.keyword, page: e.page, periodsRanked: e.queryRanked,
+                 periods: e.periods, samples: e.samples };
+      }),
+    },
     noFetch,
     sheetError: rs.__sheetError || '',
     extent: rs.__extent || { rows: 0, cols: 0 },
