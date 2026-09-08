@@ -1,0 +1,1630 @@
+{
+  "name": "ALOJAN - Weekly v4",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "c0f1da9b-6503-49b3-ae05-351652bb5c77",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        95424,
+        21984
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                3
+              ],
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "id": "e1847c58-d132-4d76-b708-6cc7b05017b9",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        95424,
+        22192
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "email-1",
+              "name": "mailTo_1",
+              "value": "m.gamal.zaid1@gmail.com",
+              "type": "string"
+            },
+            {
+              "id": "email-2",
+              "name": "mailTo_2",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "email-3",
+              "name": "mailCc_1",
+              "value": "M.gamal@rabeh.org",
+              "type": "string"
+            },
+            {
+              "id": "email-4",
+              "name": "mailCc_2",
+              "value": "gm@rabeh.org",
+              "type": "string"
+            },
+            {
+              "id": "email-5",
+              "name": "mailCc_3",
+              "value": "soaad@rabeh.org",
+              "type": "string"
+            },
+            {
+              "id": "email-6",
+              "name": "mailCc_4",
+              "value": "mohamedamarawork@gmail.com",
+              "type": "string"
+            },
+            {
+              "id": "email-7",
+              "name": "mailCc_5",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "email-8",
+              "name": "mailCc_6",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5f2569f0-2788-4887-876e-bd69df2ec5d3",
+      "name": "Emails",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        95648,
+        22096
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============ إعدادات المشروع — عدّل من هنا بس ============\nconst SITE_URL        = 'https://www.aaalojan.com/';\nconst SPREADSHEET_ID  = '1llEe4oHQyDO2FDavXP4azh-AoFYmc1HQIDFWP5WdRKw';\nconst SHEET_TAB       = 'الورقة1';\nconst PRESENTATION_ID = '1SMs_8ZoBkUrulcS9bZVlGRdLUKBSV5wg5aPMqjeio4I';\nconst COLUMNS         = 15;   // عدد الأعمدة في التقرير والسلايدز\n\n// LAG_DAYS دلوقتي احتياطي بس: الأوتوميشن بيسأل جوجل نفسه آخر يوم فيه بيانات\n// نهائية (نود GSC Freshness)، ولو السؤال ده فشل بنرجع للرقم ده.\nconst LAG_DAYS        = 3;\nconst REFETCH_LAST    = COLUMNS;       // بيعيد سحب كل الأعمدة من جوجل كل مرة\n\n// ---- بوابة جودة البيانات ----\n// أقل نسبة خانات مسحوبة بنجاح نسمح بعدها بالكتابة على الشيت وبناء التقرير.\n// أقل من كده = الرن بيتوقف، الشيت ما بيتلمسش، وبيوصل إيميل بالتفاصيل.\nconst MIN_COVERAGE    = 0.98;\n// أقصى عدد خانات ناقصة مسموح بيه حتى لو النسبة عدّت.\nconst MAX_HOLES       = 12;\n\n// ---- إعدادات سحب جوجل سيرش كونسول ----\nconst GSC_ROW_LIMIT   = 1000;     // عدد الصفحات اللي بنطلبها لكل كلمة\nconst GSC_DATA_STATE  = 'final';  // بيانات نهائية بس — مش تقديرية\n// إزاي بنحسب رقم الكلمة:\n//   • الكلمة ليها رابط صفحة والصفحة ظاهرة → رقم الصفحة دي بالظبط.\n//     ده اللي بتشوفه في الواجهة لما تفلتر Query + Page.\n//   • مفيش رابط (أو الصفحة مش ظاهرة و PAGE_MATCH = 'prefer') → رقم الموقع\n//     كله للكلمة: الظهور = مجموع كل الصفحات، والموضع = المتوسط الموزون\n//     بالظهور. ده اللي بتشوفه في الواجهة لما تفلتر بالكلمة لوحدها.\n// 'prefer' = لو الصفحة المستهدفة مش ظاهرة، نرجّع رقم الموقع كله ونعلّمها.\n// 'strict' = الصفحة المستهدفة بس — وده الافتراضي دلوقتي لأن كل كلمة ليها رابط.\n// 'strict' = الصفحة المحددة بس، وأي حاجة تانية تتحسب \"مفيش ظهور\".\nconst PAGE_MATCH      = 'strict';\n// الأعمدة الأحدث دي بس هي اللي مسموح لسحبة جديدة إنها تمسح رقم قديم منها.\n// أي عمود أقدم من كده بياناته في جوجل مقفولة ومش بتتغير — فلو السحبة رجعت\n// فاضية والأرشيف فيه رقم، بنمسك الأرشيف ونعلّمها.\nconst VOLATILE_TAIL   = 2;\n\nconst COMPANY   = 'مركز العوجان لجراحة المخ والأعصاب';\nconst MANAGER   = 'بشمهندس أيمن مصطفى';\n\n// ---- الإيميل ----\nconst MAIL_FROM      = 'M.gamal@rabeh.org';       // لازم يساوي المستخدم في كريدنشيال SMTP\nconst MAIL_FROM_NAME = 'رابح — تقارير SEO';  // الاسم اللي بيظهر للمستلم\nconst MAIL_REPLY_TO  = '';   // سيبه فاضي عشان يستخدم MAIL_FROM\n\n// الإيميلات بتتقرأ من نود \"Emails\".\n// أي خانة اسمها بيبدأ بـ mailTo_ = مستلم أساسي | mailCc_ = نسخة CC.\n// الخانات الفاضية بتتجاهل، وتقدر تحط أكتر من إيميل في نفس الخانة بينهم فاصلة.\nconst emailsNode = $('Emails').first().json || {};\n\n// تحقق شكلي من صيغة الإيميل — بيمنع إن إيميل غلط يوقّف الإرسال كله.\nconst EMAIL_RE = /^[^\\s@,;<>\"']+@[^\\s@,;<>\"'.]+(\\.[^\\s@,;<>\"'.]+)+$/;\n\nfunction collect(prefix) {\n  const seen = {};\n  const good = [], bad = [];\n  Object.keys(emailsNode)\n    .filter(k => k.indexOf(prefix) === 0)\n    .sort((a, b) => Number(a.split('_')[1] || 0) - Number(b.split('_')[1] || 0))\n    .forEach(k => {\n      String(emailsNode[k] == null ? '' : emailsNode[k])\n        .split(/[,;]/)\n        .map(s => s.trim())\n        .filter(s => s)\n        .forEach(s => {\n          const key = s.toLowerCase();\n          if (seen[key]) return;\n          seen[key] = 1;\n          (EMAIL_RE.test(s) ? good : bad).push(s);\n        });\n    });\n  return { list: good, invalid: bad };\n}\n\nconst to = collect('mailTo_');\nconst cc = collect('mailCc_');\n\n// أي إيميل موجود في To بيتشال من CC — بعض سيرفرات SMTP بترفض التكرار.\nconst toKeys = {};\nto.list.forEach(e => { toKeys[e.toLowerCase()] = 1; });\nconst ccList = cc.list.filter(e => !toKeys[e.toLowerCase()]);\n\nconst MAIL_TO = to.list.join(', ');\nconst MAIL_CC = ccList.join(', ');\n\n// إيميل التنبيهات التقنية: بنختار العناوين اللي على نفس دومين المُرسِل\n// (دي أضمن حاجة توصل)، ولو مفيش بنرجع للمُرسِل نفسه.\nconst fromDomain = String(MAIL_FROM).split('@')[1] || '';\nconst sameDomain = to.list.concat(ccList)\n  .filter(e => e.split('@')[1] && e.split('@')[1].toLowerCase() === fromDomain.toLowerCase());\nconst MAIL_ALERT = (sameDomain.length ? sameDomain : [MAIL_FROM]).join(', ');\n\nconst COUNTRIES = [\n  {\n    \"code\": \"sau\",\n    \"name\": \"السعودية\"\n  }\n];\n// =======================================\n\nreturn [{ json: {\n  siteUrl: SITE_URL, spreadsheetId: SPREADSHEET_ID, sheetTab: SHEET_TAB,\n  presentationId: PRESENTATION_ID, columns: COLUMNS, lagDays: LAG_DAYS,\n  refetchLast: REFETCH_LAST,\n  minCoverage: MIN_COVERAGE, maxHoles: MAX_HOLES,\n  gscRowLimit: GSC_ROW_LIMIT, gscDataState: GSC_DATA_STATE,\n  pageMatch: PAGE_MATCH, volatileTail: VOLATILE_TAIL,\n  cadence: 'weekly',\n  company: COMPANY, manager: MANAGER,\n  mailFrom: MAIL_FROM,\n  mailFromDisplay: MAIL_FROM_NAME ? ('\"' + MAIL_FROM_NAME + '\" <' + MAIL_FROM + '>') : MAIL_FROM,\n  mailReplyTo: MAIL_REPLY_TO || MAIL_FROM,\n  mailTo: MAIL_TO, mailCc: MAIL_CC, mailAlert: MAIL_ALERT,\n  mailToList: to.list, mailCcList: ccList,\n  mailAllList: to.list.concat(ccList),\n  mailInvalid: to.invalid.concat(cc.invalid),\n  countries: COUNTRIES,\n} }];\n"
+      },
+      "id": "203fbbd0-3532-4151-9922-7b8db38a2287",
+      "name": "Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        95872,
+        22096
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://searchconsole.googleapis.com/webmasters/v3/sites/{{ encodeURIComponent($('Config').first().json.siteUrl) }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleOAuth2Api",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "7138955d-32ef-4059-b3d8-44a5d873887d",
+      "name": "Verify GSC Access",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        96096,
+        22096
+      ],
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "googleOAuth2Api": {
+          "id": "zqpCaDcnpV6T6BqM",
+          "name": "rabeh.seven.b"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "gsc_ok",
+              "leftValue": "={{ $json.siteUrl }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "bd70a415-6a28-4234-b6f1-78571c8884aa",
+      "name": "GSC Access Check",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        96304,
+        22096
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://searchconsole.googleapis.com/webmasters/v3/sites/{{ encodeURIComponent($('Config').first().json.siteUrl) }}/searchAnalytics/query",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ startDate: new Date(Date.now() - 25*86400000).toISOString().slice(0,10), endDate: new Date().toISOString().slice(0,10), dimensions: ['date'], type: 'web', rowLimit: 30, dataState: $('Config').first().json.gscDataState }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "437fab5c-04b9-4a33-993d-f9236950fcd7",
+      "name": "GSC Freshness",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        96528,
+        22096
+      ],
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "googleOAuth2Api": {
+          "id": "zqpCaDcnpV6T6BqM",
+          "name": "rabeh.seven.b"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// بيحدد آخر يوم عند جوجل فيه بيانات نهائية (final) للموقع ده.\n// ده بيلغي التخمين بتاع LAG_DAYS: مش بنطلب فترة لسه بياناتها ما اكتملتش،\n// وده كان أكبر سبب لخانات بترجع فاضية أو بأرقام ناقصة.\nconst cfg = $('Config').first().json;\nconst r   = $input.first() ? ($input.first().json || {}) : {};\n\nconst DAY = 86400000;\nconst iso = (d) => new Date(d).toISOString().slice(0, 10);\n\nlet latest = null;\nlet source = 'fallback';\nlet probedRows = 0;\nlet probeError = '';\n\nif (r && r.error !== undefined && r.error !== null) {\n  probeError = typeof r.error === 'string' ? r.error : JSON.stringify(r.error).slice(0, 300);\n} else if (r && Array.isArray(r.rows)) {\n  probedRows = r.rows.length;\n  const dates = r.rows\n    .map(x => String(((x || {}).keys || [])[0] || ''))\n    .filter(d => /^\\d{4}-\\d{2}-\\d{2}$/.test(d))\n    .sort();\n  if (dates.length) {\n    latest = dates[dates.length - 1];\n    source = 'gsc';\n  }\n}\n\nif (!latest) {\n  // احتياطي: النهاردة ناقص LAG_DAYS (بحد أدنى 3 أيام — ده المتوسط الحقيقي\n  // لتأخير بيانات GSC النهائية).\n  const lag = Math.max(3, Number(cfg.lagDays) || 0);\n  latest = iso(Date.now() - lag * DAY);\n}\n\n// حزام أمان: لو جوجل رجّع تاريخ في المستقبل (فرق توقيت) نقصّه لإمبارح.\nconst yesterday = iso(Date.now() - DAY);\nif (latest > yesterday) latest = yesterday;\n\nreturn [{ json: {\n  latestDataDate: latest,\n  freshnessSource: source,\n  probedRows,\n  probeError,\n} }];\n"
+      },
+      "id": "725a2514-ac61-4ce5-be32-41a4e5eea32d",
+      "name": "Freshness Guard",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        96752,
+        22096
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============ الكلمات والصفحات ============\n// ⚠️ الملف ده مولَّد — متعدّلوش من هنا.\n//    عدّل ملف الإكسل وبعدين:\n//      node alojan/tools/extract-keywords.mjs --xlsx=<path>\n//      node alojan/tools/verify-pages.mjs\n//      node alojan/build.mjs\n//\n// قاعدة القائمة: **أي كلمة من غير رابط صفحة مستهدفة مستبعدة.**\n// السبب مش تنظيمي: الرقم اللي بيتبني على رابط محدد يقدر أي حد يراجعه في\n// واجهة Search Console بفلتر Query + Page ويطلع نفس الرقم بالظبط. الكلمة\n// من غير رابط رقمها بيبقى على مستوى الموقع كله ومحدش يقدر يتحقق منه.\n//\n// المصدر : d22fd9dc-___________________________.xlsx · ورقة العوجان\n// اتسحبت: 2026-09-08\n// عدد الكلمات المعتمدة : 27\n// كلمات مستبعدة (مفيش رابط): 8\n//   ⛔ اسباب ورم المخ  — مقالة جديدة لم يتم نشرها\n//   ⛔ ورم المخ الحميد  — مقالة جديدة لم يتم نشرها\n//   ⛔ الورم السحائي  — مقالة جديدة لم يتم نشرها\n//   ⛔ ورم المخ الخبيث  — مقالة جديدة لم يتم نشرها\n//   ⛔ ارتفاع ضغط المخ  — مقالة جديدة لم يتم نشرها\n//   ⛔ صمام المخ  — مقالة جديدة لم يتم نشرها\n//   ⛔ أعراض انسداد صمام المخ  — مقالة جديدة لم يتم نشرها\n//   ⛔ السائل النخاعي  — مقالة جديدة لم يتم نشرها\n\nconst keywords = [\n  {\n    \"group\": \"أورام المخ والحبل الشوكي\",\n    \"page\": \"https://www.aaalojan.com/news/5/%D8%A7%D9%84%D8%AF%D9%85%D8%A7%D8%BA-%D9%88%D8%A7%D9%84%D8%AD%D8%A8%D9%84-%D8%A7%D9%84%D8%B4%D9%88%D9%83%D9%8A\",\n    \"keyword\": \"الدماغ والحبل الشوكي\",\n    \"sv\": 1900,\n    \"article\": \"أعراض أورام الدماغ والحبل الشوكي عند البالغين: متى يكون الأمر خطير؟\"\n  },\n  {\n    \"group\": \"أورام المخ والحبل الشوكي\",\n    \"page\": \"https://www.aaalojan.com/news/6/%D8%AA%D8%B4%D8%AE%D9%8A%D8%B5-%D8%A7%D9%88%D8%B1%D8%A7%D9%85-%D8%A7%D9%84%D9%85%D8%AE\",\n    \"keyword\": \"تشخيص اورام المخ\",\n    \"sv\": 10,\n    \"article\": \"تشخيص أورام المخ والحبل الشوكي: كيف يتم اكتشاف الورم بدقة؟\"\n  },\n  {\n    \"group\": \"أورام المخ والحبل الشوكي\",\n    \"page\": \"https://www.aaalojan.com/news/8/%D8%B9%D9%84%D8%A7%D8%AC-%D8%A3%D9%88%D8%B1%D8%A7%D9%85-%D8%A7%D9%84%D8%AF%D9%85%D8%A7%D8%BA\",\n    \"keyword\": \"علاج أورام الدماغ\",\n    \"sv\": 40,\n    \"article\": \"علاج أورام الدماغ والحبل الشوكي: متى تكون الجراحة هي الحل؟\"\n  },\n  {\n    \"group\": \"أورام المخ والحبل الشوكي\",\n    \"page\": \"https://www.aaalojan.com/news/7/%D8%A7%D9%88%D8%B1%D8%A7%D9%85-%D8%A7%D9%84%D8%AF%D9%85%D8%A7%D8%BA-%D9%88%D8%B9%D9%84%D8%A7%D8%AC%D9%87%D8%A7\",\n    \"keyword\": \"اورام الدماغ وعلاجها\",\n    \"sv\": 10,\n    \"article\": \"اورام الدماغ وعلاجها: هل يمكن الشفاء ونسب النجاح في حالات أورام الدماغ؟\"\n  },\n  {\n    \"group\": \"الاستسقاء الدماغي\",\n    \"page\": \"https://www.aaalojan.com/news/10/%D8%A7%D9%84%D8%A7%D8%B3%D8%AA%D8%B3%D9%82%D8%A7%D8%A1-%D8%A7%D9%84%D8%AF%D9%85%D8%A7%D8%BA%D9%8A\",\n    \"keyword\": \"الاستسقاء الدماغي\",\n    \"sv\": 260,\n    \"article\": \"تشخيص الاستسقاء الدماغي: كيف يتم اكتشاف استسقاء الدماغ بدقة؟\"\n  },\n  {\n    \"group\": \"الاستسقاء الدماغي\",\n    \"page\": \"https://www.aaalojan.com/news/11/%D8%B9%D9%84%D8%A7%D8%AC-%D8%A7%D8%B3%D8%AA%D8%B3%D9%82%D8%A7%D8%A1-%D8%A7%D9%84%D8%AF%D9%85%D8%A7%D8%BA-%D8%B9%D9%86%D8%AF-%D8%A7%D9%84%D9%83%D8%A8%D8%A7%D8%B1\",\n    \"keyword\": \"علاج استسقاء الدماغ عند الكبار\",\n    \"sv\": 50,\n    \"article\": \"علاج استسقاء الدماغ عند الكبار: هل الجراحة هي الحل الأفضل؟\"\n  },\n  {\n    \"group\": \"الاستسقاء الدماغي\",\n    \"page\": \"https://www.aaalojan.com/public/news/12/%D8%B9%D9%85%D9%84%D9%8A%D8%A9-%D8%A7%D9%84%D8%A7%D8%B3%D8%AA%D8%B3%D9%82%D8%A7%D8%A1-%D8%A7%D9%84%D8%AF%D9%85%D8%A7%D8%BA%D9%8A-%D8%A8%D8%A7%D9%84%D9%85%D9%86%D8%B8%D8%A7%D8%B1\",\n    \"keyword\": \"عملية الاستسقاء الدماغي بالمنظار\",\n    \"sv\": 20,\n    \"article\": \"عملية الاستسقاء الدماغي بالمنظار: متى تُستخدم وما نسبة نجاحها؟\"\n  },\n  {\n    \"group\": \"الاستسقاء الدماغي\",\n    \"page\": \"https://www.aaalojan.com/public/news/13\",\n    \"keyword\": \"أعراض الاستسقاء الدماغي\",\n    \"sv\": 20,\n    \"article\": \"صعوبة المشي وضعف الذاكرة وسلس البول: هل هي علامات على الاستسقاء الدماغي؟\"\n  },\n  {\n    \"group\": \"التحام عظام الجمجمة\",\n    \"page\": \"https://www.aaalojan.com/news/14/%D8%A7%D9%84%D8%AA%D8%AD%D8%A7%D9%85-%D8%B9%D8%B8%D8%A7%D9%85-%D8%A7%D9%84%D8%AC%D9%85%D8%AC%D9%85%D8%A9-%D8%B9%D9%86%D8%AF-%D8%A7%D9%84%D8%A3%D8%B7%D9%81%D8%A7%D9%84\",\n    \"keyword\": \"التحام عظام الجمجمة\",\n    \"sv\": 10,\n    \"article\": \"التحام عظام الجمجمة عند الأطفال: الأعراض ومتى يحتاج الطفل إلى جراحة؟\"\n  },\n  {\n    \"group\": \"التحام عظام الجمجمة\",\n    \"page\": \"https://www.aaalojan.com/news/15/%D8%A7%D9%84%D8%AF%D8%B1%D9%88%D8%B2-%D8%A7%D9%84%D8%B3%D9%87%D9%85%D9%8A-%D8%B9%D9%86%D8%AF-%D8%A7%D9%84%D8%A3%D8%B7%D9%81%D8%A7%D9%84\",\n    \"keyword\": \"الدروز السهمي\",\n    \"sv\": 10,\n    \"article\": \"الدروز السهمي عند الأطفال: أسباب طول رأس الطفل ومتى يحتاج إلى عملية؟\"\n  },\n  {\n    \"group\": \"الدروز الجبهي\",\n    \"page\": \"https://www.aaalojan.com/news/16/%D8%A7%D9%84%D8%AF%D8%B1%D9%88%D8%B2-%D8%A7%D9%84%D8%AC%D8%A8%D9%87%D9%8A-%D8%B9%D9%86%D8%AF-%D8%A7%D9%84%D8%A3%D8%B7%D9%81%D8%A7%D9%84\",\n    \"keyword\": \"الدروز الجبهي\",\n    \"sv\": 10,\n    \"article\": \"الدروز الجبهي عند الأطفال: أسباب شكل الرأس المثلث وخيارات العلاج\"\n  },\n  {\n    \"group\": \"تجميل الجمجمة\",\n    \"page\": \"https://www.aaalojan.com/news/17/%D8%AC%D8%B1%D8%A7%D8%AD%D8%A9-%D8%AA%D8%AC%D9%85%D9%8A%D9%84-%D8%A7%D9%84%D8%AC%D9%85%D8%AC%D9%85%D8%A9-%D8%A8%D8%A7%D9%84%D9%85%D9%86%D8%B8%D8%A7%D8%B1\",\n    \"keyword\": \"تجميل الجمجمة\",\n    \"sv\": 10,\n    \"article\": \"جراحة تجميل الجمجمة بالمنظار للأطفال: متى تكون مناسبة؟\"\n  },\n  {\n    \"group\": \"الرئيسية — كلمات تجارية\",\n    \"page\": \"https://www.aaalojan.com/\",\n    \"keyword\": \"افضل دكتور مخ واعصاب في الدمام والخبر\",\n    \"sv\": \"\",\n    \"article\": \"الصفحة الرئيسية - كلمات تجارية\"\n  },\n  {\n    \"group\": \"الرئيسية — كلمات تجارية\",\n    \"page\": \"https://www.aaalojan.com/\",\n    \"keyword\": \"افضل دكتور مخ واعصاب في المنطقة الشرقية\",\n    \"sv\": \"\",\n    \"article\": \"الصفحة الرئيسية - كلمات تجارية\"\n  },\n  {\n    \"group\": \"الرئيسية — كلمات تجارية\",\n    \"page\": \"https://www.aaalojan.com/\",\n    \"keyword\": \"افضل دكتور مخ واعصاب في الخبر\",\n    \"sv\": \"\",\n    \"article\": \"الصفحة الرئيسية - كلمات تجارية\"\n  },\n  {\n    \"group\": \"الرئيسية — كلمات تجارية\",\n    \"page\": \"https://www.aaalojan.com/\",\n    \"keyword\": \"أفضل دكتور مخ واعصاب في الحبيب الخبر\",\n    \"sv\": \"\",\n    \"article\": \"الصفحة الرئيسية - كلمات تجارية\"\n  },\n  {\n    \"group\": \"الرئيسية — كلمات تجارية\",\n    \"page\": \"https://www.aaalojan.com/\",\n    \"keyword\": \"افضل دكتور مخ واعصاب في مستشفى الملك فهد\",\n    \"sv\": \"\",\n    \"article\": \"الصفحة الرئيسية - كلمات تجارية\"\n  },\n  {\n    \"group\": \"الرئيسية — كلمات تجارية\",\n    \"page\": \"https://www.aaalojan.com/\",\n    \"keyword\": \"افضل دكتور مخ واعصاب في السعودية\",\n    \"sv\": \"\",\n    \"article\": \"الصفحة الرئيسية - كلمات تجارية\"\n  },\n  {\n    \"group\": \"الرئيسية — كلمات تجارية\",\n    \"page\": \"https://www.aaalojan.com/\",\n    \"keyword\": \"افضل دكتور مخ واعصاب في الدمام\",\n    \"sv\": \"\",\n    \"article\": \"الصفحة الرئيسية - كلمات تجارية\"\n  },\n  {\n    \"group\": \"الرئيسية — كلمات تجارية\",\n    \"page\": \"https://www.aaalojan.com/\",\n    \"keyword\": \"دكتور مخ واعصاب في الخبر\",\n    \"sv\": \"\",\n    \"article\": \"الصفحة الرئيسية - كلمات تجارية\"\n  },\n  {\n    \"group\": \"الرئيسية — كلمات تجارية\",\n    \"page\": \"https://www.aaalojan.com/\",\n    \"keyword\": \"دكتور مخ واعصاب في الدمام\",\n    \"sv\": \"\",\n    \"article\": \"الصفحة الرئيسية - كلمات تجارية\"\n  },\n  {\n    \"group\": \"الرئيسية — كلمات تجارية\",\n    \"page\": \"https://www.aaalojan.com/\",\n    \"keyword\": \"استشاري مخ واعصاب\",\n    \"sv\": \"\",\n    \"article\": \"الصفحة الرئيسية - كلمات تجارية\"\n  },\n  {\n    \"group\": \"الرئيسية — كلمات تجارية\",\n    \"page\": \"https://www.aaalojan.com/\",\n    \"keyword\": \"استشاري جراحة مخ واعصاب\",\n    \"sv\": \"\",\n    \"article\": \"الصفحة الرئيسية - كلمات تجارية\"\n  },\n  {\n    \"group\": \"الرئيسية — كلمات تجارية\",\n    \"page\": \"https://www.aaalojan.com/\",\n    \"keyword\": \"جراح مخ واعصاب\",\n    \"sv\": \"\",\n    \"article\": \"الصفحة الرئيسية - كلمات تجارية\"\n  },\n  {\n    \"group\": \"الرئيسية — كلمات تجارية\",\n    \"page\": \"https://www.aaalojan.com/\",\n    \"keyword\": \"دكتور جراحة مخ واعصاب\",\n    \"sv\": \"\",\n    \"article\": \"الصفحة الرئيسية - كلمات تجارية\"\n  },\n  {\n    \"group\": \"الرئيسية — كلمات تجارية\",\n    \"page\": \"https://www.aaalojan.com/\",\n    \"keyword\": \"افضل جراح مخ واعصاب\",\n    \"sv\": \"\",\n    \"article\": \"الصفحة الرئيسية - كلمات تجارية\"\n  },\n  {\n    \"group\": \"الرئيسية — كلمات تجارية\",\n    \"page\": \"https://www.aaalojan.com/\",\n    \"keyword\": \"افضل دكتور جراحة مخ واعصاب\",\n    \"sv\": \"\",\n    \"article\": \"الصفحة الرئيسية - كلمات تجارية\"\n  }\n];\n\n// الكلمات اللي اتشالت من التقرير — بتتذكر في الإيميل عشان محدش يفتكر\n// إنها اتنسيت، ولما يتحط لها رابط تدخل تاني أوتوماتيك.\nconst excluded = [\n  {\n    \"keyword\": \"اسباب ورم المخ\",\n    \"why\": \"مقالة جديدة لم يتم نشرها\"\n  },\n  {\n    \"keyword\": \"ورم المخ الحميد\",\n    \"why\": \"مقالة جديدة لم يتم نشرها\"\n  },\n  {\n    \"keyword\": \"الورم السحائي\",\n    \"why\": \"مقالة جديدة لم يتم نشرها\"\n  },\n  {\n    \"keyword\": \"ورم المخ الخبيث\",\n    \"why\": \"مقالة جديدة لم يتم نشرها\"\n  },\n  {\n    \"keyword\": \"ارتفاع ضغط المخ\",\n    \"why\": \"مقالة جديدة لم يتم نشرها\"\n  },\n  {\n    \"keyword\": \"صمام المخ\",\n    \"why\": \"مقالة جديدة لم يتم نشرها\"\n  },\n  {\n    \"keyword\": \"أعراض انسداد صمام المخ\",\n    \"why\": \"مقالة جديدة لم يتم نشرها\"\n  },\n  {\n    \"keyword\": \"السائل النخاعي\",\n    \"why\": \"مقالة جديدة لم يتم نشرها\"\n  }\n];\n// ==========================================\n\n// تحقّق دفاعي: أي كلمة فاضية أو مكررة أو من غير رابط توقف الرن.\n// أوقف الرن أحسن من إني أطلّع صف رقمه مش قابل للمراجعة.\nconst seen = {};\nkeywords.forEach((k, i) => {\n  const kw = String(k.keyword || '').trim();\n  if (!kw) throw new Error('Keywords: الصف رقم ' + (i + 1) + ' من غير كلمة مفتاحية.');\n  if (seen[kw]) throw new Error('Keywords: الكلمة \"' + kw + '\" مكررة.');\n  seen[kw] = 1;\n  k.keyword = kw;\n  k.group   = String(k.group || 'بدون قسم').trim();\n  k.page    = String(k.page || '').trim();\n  k.article = String(k.article || '').trim();\n  if (!k.page) {\n    throw new Error('Keywords: الكلمة \"' + kw + '\" من غير رابط صفحة — ' +\n                    'المفروض تكون اتستبعدت وقت التوليد. أعِد تشغيل extract-keywords.mjs.');\n  }\n});\n\nreturn [{ json: {\n  keywords,\n  keywordCount: keywords.length,\n  excluded,\n  excludedCount: excluded.length,\n  keywordsSource: \"d22fd9dc-___________________________.xlsx\",\n  keywordsExtractedAt: \"2026-09-08\",\n} }];\n"
+      },
+      "id": "e4931fbe-1631-4e17-b379-9333072e363b",
+      "name": "Keywords",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        96976,
+        22096
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "الدماغ والحبل الشوكي",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "2",
+              "name": "تشخيص اورام المخ",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "3",
+              "name": "علاج أورام الدماغ",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "4",
+              "name": "اورام الدماغ وعلاجها",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "5",
+              "name": "اسباب ورم المخ",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "6",
+              "name": "ورم المخ الحميد",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "7",
+              "name": "الورم السحائي",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "8",
+              "name": "ورم المخ الخبيث",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "9",
+              "name": "الاستسقاء الدماغي",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "10",
+              "name": "علاج استسقاء الدماغ عند الكبار",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "11",
+              "name": "عملية الاستسقاء الدماغي بالمنظار",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "12",
+              "name": "أعراض الاستسقاء الدماغي",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "13",
+              "name": "ارتفاع ضغط المخ",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "14",
+              "name": "صمام المخ",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "15",
+              "name": "أعراض انسداد صمام المخ",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "16",
+              "name": "السائل النخاعي",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "17",
+              "name": "التحام عظام الجمجمة",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "18",
+              "name": "الدروز السهمي",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "19",
+              "name": "الدروز الجبهي",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "20",
+              "name": "تجميل الجمجمة",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "21",
+              "name": "افضل دكتور مخ واعصاب في الدمام والخبر",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "22",
+              "name": "افضل دكتور مخ واعصاب في المنطقة الشرقية",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "23",
+              "name": "افضل دكتور مخ واعصاب في الخبر",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "24",
+              "name": "أفضل دكتور مخ واعصاب في الحبيب الخبر",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "25",
+              "name": "افضل دكتور مخ واعصاب في مستشفى الملك فهد",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "26",
+              "name": "افضل دكتور مخ واعصاب في السعودية",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "27",
+              "name": "افضل دكتور مخ واعصاب في الدمام",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "28",
+              "name": "دكتور مخ واعصاب في الخبر",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "29",
+              "name": "دكتور مخ واعصاب في الدمام",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "30",
+              "name": "استشاري مخ واعصاب",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "31",
+              "name": "استشاري جراحة مخ واعصاب",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "32",
+              "name": "جراح مخ واعصاب",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "33",
+              "name": "دكتور جراحة مخ واعصاب",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "34",
+              "name": "افضل جراح مخ واعصاب",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "35",
+              "name": "افضل دكتور جراحة مخ واعصاب",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "28513d7f-d0fc-49b1-a95a-e543224e9e2d",
+      "name": "Search Volume",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        97184,
+        22096
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://sheets.googleapis.com/v4/spreadsheets/{{ $('Config').first().json.spreadsheetId }}/values/{{ encodeURIComponent($('Config').first().json.sheetTab + '!A1:ZZ5000') }}?valueRenderOption=UNFORMATTED_VALUE&majorDimension=ROWS",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleOAuth2Api",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "765f8970-0240-4f2b-8c88-ac37e503c88a",
+      "name": "Fetch Sheet",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        97408,
+        22096
+      ],
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 4,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "googleOAuth2Api": {
+          "id": "zqpCaDcnpV6T6BqM",
+          "name": "rabeh.seven.b"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// بيحوّل صفوف الشيت لذاكرة تاريخية + بيسجّل مقاس الشيت القديم عشان الكتابة\n// الجديدة تمسح أي بقايا أعمدة/صفوف قديمة.\n//\n// قراءة الخانة:\n//   فاضية        = ما اتسحبتش أصلًا (هنحاول تاني)\n//   '-'          = اتسحبت من جوجل ومفيش ظهور مؤكد\n//   رقم          = ترتيب مؤكد\n// مفتاح العمود بيختلف حسب الإيقاع: شهري '2026-03' وأسبوعي '2026-W12'.\n// بيتقرا من Config عشان النود يفضل واحد للتقريرين.\nconst __cadence = $('Config').first().json.cadence;\nconst COL_RE = __cadence === 'weekly'\n  ? /^(\\d{4}-W\\d{2})\\s+(Pos|Impr)$/\n  : /^(\\d{4}-\\d{2})\\s+(Pos|Impr)$/;\n\nconst rows = Array.isArray($json.values) ? $json.values : null;\n\n// Fetch Sheet شغّال بـ continueRegularOutput، فلو فشل بيوصلنا error.\n// مهم جدًا نفرّق بين \"الشيت فاضي\" و\"مقدرناش نقراه\": في الحالة التانية ممنوع\n// نكتب على الشيت، لأن الكتابة هتمسح كل الأرشيف.\nconst fetchError = ($json && $json.error !== undefined && $json.error !== null)\n  ? (typeof $json.error === 'string' ? $json.error : JSON.stringify($json.error).slice(0, 300))\n  : '';\nconst sheetError = fetchError || (rows === null ? 'رد Google Sheets مالهوش الشكل المتوقع (مفيش values).' : '');\n\n// أرقام عربية/هندية + الفاصلة العشرية العربية + فواصل الآلاف.\nconst AR_DIGITS = { '٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9',\n                    '۰':'0','۱':'1','۲':'2','۳':'3','۴':'4','۵':'5','۶':'6','۷':'7','۸':'8','۹':'9' };\n\nfunction num(v) {\n  if (v === '' || v === undefined || v === null) return null;\n  if (typeof v === 'number') return isFinite(v) ? v : null;\n  let s = String(v);\n  s = s.replace(/[٠-٩۰-۹]/g, ch => AR_DIGITS[ch] || ch);   // أرقام عربية → لاتينية\n  s = s.replace(/[\\u200B-\\u200F\\u202A-\\u202E\\u2066-\\u2069\\uFEFF]/g, ''); // محارف اتجاه\n  s = s.replace(/[\\u066C,\\s]/g, '');                        // فواصل الآلاف\n  s = s.replace(/[\\u066B\\u060C]/g, '.');                   // فاصلة عشرية عربية\n  s = s.replace(/[^0-9.+-]/g, '');\n  if (s === '' || s === '-' || s === '.' || s === '+') return null;\n  const n = Number(s);\n  return isFinite(n) ? n : null;\n}\n\nconst hist = { monthKeys: [], byRow: {} };\nlet extentRows = 0, extentCols = 0, dataRows = 0;\n\nif (!sheetError && rows.length) {\n  extentRows = rows.length;\n  rows.forEach(r => { extentCols = Math.max(extentCols, (r || []).length); });\n}\n\nif (!sheetError && rows.length > 1) {\n  const head = rows[0].map(h => String(h == null ? '' : h).trim());\n  const cols = {};\n  head.forEach((h, i) => {\n    const mm = h.match(COL_RE);\n    if (mm) {\n      cols[mm[1]] = cols[mm[1]] || {};\n      cols[mm[1]][mm[2]] = i;\n      if (hist.monthKeys.indexOf(mm[1]) === -1) hist.monthKeys.push(mm[1]);\n    }\n  });\n  hist.monthKeys.sort();\n\n  for (let r = 1; r < rows.length; r++) {\n    const row = rows[r] || [];\n    const country = String(row[0] == null ? '' : row[0]).trim();\n    const keyword = String(row[2] == null ? '' : row[2]).trim();\n    if (!keyword) continue;\n    dataRows++;\n    const rec = {};\n    hist.monthKeys.forEach(mk => {\n      const c = cols[mk] || {};\n      const rawP = c.Pos === undefined ? undefined : row[c.Pos];\n      const rawI = c.Impr === undefined ? undefined : row[c.Impr];\n      const p = (rawP === undefined || rawP === null) ? '' : String(rawP).trim();\n      const imp = num(rawI);\n      rec[mk] = {\n        position:    (p === '' || p === '-' || p === '—' || p === '–') ? null : num(rawP),\n        impressions: imp === null ? 0 : imp,\n        filled:      p !== '',\n      };\n    });\n    hist.byRow[country + '||' + keyword] = rec;\n  }\n}\n\nreturn [{ json: {\n  __history: hist,\n  __sheetError: sheetError,\n  __extent: { rows: extentRows, cols: extentCols },\n  __sheetStats: { dataRows, periodsInSheet: hist.monthKeys.length },\n} }];\n"
+      },
+      "id": "8fbc328c-100c-4f3a-8acd-1142df580fdd",
+      "name": "Read Sheet",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        97632,
+        22096
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// بيبني قائمة الطلبات (كلمة × فترة) اللي هتتبعت لجوجل.\n//\n// النود ده واحد للتقريرين — الفرق الوحيد بينهم هو تعريف \"الفترة\":\n// الشهري = شهر ميلادي كامل | الأسبوعي = أسبوع إثنين→أحد بترقيم ISO.\n// أي حاجة تانية (إمتى الفترة تتحسب مقفولة، إعادة السحب، بناء الطلبات)\n// مشتركة بالحرف — عشان التقريرين مايختلفوش على نفس الكلمة في نفس اليوم.\n//\n//  1) الفترة بتتحسب \"مقفولة\" لما آخر يوم فيها يكون عند جوجل بيانات نهائية\n//     عنه (من نود GSC Freshness) مش بتخمين LAG_DAYS. ده كان أكبر سبب\n//     لأرقام ناقصة أو فاضية في آخر عمود.\n//  2) كل طلب معاه taskId + taskIndex عشان الربط بين الطلب والرد يبقى مؤكد.\nconst cfg   = $('Config').first().json;\nconst kws   = $('Keywords').first().json.keywords;\nconst hist  = $('Read Sheet').first().json.__history || { byRow: {} };\nconst fresh = $('Freshness Guard').first().json;\n\nconst DAY    = 86400000;\nconst latest = fresh.latestDataDate;               // 'YYYY-MM-DD'\nconst today  = new Date();\nconst pad    = v => String(v).padStart(2, '0');\nconst MON    = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];\n\nfunction isoWeek(d) {\n  const t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));\n  t.setUTCDate(t.getUTCDate() + 4 - (t.getUTCDay() || 7));   // خميس نفس الأسبوع\n  const yStart = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));\n  const wk = Math.ceil((((t - yStart) / DAY) + 1) / 7);\n  return t.getUTCFullYear() + '-W' + pad(wk);\n}\n\n// ---------- بناء الفترات ----------\nconst all = [];\nif (cfg.cadence === 'weekly') {\n  // إثنين الأسبوع الحالي — نقطة البداية اللي بنرجع منها للخلف\n  const offset  = (today.getUTCDay() + 6) % 7;\n  const thisMon = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() - offset));\n\n  for (let i = 1; i <= 60 && all.length < cfg.columns; i++) {\n    const start = new Date(thisMon.getTime() - i * 7 * DAY);\n    const end   = new Date(start.getTime() + 6 * DAY);\n    const endDate = end.toISOString().slice(0, 10);\n    if (endDate > latest) continue;              // الأسبوع لسه بياناته ما اكتملتش\n    const sd = pad(start.getUTCDate()), sm = pad(start.getUTCMonth() + 1);\n    const ed = pad(end.getUTCDate()),   em = pad(end.getUTCMonth() + 1);\n    const sy = start.getUTCFullYear(),  ey = end.getUTCFullYear();\n    const yearLine = (sy === ey) ? String(ey) : (sy + '–' + String(ey).slice(2));\n    all.push({\n      key: isoWeek(start),\n      caption: sd + '/' + sm + '\\n↓\\n' + ed + '/' + em,\n      year: yearLine,\n      label: sd + '/' + sm,\n      startDate: start.toISOString().slice(0, 10),\n      endDate,\n    });\n  }\n} else {\n  let y = today.getUTCFullYear(), m = today.getUTCMonth();\n  for (let i = 0; i < 40; i++) {\n    const lastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();\n    const endDate = new Date(Date.UTC(y, m, lastDay)).toISOString().slice(0, 10);\n    // الشهر بيتحسب مقفول لما آخر يوم فيه يكون عند جوجل بيانات نهائية عنه.\n    if (endDate <= latest) {\n      all.push({\n        key: y + '-' + String(m + 1).padStart(2, '0'),\n        label: MON[m] + ' ' + String(y).slice(2),\n        startDate: new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 10),\n        endDate,\n      });\n    }\n    m--; if (m < 0) { m = 11; y--; }\n  }\n}\n\nconst periods = cfg.cadence === 'weekly' ? all.reverse() : all.slice(0, cfg.columns).reverse();\n\nif (!periods.length) {\n  throw new Error('Build Tasks: مفيش ولا ' + (cfg.cadence === 'weekly' ? 'أسبوع' : 'شهر') +\n                  ' مقفول عند جوجل (آخر يوم بيانات: ' + latest +\n                  ') — الرن اتوقف قبل ما يطلّع تقرير فاضي.');\n}\n\nconst forceFrom = periods.length - (cfg.refetchLast || 0);\n\nconst out = [];\nlet taskIndex = 0;\ncfg.countries.forEach((c, ci) => {\n  kws.forEach((k, ki) => {\n    const rec = hist.byRow[c.name + '||' + k.keyword] || {};\n    periods.forEach((p, pIdx) => {\n      const cell = rec[p.key];\n      // خانة متأكدين منها (فيها رقم) وقديمة → مش محتاجين نعيد سحبها.\n      if (cell && cell.filled && cell.position !== null && pIdx < forceFrom) return;\n      out.push({ json: {\n        taskId: c.name + '||' + k.keyword + '||' + p.key,\n        taskIndex: taskIndex++,\n        period: p.key, label: p.label,\n        startDate: p.startDate, endDate: p.endDate,\n        keyword: k.keyword, page: k.page || '', group: k.group,\n        countryCode: c.code, countryName: c.name, ci, ki, pIdx,\n        __periods: periods,\n        __latestDataDate: latest,\n      } });\n    });\n  });\n});\n\nif (!out.length) {\n  return [{ json: { __noFetch: true, __periods: periods, __latestDataDate: latest, taskIndex: 0 } }];\n}\nreturn out;\n"
+      },
+      "id": "567376b5-5b31-4421-8fdf-1a458410fb25",
+      "name": "Build Tasks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        97856,
+        22096
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://searchconsole.googleapis.com/webmasters/v3/sites/{{ encodeURIComponent($('Config').first().json.siteUrl) }}/searchAnalytics/query",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ startDate: $json.startDate, endDate: $json.endDate, dimensions: ['page'], type: 'web', aggregationType: 'byPage', rowLimit: $('Config').first().json.gscRowLimit, dataState: $('Config').first().json.gscDataState, dimensionFilterGroups: [{ filters: [{ dimension: 'query', operator: 'equals', expression: $json.keyword }, { dimension: 'country', operator: 'equals', expression: $json.countryCode }] }] }) }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 5,
+              "batchInterval": 700
+            }
+          },
+          "timeout": 60000
+        }
+      },
+      "id": "88d62912-3f45-4a1d-a886-9ac34af136b9",
+      "name": "GSC Query",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        98064,
+        22096
+      ],
+      "alwaysOutputData": false,
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleOAuth2Api": {
+          "id": "zqpCaDcnpV6T6BqM",
+          "name": "rabeh.seven.b"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// بيراجع ردود السحبة الأولى ويحدد أنهي طلبات محتاجة محاولة تانية.\n// الطلب بيتعاد لو: فشل (429 / 403 / شبكة) أو ملقاش رد أصلاً.\n// الطلب اللي رجع سليم — حتى لو مفيش فيه ظهور — مش بيتعاد.\n/* ---- مكتبة مشتركة: gsc (تُولَّد من src/lib/gsc.js — متعدّلهاش هنا) ---- */\n// ---------------------------------------------------------------------------\n// مكتبة الربط والقراءة من Google Search Console — مشتركة بين التقريرين.\n// (بتتحقن أوتوماتيك وقت البناء من alojan/src/lib/gsc.js — متعدّلهاش في n8n)\n//\n// وجودها في مكان واحد هو الغرض منها: أي فرق في الحساب بين التقرير الأسبوعي\n// والشهري معناه إن نفس الكلمة في نفس اليوم بتديك رقمين — وده اللي كان بيحصل.\n// ---------------------------------------------------------------------------\n\n// n8n بيحط pairedItem على كل عنصر خارج من HTTP Request بيقول جه من أنهي\n// عنصر داخل. ده أضمن من الاعتماد على الترتيب، لأن الرد ممكن يتقسّم أو يتلم.\nfunction srcIndex(item, fallbackIndex) {\n  const p = item ? item.pairedItem : undefined;\n  if (typeof p === 'number') return p;\n  if (p && typeof p.item === 'number') return p.item;\n  if (Array.isArray(p) && p.length && p[0] && typeof p[0].item === 'number') return p[0].item;\n  return fallbackIndex;\n}\n\nfunction errText(e) {\n  if (e === undefined || e === null) return '';\n  if (typeof e === 'string') return e.slice(0, 300);\n  if (e.message) return String(e.message).slice(0, 300);\n  try { return JSON.stringify(e).slice(0, 300); } catch (x) { return String(e).slice(0, 300); }\n}\n\n// بيصنّف رد واحد من GSC:\n//   ok        = رد سليم من جوجل (سواء فيه صفوف أو مفيش)\n//   error     = الطلب فشل (429 / 403 / شبكة / توكن)\n//   missing   = مفيش رد أصلاً للطلب ده\nfunction classify(res, rowLimit) {\n  if (!res) return { state: 'missing', reason: 'مفيش رد للطلب ده' };\n  const j = res.json || {};\n  if (j.error !== undefined && j.error !== null) {\n    return { state: 'error', reason: errText(j.error) || 'خطأ من جوجل' };\n  }\n  // GSC بيرجّع {} لما مفيش بيانات — ده رد ناجح مش خطأ.\n  const rows = Array.isArray(j.rows) ? j.rows : [];\n  // الرد بيتقصّ عند rowLimit اللي احنا طلبناه. أي مقارنة برقم متثبّت غير\n  // rowLimit الفعلي معناها إن الحارس ده عمره ما هيشتغل.\n  const limit = Number(rowLimit) > 0 ? Number(rowLimit) : 0;\n  return { state: 'ok', rows, truncated: limit > 0 && rows.length >= limit };\n}\n\n// بيربط ردود نود HTTP بطلباتها.\n// لو عدد الردود = عدد الطلبات → pairedItem وإلا الترتيب.\n// لو العدد مختلف → pairedItem بس، وأي طلب ملقاش رد بيتعلّم missing.\nfunction pairResults(tasks, results, rowLimit) {\n  const strict = results.length !== tasks.length;\n  const map = {};\n  const stats = { results: results.length, tasks: tasks.length, strict, unpaired: 0 };\n  results.forEach((r, i) => {\n    const idx = strict ? srcIndex(r, -1) : srcIndex(r, i);\n    if (idx < 0 || idx >= tasks.length || !tasks[idx]) { stats.unpaired++; return; }\n    const t = tasks[idx].json || {};\n    if (t.taskId === undefined) { stats.unpaired++; return; }\n    // أول رد بيكسب: لو حصل تكرار في pairedItem مانستبدلش رد سليم بواحد فاشل.\n    const c = classify(r, rowLimit);\n    if (!map[t.taskId] || (map[t.taskId].state !== 'ok' && c.state === 'ok')) {\n      map[t.taskId] = c;\n    }\n  });\n  return { map, stats };\n}\n\n// ---- تطبيع الروابط للمقارنة ----\n// لازم يكون مطابق تمامًا للمنطق اللي بتتحقق بيه أداة verify-pages.mjs،\n// وإلا الأداة تقول \"الرابط مظبوط\" والأوتوميشن يقول \"الصفحة مش ظاهرة\".\nfunction normUrl(u) {\n  let s = String(u == null ? '' : u);\n  for (let i = 0; i < 2; i++) {                 // فك ترميز مزدوج لو موجود\n    try {\n      const d = decodeURIComponent(s);\n      if (d === s) break;\n      s = d;\n    } catch (e) { break; }\n  }\n  s = s.trim().toLowerCase();\n  s = s.replace(/[#?].*$/, '');                 // شيل الأنكور والباراميترز\n  s = s.replace(/^https?:\\/\\//, '').replace(/^www\\./, '');\n  s = s.replace(/\\/index\\.(html?|php)$/, '/');\n  s = s.replace(/\\/+$/, '');\n  return s;\n}\n\n// ---- تجميع صفوف الصفحات لرقم واحد على مستوى الموقع ----\n// جوجل بيرجّع صف لكل صفحة: متوسط موضع الصفحة دي + عدد ظهورها للكلمة.\n// الرقم اللي واجهة Search Console بتعرضه للكلمة من غير فلتر صفحة هو المتوسط\n// الموزون بعدد الظهور:\n//\n//     الموضع = مجموع(الموضع × الظهور) ÷ مجموع(الظهور)\n//     الظهور = مجموع الظهور\n//\n// أخذ \"أقل موضع\" بين الصفحات بدل المتوسط ده بيطلّع موضع أحسن من الحقيقة\n// وظهور أقل منها بكتير — وده كان سبب \"POS 10 / IMP 1\" في التقرير مقابل\n// \"20.9 / 144\" في الواجهة.\nfunction aggregateRows(rows) {\n  let impressions = 0, clicks = 0, weighted = 0;\n  rows.forEach(r => {\n    const im = Number(r.impressions) || 0;\n    impressions += im;\n    clicks      += Number(r.clicks) || 0;\n    weighted    += Number(r.position) * im;\n  });\n  return {\n    impressions,\n    clicks,\n    position: impressions > 0 ? weighted / impressions : null,\n  };\n}\n\nconst round1 = v => (v === null || v === undefined) ? null : Math.round(Number(v) * 10) / 10;\n\n// بيطلع نتيجة خانة واحدة من رد جوجل.\n//\n// verdict:\n//   ranked  = فيه ترتيب مؤكد\n//   no-data = الرد وصل سليم ومفيش ولا ظهور واحد → '-' في الشيت\n//   failed  = الطلب فشل → الخانة تفضل فاضية وتتعاد المرة الجاية\n//\n// scope بيقول الرقم ده بيوصف إيه بالظبط — وده اللي بيخلي كل رقم في التقرير\n// قابل للمراجعة في واجهة GSC:\n//   page = الصفحة المستهدفة نفسها (يقابل فلتر Query + Page في الواجهة)\n//   site = كل صفحات الموقع للكلمة (يقابل فلتر Query لوحده في الواجهة)\nfunction readCell(cls, targetPage, pageMatch) {\n  if (!cls || cls.state !== 'ok') {\n    return { verdict: 'failed', reason: (cls && cls.reason) || 'مفيش رد',\n             position: null, impressions: 0, scope: '', matchMode: 'none', pageFound: null };\n  }\n  const rows = cls.rows || [];\n  // صف صالح = عليه ترتيب أكبر من صفر وظهور واحد على الأقل.\n  const valid = rows.filter(r => r && Number(r.position) > 0 && Number(r.impressions) > 0);\n  if (!valid.length) {\n    return { verdict: 'no-data', reason: rows.length ? 'صفوف من غير ترتيب صالح' : 'مفيش ظهور',\n             position: null, impressions: 0, scope: '', matchMode: 'none', pageFound: false };\n  }\n\n  // أعلى صفحة ترتيبًا — للتشخيص بس، مش رقم التقرير.\n  const best = valid.slice().sort((a, b) => Number(a.position) - Number(b.position))[0];\n  const diag = {\n    pagesSeen: valid.length,\n    topPage: String((best.keys || [])[0] || ''),\n    topPagePosition: round1(best.position),\n    truncated: !!cls.truncated,\n  };\n\n  const want = normUrl(targetPage);\n  const hit = want ? (valid.find(r => normUrl((r.keys || [])[0]) === want) || null) : null;\n\n  if (hit) {\n    return Object.assign({\n      verdict: 'ranked',\n      scope: 'page',\n      matchMode: 'exact',\n      pageFound: true,\n      position: round1(hit.position),\n      impressions: Math.round(Number(hit.impressions) || 0),\n      clicks: Math.round(Number(hit.clicks) || 0),\n      matchedPage: String((hit.keys || [])[0] || ''),\n    }, diag);\n  }\n\n  // الصفحة المستهدفة مش ظاهرة والوضع strict → الخانة تتحسب \"مفيش ظهور\".\n  // ده الوضع الصح لما كل كلمة ليها رابط: الرقم بيوصف الصفحة دي وبس،\n  // ولو الصفحة مش ظاهرة يبقى ظهورها صفر فعلًا — مش رقم صفحة تانية.\n  if (want && pageMatch === 'strict') {\n    return Object.assign({\n      verdict: 'no-data', reason: 'الصفحة المستهدفة مش ظاهرة',\n      position: null, impressions: 0, scope: '', matchMode: 'none', pageFound: false,\n    }, diag);\n  }\n\n  // مفيش صفحة مستهدفة (أو مش ظاهرة والوضع prefer) → رقم الموقع كله للكلمة.\n  // ده اللي الواجهة بتعرضه لما تفلتر بالكلمة لوحدها.\n  const agg = aggregateRows(valid);\n  return Object.assign({\n    verdict: 'ranked',\n    scope: 'site',\n    matchMode: want ? 'site-fallback' : 'site',\n    pageFound: want ? false : null,\n    position: round1(agg.position),\n    impressions: Math.round(agg.impressions),\n    clicks: Math.round(agg.clicks),\n    matchedPage: '',\n  }, diag);\n}\n\nconst cfg     = $('Config').first().json;\nconst tasks   = $('Build Tasks').all();\nconst results = $('GSC Query').all();\n\nconst noFetch = !!(tasks[0] && tasks[0].json && tasks[0].json.__noFetch);\nif (noFetch) {\n  return [{ json: { __retry: false, retryCount: 0, pass1: { ok: 0, failed: 0, missing: 0 }, noFetch: true } }];\n}\n\nconst paired = pairResults(tasks, results, cfg.gscRowLimit);\n\nconst retry = [];\nconst summary = { ok: 0, failed: 0, missing: 0 };\ntasks.forEach(t => {\n  const j = t.json || {};\n  if (!j.taskId) return;\n  const c = paired.map[j.taskId];\n  if (c && c.state === 'ok') { summary.ok++; return; }\n  if (c && c.state === 'error') summary.failed++; else summary.missing++;\n  retry.push(j);\n});\n\n// حد أقصى للمحاولة التانية عشان ماندخلش في لوب طويل لو جوجل واقع خالص.\nconst MAX_RETRY = 400;\nconst capped = retry.slice(0, MAX_RETRY);\n\nif (!capped.length) {\n  return [{ json: {\n    __retry: false, retryCount: 0,\n    pass1: summary, pairing: paired.stats,\n  } }];\n}\n\nreturn capped.map((j, i) => ({ json: Object.assign({}, j, {\n  __retry: true,\n  retryIndex: i,\n  retryCount: capped.length,\n  retryDropped: retry.length - capped.length,\n  pass1: summary,\n  pairing: paired.stats,\n}) }));\n"
+      },
+      "id": "1b1845ad-298e-4837-9401-a9101283805f",
+      "name": "Collect Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        98288,
+        22096
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "needs_retry",
+              "leftValue": "={{ $json.__retry }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "57d4ce01-e505-4511-8272-f5cc5ff71ba1",
+      "name": "Needs Retry?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        98512,
+        22096
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://searchconsole.googleapis.com/webmasters/v3/sites/{{ encodeURIComponent($('Config').first().json.siteUrl) }}/searchAnalytics/query",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ startDate: $json.startDate, endDate: $json.endDate, dimensions: ['page'], type: 'web', aggregationType: 'byPage', rowLimit: $('Config').first().json.gscRowLimit, dataState: $('Config').first().json.gscDataState, dimensionFilterGroups: [{ filters: [{ dimension: 'query', operator: 'equals', expression: $json.keyword }, { dimension: 'country', operator: 'equals', expression: $json.countryCode }] }] }) }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 3,
+              "batchInterval": 1500
+            }
+          },
+          "timeout": 60000
+        }
+      },
+      "id": "86d9407e-082b-4b69-a7e9-a74e401d1b6a",
+      "name": "GSC Retry Query",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        98736,
+        22288
+      ],
+      "alwaysOutputData": false,
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 8000,
+      "credentials": {
+        "googleOAuth2Api": {
+          "id": "zqpCaDcnpV6T6BqM",
+          "name": "rabeh.seven.b"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// بيدمج أرشيف الشيت مع الخانات اللي اتسحبت دلوقتي، وبيصنّف كل خانة:\n//\n//   ranked        رقم مؤكد من جوجل                → يتكتب رقم\n//   no-data       جوجل رد سليم ومفيش أي ظهور      → يتكتب '-'\n//   from-archive  السحبة فشلت والأرشيف فيه رقم    → يتكتب رقم الأرشيف\n//   kept-archive  السحبة قالت \"مفيش\" لعمود قديم   → يتمسك رقم الأرشيف (شبهة)\n//   hole          مفيش سحبة ولا أرشيف             → الخانة تفضل فاضية\n//\n// القاعدة الذهبية: خانة فشل سحبها عمرها ما تتكتب '-' ولا 0 — بتفضل فاضية\n// عشان الرن الجاي يعيد يجيبها، والفرق بين \"فاضية\" و\"مفيش ظهور\" يفضل واضح.\n/* ---- مكتبة مشتركة: gsc (تُولَّد من src/lib/gsc.js — متعدّلهاش هنا) ---- */\n// ---------------------------------------------------------------------------\n// مكتبة الربط والقراءة من Google Search Console — مشتركة بين التقريرين.\n// (بتتحقن أوتوماتيك وقت البناء من alojan/src/lib/gsc.js — متعدّلهاش في n8n)\n//\n// وجودها في مكان واحد هو الغرض منها: أي فرق في الحساب بين التقرير الأسبوعي\n// والشهري معناه إن نفس الكلمة في نفس اليوم بتديك رقمين — وده اللي كان بيحصل.\n// ---------------------------------------------------------------------------\n\n// n8n بيحط pairedItem على كل عنصر خارج من HTTP Request بيقول جه من أنهي\n// عنصر داخل. ده أضمن من الاعتماد على الترتيب، لأن الرد ممكن يتقسّم أو يتلم.\nfunction srcIndex(item, fallbackIndex) {\n  const p = item ? item.pairedItem : undefined;\n  if (typeof p === 'number') return p;\n  if (p && typeof p.item === 'number') return p.item;\n  if (Array.isArray(p) && p.length && p[0] && typeof p[0].item === 'number') return p[0].item;\n  return fallbackIndex;\n}\n\nfunction errText(e) {\n  if (e === undefined || e === null) return '';\n  if (typeof e === 'string') return e.slice(0, 300);\n  if (e.message) return String(e.message).slice(0, 300);\n  try { return JSON.stringify(e).slice(0, 300); } catch (x) { return String(e).slice(0, 300); }\n}\n\n// بيصنّف رد واحد من GSC:\n//   ok        = رد سليم من جوجل (سواء فيه صفوف أو مفيش)\n//   error     = الطلب فشل (429 / 403 / شبكة / توكن)\n//   missing   = مفيش رد أصلاً للطلب ده\nfunction classify(res, rowLimit) {\n  if (!res) return { state: 'missing', reason: 'مفيش رد للطلب ده' };\n  const j = res.json || {};\n  if (j.error !== undefined && j.error !== null) {\n    return { state: 'error', reason: errText(j.error) || 'خطأ من جوجل' };\n  }\n  // GSC بيرجّع {} لما مفيش بيانات — ده رد ناجح مش خطأ.\n  const rows = Array.isArray(j.rows) ? j.rows : [];\n  // الرد بيتقصّ عند rowLimit اللي احنا طلبناه. أي مقارنة برقم متثبّت غير\n  // rowLimit الفعلي معناها إن الحارس ده عمره ما هيشتغل.\n  const limit = Number(rowLimit) > 0 ? Number(rowLimit) : 0;\n  return { state: 'ok', rows, truncated: limit > 0 && rows.length >= limit };\n}\n\n// بيربط ردود نود HTTP بطلباتها.\n// لو عدد الردود = عدد الطلبات → pairedItem وإلا الترتيب.\n// لو العدد مختلف → pairedItem بس، وأي طلب ملقاش رد بيتعلّم missing.\nfunction pairResults(tasks, results, rowLimit) {\n  const strict = results.length !== tasks.length;\n  const map = {};\n  const stats = { results: results.length, tasks: tasks.length, strict, unpaired: 0 };\n  results.forEach((r, i) => {\n    const idx = strict ? srcIndex(r, -1) : srcIndex(r, i);\n    if (idx < 0 || idx >= tasks.length || !tasks[idx]) { stats.unpaired++; return; }\n    const t = tasks[idx].json || {};\n    if (t.taskId === undefined) { stats.unpaired++; return; }\n    // أول رد بيكسب: لو حصل تكرار في pairedItem مانستبدلش رد سليم بواحد فاشل.\n    const c = classify(r, rowLimit);\n    if (!map[t.taskId] || (map[t.taskId].state !== 'ok' && c.state === 'ok')) {\n      map[t.taskId] = c;\n    }\n  });\n  return { map, stats };\n}\n\n// ---- تطبيع الروابط للمقارنة ----\n// لازم يكون مطابق تمامًا للمنطق اللي بتتحقق بيه أداة verify-pages.mjs،\n// وإلا الأداة تقول \"الرابط مظبوط\" والأوتوميشن يقول \"الصفحة مش ظاهرة\".\nfunction normUrl(u) {\n  let s = String(u == null ? '' : u);\n  for (let i = 0; i < 2; i++) {                 // فك ترميز مزدوج لو موجود\n    try {\n      const d = decodeURIComponent(s);\n      if (d === s) break;\n      s = d;\n    } catch (e) { break; }\n  }\n  s = s.trim().toLowerCase();\n  s = s.replace(/[#?].*$/, '');                 // شيل الأنكور والباراميترز\n  s = s.replace(/^https?:\\/\\//, '').replace(/^www\\./, '');\n  s = s.replace(/\\/index\\.(html?|php)$/, '/');\n  s = s.replace(/\\/+$/, '');\n  return s;\n}\n\n// ---- تجميع صفوف الصفحات لرقم واحد على مستوى الموقع ----\n// جوجل بيرجّع صف لكل صفحة: متوسط موضع الصفحة دي + عدد ظهورها للكلمة.\n// الرقم اللي واجهة Search Console بتعرضه للكلمة من غير فلتر صفحة هو المتوسط\n// الموزون بعدد الظهور:\n//\n//     الموضع = مجموع(الموضع × الظهور) ÷ مجموع(الظهور)\n//     الظهور = مجموع الظهور\n//\n// أخذ \"أقل موضع\" بين الصفحات بدل المتوسط ده بيطلّع موضع أحسن من الحقيقة\n// وظهور أقل منها بكتير — وده كان سبب \"POS 10 / IMP 1\" في التقرير مقابل\n// \"20.9 / 144\" في الواجهة.\nfunction aggregateRows(rows) {\n  let impressions = 0, clicks = 0, weighted = 0;\n  rows.forEach(r => {\n    const im = Number(r.impressions) || 0;\n    impressions += im;\n    clicks      += Number(r.clicks) || 0;\n    weighted    += Number(r.position) * im;\n  });\n  return {\n    impressions,\n    clicks,\n    position: impressions > 0 ? weighted / impressions : null,\n  };\n}\n\nconst round1 = v => (v === null || v === undefined) ? null : Math.round(Number(v) * 10) / 10;\n\n// بيطلع نتيجة خانة واحدة من رد جوجل.\n//\n// verdict:\n//   ranked  = فيه ترتيب مؤكد\n//   no-data = الرد وصل سليم ومفيش ولا ظهور واحد → '-' في الشيت\n//   failed  = الطلب فشل → الخانة تفضل فاضية وتتعاد المرة الجاية\n//\n// scope بيقول الرقم ده بيوصف إيه بالظبط — وده اللي بيخلي كل رقم في التقرير\n// قابل للمراجعة في واجهة GSC:\n//   page = الصفحة المستهدفة نفسها (يقابل فلتر Query + Page في الواجهة)\n//   site = كل صفحات الموقع للكلمة (يقابل فلتر Query لوحده في الواجهة)\nfunction readCell(cls, targetPage, pageMatch) {\n  if (!cls || cls.state !== 'ok') {\n    return { verdict: 'failed', reason: (cls && cls.reason) || 'مفيش رد',\n             position: null, impressions: 0, scope: '', matchMode: 'none', pageFound: null };\n  }\n  const rows = cls.rows || [];\n  // صف صالح = عليه ترتيب أكبر من صفر وظهور واحد على الأقل.\n  const valid = rows.filter(r => r && Number(r.position) > 0 && Number(r.impressions) > 0);\n  if (!valid.length) {\n    return { verdict: 'no-data', reason: rows.length ? 'صفوف من غير ترتيب صالح' : 'مفيش ظهور',\n             position: null, impressions: 0, scope: '', matchMode: 'none', pageFound: false };\n  }\n\n  // أعلى صفحة ترتيبًا — للتشخيص بس، مش رقم التقرير.\n  const best = valid.slice().sort((a, b) => Number(a.position) - Number(b.position))[0];\n  const diag = {\n    pagesSeen: valid.length,\n    topPage: String((best.keys || [])[0] || ''),\n    topPagePosition: round1(best.position),\n    truncated: !!cls.truncated,\n  };\n\n  const want = normUrl(targetPage);\n  const hit = want ? (valid.find(r => normUrl((r.keys || [])[0]) === want) || null) : null;\n\n  if (hit) {\n    return Object.assign({\n      verdict: 'ranked',\n      scope: 'page',\n      matchMode: 'exact',\n      pageFound: true,\n      position: round1(hit.position),\n      impressions: Math.round(Number(hit.impressions) || 0),\n      clicks: Math.round(Number(hit.clicks) || 0),\n      matchedPage: String((hit.keys || [])[0] || ''),\n    }, diag);\n  }\n\n  // الصفحة المستهدفة مش ظاهرة والوضع strict → الخانة تتحسب \"مفيش ظهور\".\n  // ده الوضع الصح لما كل كلمة ليها رابط: الرقم بيوصف الصفحة دي وبس،\n  // ولو الصفحة مش ظاهرة يبقى ظهورها صفر فعلًا — مش رقم صفحة تانية.\n  if (want && pageMatch === 'strict') {\n    return Object.assign({\n      verdict: 'no-data', reason: 'الصفحة المستهدفة مش ظاهرة',\n      position: null, impressions: 0, scope: '', matchMode: 'none', pageFound: false,\n    }, diag);\n  }\n\n  // مفيش صفحة مستهدفة (أو مش ظاهرة والوضع prefer) → رقم الموقع كله للكلمة.\n  // ده اللي الواجهة بتعرضه لما تفلتر بالكلمة لوحدها.\n  const agg = aggregateRows(valid);\n  return Object.assign({\n    verdict: 'ranked',\n    scope: 'site',\n    matchMode: want ? 'site-fallback' : 'site',\n    pageFound: want ? false : null,\n    position: round1(agg.position),\n    impressions: Math.round(agg.impressions),\n    clicks: Math.round(agg.clicks),\n    matchedPage: '',\n  }, diag);\n}\n\nconst cfg   = $('Config').first().json;\nconst kws   = $('Keywords').first().json.keywords;\nconst rs    = $('Read Sheet').first().json;\nconst hist  = rs.__history || { byRow: {}, monthKeys: [] };\nconst tasks = $('Build Tasks').all();\nconst collect = $('Collect Results').first().json || {};\n\nconst periods = (tasks[0] && tasks[0].json.__periods) || [];\nconst noFetch = !!(tasks[0] && tasks[0].json.__noFetch);\n\n// ---------- 1) الربط: السحبة الأولى ثم المحاولة التانية ----------\nconst cells = {};                       // taskId → classify()\nconst pairing = { pass1: null, pass2: null };\n\nif (!noFetch) {\n  const p1 = pairResults(tasks, $('GSC Query').all(), cfg.gscRowLimit);\n  pairing.pass1 = p1.stats;\n  Object.keys(p1.map).forEach(k => { cells[k] = p1.map[k]; });\n\n  // نود GSC Retry Query بيشتغل بس لما يبقى فيه طلبات محتاجة إعادة.\n  if (Number(collect.retryCount) > 0) {\n    const retryTasks = $('Collect Results').all();\n    const p2 = pairResults(retryTasks, $('GSC Retry Query').all(), cfg.gscRowLimit);\n    pairing.pass2 = p2.stats;\n    Object.keys(p2.map).forEach(k => {\n      // المحاولة التانية بتستبدل نتيجة فاشلة بس — مش بتلغي نتيجة سليمة.\n      if (!cells[k] || cells[k].state !== 'ok') cells[k] = p2.map[k];\n    });\n  }\n}\n\n// ---------- 2) قراءة كل خانة ----------\nconst fresh = {};\nconst requestStats = { requested: tasks.length, ranked: 0, noData: 0, failed: 0, truncated: 0,\n                       scopePage: 0, scopeSite: 0 };\nconst failures = [];      // تفاصيل كل خانة فشلت\nconst pageMisses = [];    // الصفحة المستهدفة متحطة بس مكانتش ظاهرة الأسبوع ده\nconst noPageKws = {};     // كلمات من غير رابط صفحة مستهدفة أصلاً\n\nif (!noFetch) {\n  tasks.forEach(t => {\n    const j = t.json || {};\n    if (!j.taskId) return;\n    const cell = readCell(cells[j.taskId], j.page, cfg.pageMatch);\n    fresh[j.taskId] = cell;\n    if (!j.page) noPageKws[j.keyword] = 1;\n    if (cell.verdict === 'ranked') {\n      requestStats.ranked++;\n      if (cell.truncated) requestStats.truncated++;\n      if (cell.scope === 'page') requestStats.scopePage++; else requestStats.scopeSite++;\n      if (j.page && cell.matchMode === 'site-fallback' && pageMisses.length < 200) {\n        pageMisses.push({ keyword: j.keyword, period: j.period,\n                          expected: j.page, topPage: cell.topPage,\n                          pagesSeen: cell.pagesSeen });\n      }\n    } else if (cell.verdict === 'no-data') {\n      requestStats.noData++;\n    } else {\n      requestStats.failed++;\n      if (failures.length < 200) {\n        failures.push({ keyword: j.keyword, country: j.countryName,\n                        period: j.period, reason: cell.reason });\n      }\n    }\n  });\n}\n\n// ---------- 3) الأعمدة: كل اللي في الشيت + أي عمود جديد ----------\nconst allKeysSet = {};\n(hist.monthKeys || []).forEach(k => { allKeysSet[k] = true; });\nperiods.forEach(p => { allKeysSet[p.key] = true; });\nconst allKeys = Object.keys(allKeysSet).sort();\n\n// الأعمدة اللي لسه بياناتها ممكن تتغير عند جوجل (آخر VOLATILE_TAIL عمود).\n// أي عمود أقدم من كده بياناته مقفولة، فلو السحبة رجعت \"مفيش\" والأرشيف فيه\n// رقم → الأرشيف هو الصح والسحبة هي اللي فيها مشكلة.\nconst volatile = {};\nperiods.slice(Math.max(0, periods.length - (cfg.volatileTail || 2))).forEach(p => { volatile[p.key] = true; });\n\nconst AR_MON = ['يناير','فبراير','مارس','أبريل','مايو','يونيو',\n                'يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];\n// تسمية العمود بتختلف حسب الإيقاع: الشهري بيسمّي الشهر بالعربي،\n// والأسبوعي بيستخدم التسمية اللي بناها Build Tasks (أسبوع كذا).\nconst __cadence = cfg.cadence;\nconst labelOf = (key) => __cadence === 'weekly'\n  ? String(key)\n  : (AR_MON[Number(String(key).split('-')[1]) - 1] || String(key));\nconst lastLabelOf = (p) => __cadence === 'weekly' ? (p.label || String(p.key)) : labelOf(p.key);\n\n// ---------- 4) بناء الصفوف ----------\nconst data = [];        // للتقرير (آخر COLUMNS عمود)\nconst sheetRows = [];   // للشيت (كل الأعمدة من أول يوم)\nconst tally = { ranked: 0, noData: 0, fromArchive: 0, keptArchive: 0, holes: 0, archiveOnly: 0 };\nconst suspicious = [];  // خانات مسكنا فيها الأرشيف رغم إن السحبة قالت \"مفيش\"\n\nfunction resolve(rowKey, key, isReportPeriod) {\n  const f = fresh[rowKey + '||' + key];\n  const o = (hist.byRow[rowKey] || {})[key];\n  const archived = o && o.filled;\n  const archivedNum = archived && o.position !== null;\n\n  if (f && f.verdict === 'ranked') {\n    return { state: 'ranked', position: f.position, impressions: f.impressions,\n             cell: f.position, scope: f.scope, matchedPage: f.matchedPage || '' };\n  }\n  if (f && f.verdict === 'no-data') {\n    // عمود قديم + الأرشيف فيه رقم → نمسك الأرشيف ونسجّل شبهة.\n    if (archivedNum && !volatile[key]) {\n      if (isReportPeriod && suspicious.length < 200) suspicious.push({ rowKey, period: key, archived: o.position });\n      return { state: 'kept-archive', position: o.position, impressions: o.impressions, cell: o.position };\n    }\n    return { state: 'no-data', position: null, impressions: 0, cell: '-' };\n  }\n  // السحبة فشلت أو مفيش سحبة أصلاً → الأرشيف لو موجود، وإلا خانة فاضية.\n  if (archived) {\n    return { state: f ? 'from-archive' : 'archive-only',\n             position: o.position, impressions: o.impressions,\n             cell: o.position === null ? '-' : o.position };\n  }\n  return { state: 'hole', position: null, impressions: 0, cell: '' };\n}\n\ncfg.countries.forEach(c => {\n  kws.forEach(k => {\n    const rowKey = c.name + '||' + k.keyword;\n\n    // --- الصف الكامل لكل الأعمدة (بيتكتب في الشيت زي ما هو) ---\n    const cellsAll = [], imprAll = [];\n    allKeys.forEach(mk => {\n      const r = resolve(rowKey, mk, false);\n      cellsAll.push(r.cell);\n      imprAll.push(r.state === 'hole' ? '' : r.impressions);\n    });\n    sheetRows.push({ country: c.name, section: k.group, keyword: k.keyword,\n                     page: k.page || '', article: k.article || '', cellsAll, imprAll });\n\n    // --- أعمدة التقرير بس (السلايدز + الإيميل) ---\n    const positions = [], impressions = [], cellsPos = [];\n    periods.forEach(p => {\n      const r = resolve(rowKey, p.key, true);\n      if (r.state === 'ranked')            tally.ranked++;\n      else if (r.state === 'no-data')      tally.noData++;\n      else if (r.state === 'from-archive') tally.fromArchive++;\n      else if (r.state === 'kept-archive') tally.keptArchive++;\n      else if (r.state === 'archive-only') tally.archiveOnly++;\n      else                                 tally.holes++;\n      positions.push(r.position);\n      impressions.push(r.impressions || 0);\n      cellsPos.push(r.state === 'hole' ? '' : r.cell);\n    });\n\n    const li = periods.length - 1;\n    const lastCell = periods.length ? fresh[rowKey + '||' + periods[li].key] : null;\n    data.push({\n      country: c.name, section: k.group, group: k.group + ' — ' + c.name,\n      keyword: k.keyword, page: k.page || '', article: k.article || '',\n      sv: (k.sv === undefined || k.sv === null) ? '' : k.sv,\n      positions, impressionsAll: impressions, cellsPos,\n      impressions: impressions[li] || 0,\n      // نطاق قياس آخر عمود: 'page' = الصفحة المستهدفة | 'site' = كل صفحات\n      // الموقع للكلمة. بيتعرض في السلايد عشان اللي بيراجع يعرف يفلتر نفس\n      // الفلتر في واجهة Search Console.\n      scope: (lastCell && lastCell.scope) || (k.page ? 'page' : 'site'),\n      matchedPage: (lastCell && lastCell.matchedPage) || '',\n    });\n  });\n});\n\nconst safe = v => (typeof v === 'number' && !isFinite(v)) ? '' : v;\nsheetRows.forEach(r => { r.cellsAll = r.cellsAll.map(safe); r.imprAll = r.imprAll.map(safe); });\n\nconst totalCells = data.length * periods.length;\nconst filled = tally.ranked + tally.noData + tally.fromArchive + tally.keptArchive + tally.archiveOnly;\n\nreturn [{ json: {\n  // الشهري ما عندوش startDate/endDate على الفترة، فبيتساب undefined ومحدش\n  // بيقراه — والأسبوعي محتاجهم لبناء عنوان الأسبوع بالعربي.\n  months: periods.map(p => ({ key: p.key, label: __cadence === 'weekly' ? p.label : labelOf(p.key),\n                              caption: p.caption, year: p.year,\n                              startDate: p.startDate, endDate: p.endDate })),\n  data,\n  allMonths: allKeys.map(k => ({ key: k, label: labelOf(k) })),\n  sheetRows,\n  lastMonth: periods.length ? lastLabelOf(periods[periods.length - 1]) : null,\n  quality: {\n    totalCells, filled,\n    coverage: totalCells ? Math.round((filled / totalCells) * 10000) / 10000 : 1,\n    tally, requestStats, pairing,\n    failures, suspicious, pageMisses,\n    keywordsWithoutPage: Object.keys(noPageKws),\n    noFetch,\n    sheetError: rs.__sheetError || '',\n    extent: rs.__extent || { rows: 0, cols: 0 },\n    latestDataDate: (tasks[0] && tasks[0].json.__latestDataDate) || '',\n    freshnessSource: $('Freshness Guard').first().json.freshnessSource,\n    periodsInSheet: (hist.monthKeys || []).length,\n    totalPeriodsStored: allKeys.length,\n    keywordCount: kws.length,\n    invalidEmails: cfg.mailInvalid || [],\n  },\n} }];\n"
+      },
+      "id": "8c59dc09-80e3-432d-8194-a534dbd36fb6",
+      "name": "Merge History",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        98944,
+        22096
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// بوابة جودة البيانات — آخر خط دفاع قبل ما نلمس الشيت أو نبني التقرير.\n//\n// بتقرر: نكمل ولا نوقف؟ وبتبني كمان مصفوفة القيم اللي هتتكتب في الشيت\n// مبطّنة لآخر مقاس كان للشيت، عشان أي أعمدة/صفوف قديمة زايدة تتمسح ومايفضلش\n// في الشيت بقايا من قايمة كلمات قديمة.\nconst cfg = $('Config').first().json;\nconst res = $input.first().json;\nconst q   = res.quality || {};\n\nconst problems = [];   // أسباب توقف الرن\nconst warnings = [];   // ملاحظات بتوصل في الإيميل ومابتوقفش الرن\n\n// --- 1) الشيت نفسه ---\nif (q.sheetError) {\n  problems.push('مقدرناش نقرا الشيت: ' + q.sheetError +\n                ' — الكتابة اتوقفت عشان ما نمسحش الأرشيف.');\n}\n\n// --- 2) سلامة الربط بين الطلبات والردود ---\nconst p1 = q.pairing && q.pairing.pass1;\nif (p1 && p1.strict) {\n  warnings.push('عدد ردود جوجل (' + p1.results + ') مش مساوي عدد الطلبات (' +\n                p1.tasks + ') — اتعامل معاها بالربط المؤكد (pairedItem).');\n}\nif (p1 && p1.unpaired > 0) {\n  warnings.push(p1.unpaired + ' رد من جوجل مقدرناش نربطه بطلبه واتجاهل.');\n}\n\n// --- 3) التغطية ---\nconst coverage = Number(q.coverage || 0);\nconst holes    = Number((q.tally || {}).holes || 0);\nconst minCov   = Number(cfg.minCoverage);\nif (!q.noFetch && coverage < minCov) {\n  problems.push('نسبة الخانات المكتملة ' + Math.round(coverage * 1000) / 10 +\n                '% وأقل حد مسموح ' + Math.round(minCov * 1000) / 10 + '%.');\n}\nif (!q.noFetch && holes > Number(cfg.maxHoles)) {\n  problems.push('عدد الخانات الفاضية ' + holes + ' وأقصى حد مسموح ' + cfg.maxHoles + '.');\n}\n\n// --- 4) أعمدة التقرير ---\nconst months = res.months || [];\nif (!months.length) problems.push('مفيش ولا عمود في التقرير.');\nif (months.length < Number(cfg.columns)) {\n  warnings.push('التقرير فيه ' + months.length + ' عمود بس بدل ' + cfg.columns +\n                ' — عادي لو الشيت لسه جديد أو بيانات جوجل ناقصة.');\n}\n\n// --- 5) صحة الأرقام نفسها ---\nconst badNumbers = [];\n(res.data || []).forEach(d => {\n  d.positions.forEach((p, i) => {\n    if (p === null) return;\n    if (!(p > 0) || p > 1000 || !isFinite(p)) {\n      badNumbers.push(d.keyword + ' / ' + ((months[i] || {}).key || i) + ' = ' + p);\n    }\n  });\n  (d.impressionsAll || []).forEach((v, i) => {\n    if (v !== '' && (!isFinite(v) || v < 0)) {\n      badNumbers.push(d.keyword + ' / ظهور ' + ((months[i] || {}).key || i) + ' = ' + v);\n    }\n  });\n});\nif (badNumbers.length) {\n  problems.push('فيه ' + badNumbers.length + ' رقم خارج المدى المنطقي: ' +\n                badNumbers.slice(0, 5).join(' | '));\n}\n\n// --- 6) عدد الصفوف ---\nconst expectedRows = (cfg.countries || []).length * Number(q.keywordCount || 0);\nif ((res.data || []).length !== expectedRows) {\n  problems.push('عدد صفوف التقرير ' + (res.data || []).length +\n                ' والمتوقع ' + expectedRows + '.');\n}\n\n// --- 7) ملاحظات مش موقّفة ---\nif ((q.tally || {}).keptArchive > 0) {\n  warnings.push((q.tally.keptArchive) + ' خانة قديمة رجعت من جوجل \"مفيش ظهور\" ' +\n                'رغم إن الأرشيف فيها رقم — مسكنا رقم الأرشيف لأن بيانات الشهور ' +\n                'المقفولة مابتتغيرش.');\n}\nif ((q.pageMisses || []).length) {\n  warnings.push((q.pageMisses.length) + ' خانة الصفحة المستهدفة فيها مكانتش ظاهرة، ' +\n                'فالرقم اتحسب على مستوى الموقع كله للكلمة (زي فلتر الكلمة لوحدها ' +\n                'في واجهة Search Console) — مش من صفحة تانية.');\n}\nconst noPage = q.keywordsWithoutPage || [];\nif (noPage.length) {\n  warnings.push(noPage.length + ' كلمة من غير رابط صفحة مستهدفة، فأرقامها على مستوى ' +\n                'الموقع كله. لو عايز الرقم يطابق فلتر Query + Page في الواجهة، حط ' +\n                'الرابط في ملف الإكسل وأعِد التوليد: ' +\n                noPage.slice(0, 8).join(' | ') + (noPage.length > 8 ? ' …' : ''));\n}\nif ((q.requestStats || {}).truncated > 0) {\n  warnings.push(q.requestStats.truncated + ' كلمة رجع فيها عدد صفحات على الحد الأقصى (' +\n                cfg.gscRowLimit + ') — يعني فيه صفحات اتقصّت ومجموع الظهور ناقص. ' +\n                'ارفع GSC_ROW_LIMIT.');\n}\nif ((q.invalidEmails || []).length) {\n  warnings.push('إيميلات بصيغة غلط واتجاهلت: ' + q.invalidEmails.join(', '));\n}\nif (q.freshnessSource !== 'gsc') {\n  warnings.push('مقدرناش نسأل جوجل عن آخر يوم فيه بيانات، فاستخدمنا LAG_DAYS الاحتياطي.');\n}\n\n// --- 8) بناء قيم الشيت مبطّنة لآخر مقاس ---\nconst header = ['Country', 'Section', 'Keyword', 'Page', 'Article']\n  .concat((res.allMonths || []).reduce((a, m) => a.concat([m.key + ' Pos', m.key + ' Impr']), []));\n\nconst body = (res.sheetRows || []).map(d =>\n  [d.country, d.section, d.keyword, d.page, d.article]\n    .concat(d.cellsAll.reduce((a, p, i) => a.concat([p, d.imprAll[i]]), [])));\n\nconst values = [header].concat(body);\nconst oldRows = Number((q.extent || {}).rows || 0);\nconst oldCols = Number((q.extent || {}).cols || 0);\nconst width   = Math.max(header.length, oldCols);\nvalues.forEach(r => { while (r.length < width) r.push(''); });\nwhile (values.length < oldRows) values.push(new Array(width).fill(''));\n\nconst ok = problems.length === 0;\n\n// --- 9) نص التنبيه لو الرن اتوقف ---\nconst esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\nconst li  = arr => arr.map(t => '<li style=\"margin:0 0 6px 0;\">' + esc(t) + '</li>').join('');\n\nconst failLines = (q.failures || []).slice(0, 40)\n  .map(f => f.keyword + ' — ' + f.period + ' — ' + f.reason);\nconst failMore = Math.max(0, (q.failures || []).length - failLines.length);\n\nconst alertSubject = 'وقفنا تقرير SEO — ' + cfg.company + ' — البيانات مش مكتملة';\n\nconst alertText = [\n  'الأوتوميشن اشتغل بس البيانات اللي رجعت من Google Search Console مش مكتملة،',\n  'فوقفنا قبل ما نكتب على الشيت أو نبني التقرير — عشان ما نطلّعش أرقام ناقصة',\n  'وما نمسحش الأرشيف.',\n  '',\n  'أسباب التوقف:',\n].concat(problems.map(t => '- ' + t))\n .concat(warnings.length ? [''].concat(['ملاحظات:']).concat(warnings.map(t => '- ' + t)) : [])\n .concat(['', 'ملخص السحبة: ' +\n   'طلبات ' + ((q.requestStats || {}).requested || 0) + ' | ' +\n   'رجع بترتيب ' + ((q.requestStats || {}).ranked || 0) + ' | ' +\n   'مفيش ظهور ' + ((q.requestStats || {}).noData || 0) + ' | ' +\n   'فشل ' + ((q.requestStats || {}).failed || 0)])\n .concat(failLines.length ? ['', 'أول ' + failLines.length + ' خانة فشلت:'].concat(failLines.map(t => '- ' + t)) : [])\n .concat(failMore ? ['... و' + failMore + ' خانة كمان.'] : [])\n .concat(['', 'مفيش أي حاجة اتغيرت في الشيت ولا في العرض التقديمي.',\n          'الرن الجاي هيعيد يسحب كل حاجة من أول وجديد.'])\n .join('\\n');\n\nconst alertHtml =\n'<div style=\"font-family:Calibri,Arial,sans-serif;direction:rtl;text-align:right;background:#f2f1ee;padding:24px;color:#142f38;font-size:14px;\">' +\n'<div style=\"max-width:700px;margin:0 auto;background:#ffffff;border:1px solid #d8d6d0;border-radius:10px;padding:22px;\">' +\n'<h3 style=\"margin:0 0 12px 0;font-size:16px;\">تقرير SEO اتوقف — البيانات مش مكتملة</h3>' +\n'<p style=\"line-height:1.9;margin:0 0 14px 0;\">الأوتوميشن اشتغل بس البيانات اللي رجعت من Google Search Console مش مكتملة، ' +\n'فوقفنا قبل ما نكتب على الشيت أو نبني التقرير. <b>الشيت والعرض التقديمي ما اتلمسوش خالص.</b></p>' +\n'<div style=\"background:#f2f1ee;border:1px solid #d8d6d0;border-radius:6px;padding:12px 16px;margin-bottom:14px;\">' +\n'<b>أسباب التوقف</b><ul style=\"margin:8px 0 0 0;padding-inline-start:18px;line-height:1.8;\">' + li(problems) + '</ul></div>' +\n(warnings.length ? '<div style=\"border:1px solid #d8d6d0;border-radius:6px;padding:12px 16px;margin-bottom:14px;\">' +\n  '<b>ملاحظات</b><ul style=\"margin:8px 0 0 0;padding-inline-start:18px;line-height:1.8;\">' + li(warnings) + '</ul></div>' : '') +\n'<p style=\"margin:0 0 6px 0;\"><b>ملخص السحبة:</b> طلبات ' + ((q.requestStats || {}).requested || 0) +\n' • رجع بترتيب ' + ((q.requestStats || {}).ranked || 0) +\n' • مفيش ظهور ' + ((q.requestStats || {}).noData || 0) +\n' • فشل ' + ((q.requestStats || {}).failed || 0) + '</p>' +\n'<p style=\"margin:0 0 14px 0;\"><b>آخر يوم فيه بيانات عند جوجل:</b> ' + esc(q.latestDataDate || '—') + '</p>' +\n(failLines.length ? '<div style=\"border:1px solid #d8d6d0;border-radius:6px;padding:12px 16px;\">' +\n  '<b>أول ' + failLines.length + ' خانة فشلت</b><ul style=\"margin:8px 0 0 0;padding-inline-start:18px;line-height:1.7;\">' +\n  li(failLines) + '</ul>' + (failMore ? '<div style=\"margin-top:6px;\">… و' + failMore + ' خانة كمان.</div>' : '') + '</div>' : '') +\n'<p style=\"margin:14px 0 0 0;line-height:1.9;\">الرن الجاي هيعيد يسحب كل حاجة من أول وجديد. ' +\n'لو المشكلة اتكررت، راجع صلاحية حساب جوجل المربوط بالأوتوميشن وحدود الاستخدام (Quota).</p>' +\n'</div></div>';\n\nreturn [{ json: {\n  ok,\n  problems, warnings,\n  sheetValues: values,\n  sheetRange: cfg.sheetTab + '!A1',\n  writtenRows: values.length, writtenCols: width,\n  quality: q,\n  months, data: res.data, allMonths: res.allMonths, lastMonth: res.lastMonth,\n  alertSubject, alertHtml, alertText,\n  summaryLine: 'تغطية ' + Math.round(coverage * 1000) / 10 + '% • ' +\n               'مسحوب: ' + ((q.tally || {}).ranked || 0) + ' • ' +\n               'مفيش ظهور: ' + ((q.tally || {}).noData || 0) + ' • ' +\n               'من الأرشيف: ' + (((q.tally || {}).fromArchive || 0) + ((q.tally || {}).archiveOnly || 0)) + ' • ' +\n               'فاضية: ' + holes,\n} }];\n"
+      },
+      "id": "5e492d03-0f4b-47c6-bfd0-1a4890fc1726",
+      "name": "Validate Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        99168,
+        22096
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "data_ok",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "29f16382-d678-4f4a-8e84-c1f6d14d7309",
+      "name": "Data Quality Gate",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        99392,
+        22096
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://sheets.googleapis.com/v4/spreadsheets/{{ $('Config').first().json.spreadsheetId }}/values/{{ encodeURIComponent($json.sheetRange) }}?valueInputOption=RAW",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ values: $json.sheetValues }) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "b5e70193-e3de-46eb-97b4-f749f68ffc69",
+      "name": "Write To Sheet",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        99616,
+        22096
+      ],
+      "retryOnFail": true,
+      "maxTries": 4,
+      "waitBetweenTries": 4000,
+      "credentials": {
+        "googleOAuth2Api": {
+          "id": "zqpCaDcnpV6T6BqM",
+          "name": "rabeh.seven.b"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://slides.googleapis.com/v1/presentations/{{ $('Config').first().json.presentationId }}?fields=slides.objectId",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleOAuth2Api",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "9752f891-1783-49de-b8a5-833a4f8b407d",
+      "name": "Get Presentation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        99824,
+        22096
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "googleOAuth2Api": {
+          "id": "zqpCaDcnpV6T6BqM",
+          "name": "rabeh.seven.b"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// يقرأ الشرائح الموجودة فعلياً دلوقتي من مخرجات Get Presentation\n// لو العرض فاضي (0 شرائح) بيرجّع requests فاضية و hasSlides=false\n// عشان نود الـ IF اللي بعده يتخطى الحذف بدل ما Google ترجّع 400\nconst cfg  = $('Config').first().json;\nconst pres = $input.first().json || {};\n\nconst ids = (pres.slides || []).map(s => s && s.objectId).filter(Boolean);\n\nreturn [{ json: {\n  presentationId: cfg.presentationId,\n  deleteCount: ids.length,\n  hasSlides: ids.length > 0,\n  requests: ids.map(id => ({ deleteObject: { objectId: id } })),\n} }];\n"
+      },
+      "id": "c9ce0736-146c-4f3a-a92a-45de809bfe7f",
+      "name": "Build Delete Requests",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        100048,
+        22096
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "has_old_slides",
+              "leftValue": "={{ $json.deleteCount }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "2ff9354b-7d55-47f6-a1b8-cb618eed5ab5",
+      "name": "Has Old Slides?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        100272,
+        22096
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://slides.googleapis.com/v1/presentations/{{ $json.presentationId }}:batchUpdate",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ requests: $json.requests }) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "9e44107c-23e5-4a7a-8416-d8143a2ae56d",
+      "name": "Delete Old Slides",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        100496,
+        22288
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "googleOAuth2Api": {
+          "id": "zqpCaDcnpV6T6BqM",
+          "name": "rabeh.seven.b"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const cfg = $('Config').first().json;\nconst res = $('Validate Data').first().json;\nif (!res || !Array.isArray(res.data) || res.data.length === 0) {\n  throw new Error('مفيش بيانات كلمات مفتاحية جاية من Validate Data — اتوقف قبل ما يبني عرض فاضي.');\n}\nconst runId  = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);\n\n// ⚠️ الـ objectIds دي بتتولّد هنا مرة واحدة وبتتحقن في الداتا. يعني طلب\n// batchUpdate اللي بيتبعت منها **مش idempotent**: لو اتبعت تاني بعد ما نجح،\n// جوجل بيرد 400 \"The object ID should be unique among all pages\".\n// عشان كده نود Create Slides ممنوع يكون عليه retryOnFail — n8n بيعيد النود\n// كله من العنصر صفر، مش العنصر اللي فشل، فأول سلايد بيصطدم بنفسه.\n// (فحص في validate.mjs بيرفض أي بناء يرجّع الـ retry ده.)\n\n// عدد السلايدات في كل HTTP call. أقل عدد calls = فرصة أقل لخطأ عابر وضغط أقل\n// على كوتة الكتابة. batchUpdate ذرّي: الـ call إما بيتطبّق كله أو مايتطبّقش\n// خالص، فأي فشل مابيسيبش سلايد نص نص.\nconst SLIDES_PER_BATCH = 5;\n\n// ============ الألوان — غيّرها من هنا ============\nconst BG   = { red: 0.949, green: 0.945, blue: 0.933 };   // خلفية 242,241,238\nconst INK  = { red: 0.078, green: 0.184, blue: 0.220 };   // نص 20,47,56\nconst BAR  = { red: 0.078, green: 0.184, blue: 0.220 };   // أعمدة 20,47,56\nconst POS  = { red: 0.078, green: 0.184, blue: 0.220 };   // لون الموضع 20,47,56\nconst IMP  = { red: 0.478, green: 0.561, blue: 0.600 };   // لون الظهور 122,143,153\n// ============================================\n\nconst baseline = 335, chartLeft = 45, chartRight = 700, maxBarH = 150;\n\nconst AR = /[\\u0600-\\u06FF]/;\nfunction isAr(t) { return AR.test(String(t)); }\nfunction wrap(t) { return isAr(t) ? '\\u202B' + t + '\\u202C' : '\\u202A' + t + '\\u202C'; }\nfunction dirOf(t) { return isAr(t) ? 'RIGHT_TO_LEFT' : 'LEFT_TO_RIGHT'; }\nfunction pt(v) { return { magnitude: v, unit: 'PT' }; }\nfunction elem(pageId, x, y, w, h) {\n  return { pageObjectId: pageId, size: { width: pt(w), height: pt(h) },\n           transform: { scaleX: 1, scaleY: 1, translateX: x, translateY: y, unit: 'PT' } };\n}\nfunction textBox(reqs, id, pageId, x, y, w, h, text, size, bold, align, color) {\n  const t = String(text);\n  reqs.push({ createShape: { objectId: id, shapeType: 'TEXT_BOX', elementProperties: elem(pageId, x, y, w, h) } });\n  reqs.push({ insertText: { objectId: id, text: wrap(t), insertionIndex: 0 } });\n  reqs.push({ updateTextStyle: { objectId: id, textRange: { type: 'ALL' },\n    style: { foregroundColor: { opaqueColor: { rgbColor: color || INK } }, fontSize: pt(size), bold: !!bold, fontFamily: 'Calibri' },\n    fields: 'foregroundColor,fontSize,bold,fontFamily' } });\n  reqs.push({ updateParagraphStyle: { objectId: id, textRange: { type: 'ALL' },\n    style: { alignment: align || 'CENTER', direction: dirOf(t) }, fields: 'alignment,direction' } });\n  reqs.push({ updateShapeProperties: { objectId: id, shapeProperties: { contentAlignment: 'MIDDLE' }, fields: 'contentAlignment' } });\n}\nfunction rect(reqs, id, pageId, x, y, w, h, color) {\n  reqs.push({ createShape: { objectId: id, shapeType: 'RECTANGLE', elementProperties: elem(pageId, x, y, w, h) } });\n  reqs.push({ updateShapeProperties: { objectId: id,\n    shapeProperties: { shapeBackgroundFill: { solidFill: { color: { rgbColor: color } } }, outline: { propertyState: 'NOT_RENDERED' } },\n    fields: 'shapeBackgroundFill.solidFill.color,outline.propertyState' } });\n}\n\n// عدد مرات البحث: الأصل من ملف الإكسل (نود Keywords)، وأي قيمة مكتوبة يدويًا\n// في نود \"Search Volume\" بتكسب — عشان تقدر تعدّل من غير ما ترجع للإكسل.\nconst svOverride = $('Search Volume').first().json || {};\nfunction svText(d) {\n  const manual = svOverride[d.keyword];\n  const raw = (manual !== undefined && String(manual).trim() !== '') ? manual : d.sv;\n  if (raw === undefined || raw === null || String(raw).trim() === '') return '—';\n  const n = Number(String(raw).replace(/[^0-9.]/g, ''));\n  return (isFinite(n) && n > 0) ? n.toLocaleString('en-US') : String(raw).trim();\n}\n\nconst slides = [];\nres.data.forEach((d, idx) => {\n  const sid = 's' + runId + '_' + idx;\n  const reqs = [];\n\n  reqs.push({ createSlide: { objectId: sid, slideLayoutReference: { predefinedLayout: 'BLANK' } } });\n  reqs.push({ updatePageProperties: { objectId: sid,\n    pageProperties: { pageBackgroundFill: { solidFill: { color: { rgbColor: BG } } } },\n    fields: 'pageBackgroundFill.solidFill.color' } });\n\n  reqs.push({ createShape: { objectId: sid + '_fr', shapeType: 'RECTANGLE', elementProperties: elem(sid, 12, 12, 696, 381) } });\n  reqs.push({ updateShapeProperties: { objectId: sid + '_fr',\n    shapeProperties: { shapeBackgroundFill: { propertyState: 'NOT_RENDERED' },\n      outline: { outlineFill: { solidFill: { color: { rgbColor: INK } } }, weight: pt(2), dashStyle: 'SOLID' } },\n    fields: 'shapeBackgroundFill.propertyState,outline' } });\n\n  rect(reqs, sid + '_lg', sid, 36, 32, 11, 11, BAR);\n  textBox(reqs, sid + '_lgt', sid, 52, 25, 300, 24, d.group, 11, false, 'START');\n  textBox(reqs, sid + '_t', sid, 55, 52, 610, 28, '«' + d.keyword + '»', 16, true, 'CENTER');\n\n  const sub = 'عدد مرات البحث الشهري: ' + svText(d) + '   |   POS = الموضع   |   IMP = عدد الظهور';\n  textBox(reqs, sid + '_s', sid, 55, 80, 610, 20, sub, 10, false, 'CENTER');\n\n  // سطر نطاق القياس: بيقول الرقم ده اتقاس على إيه بالظبط، عشان أي حد يقدر\n  // يفتح Search Console ويحط نفس الفلاتر ويطلع نفس الرقم.\n  //   scope = 'page' → فلتر Query + Page في الواجهة\n  //   scope = 'site' → فلتر Query لوحده\n  const ltr = t => '\\u2066' + String(t) + '\\u2069';\n  const scopeText = (d.scope === 'page' && d.page)\n    ? 'الصفحة المستهدفة: ' + ltr(String(d.page).replace(/^https?:\\/\\//, ''))\n    : 'كل صفحات الموقع للكلمة';\n  const filters = 'نطاق القياس: ' + scopeText +\n                  '   •   ' + d.country +\n                  '   •   بحث الويب   •   بيانات نهائية';\n  textBox(reqs, sid + '_f', sid, 55, 99, 610, 16, filters, 8, false, 'CENTER', IMP);\n\n  const vals = d.positions;\n  const imps = d.impressionsAll || [];\n  const nums = vals.filter(v => v !== null && v !== undefined);\n  const maxV = nums.length ? Math.max.apply(null, nums) : 1;\n  const n = vals.length || 1;\n  const slot = (chartRight - chartLeft) / n;\n  const barW = Math.min(46, Math.max(10, slot * 0.7));\n\n  // --- ضبط حجم الخط تلقائيًا بحيث النص ما يخرجش عن عرض العمود ---\n  function fitSize(maxChars, boxW, maxS, minS) {\n    const s = (boxW * 0.94) / (Math.max(1, maxChars) * 0.52);\n    return Math.max(minS, Math.min(maxS, Math.round(s * 10) / 10));\n  }\n  let lblChars = 1;\n  vals.forEach((v, i) => {\n    if (v !== null && v !== undefined) {\n      lblChars = Math.max(lblChars, ('POS ' + v).length, ('IMP ' + (imps[i] || 0)).length);\n    }\n  });\n  const valFS = fitSize(lblChars, barW, 7.5, 4.5);\n\n  const months = res.months || [];\n  const capOf = mo => String((mo && (mo.caption || mo.label)) || '');\n  const yrOf  = mo => String((mo && (mo.year || String(mo.key || '').split('-')[0])) || '');\n  let capChars = 1, yrChars = 4;\n  months.forEach(mo => {\n    capOf(mo).split('\\n').forEach(ln => { capChars = Math.max(capChars, ln.length); });\n    yrChars = Math.max(yrChars, yrOf(mo).length);\n  });\n  const capFS = fitSize(capChars, slot, 7.5, 4);\n  const yrFS  = fitSize(yrChars, slot, Math.max(4, capFS - 0.5), 4);\n\n  vals.forEach((v, i) => {\n    const cx = chartLeft + slot * i + slot / 2;\n    if (v !== null && v !== undefined) {\n      const h = Math.max(5, (v / (maxV * 1.2)) * maxBarH);\n      rect(reqs, sid + '_b' + i, sid, cx - barW / 2, baseline - h, barW, h, BAR);\n      textBox(reqs, sid + '_p' + i, sid, cx - slot / 2, baseline - h - 31, slot, 15,\n              'POS ' + v, valFS, true, 'CENTER', POS);\n      textBox(reqs, sid + '_v' + i, sid, cx - slot / 2, baseline - h - 18, slot, 15,\n              'IMP ' + (imps[i] || 0), valFS, false, 'CENTER', IMP);\n    }\n    const mo = months[i] || {};\n    const cap = capOf(mo);\n    const multi = cap.indexOf('\\n') !== -1;\n    textBox(reqs, sid + '_m' + i, sid, cx - slot / 2, baseline + 3, slot, multi ? 30 : 14, cap, capFS, false, 'CENTER');\n    const yr = yrOf(mo);\n    if (yr) textBox(reqs, sid + '_y' + i, sid, cx - slot / 2, baseline + (multi ? 33 : 17), slot, 14, yr, yrFS, false, 'CENTER', IMP);\n  });\n\n  reqs.push({ createLine: { objectId: sid + '_ln', lineCategory: 'STRAIGHT',\n    elementProperties: elem(sid, chartLeft - 8, baseline, chartRight - chartLeft + 16, 1) } });\n  reqs.push({ updateLineProperties: { objectId: sid + '_ln',\n    lineProperties: { lineFill: { solidFill: { color: { rgbColor: INK } } }, weight: pt(1.5) },\n    fields: 'lineFill.solidFill.color,weight' } });\n\n  slides.push({ keyword: d.keyword, requests: reqs });\n});\n\n// ---- تقسيم السلايدات على calls ----\nconst out = [];\nfor (let i = 0; i < slides.length; i += SLIDES_PER_BATCH) {\n  const chunk = slides.slice(i, i + SLIDES_PER_BATCH);\n  out.push({ json: {\n    presentationId: cfg.presentationId,\n    requests: chunk.reduce((a, s) => a.concat(s.requests), []),\n    batchIndex: out.length,\n    slidesInBatch: chunk.length,\n    keywords: chunk.map(s => s.keyword),\n    slidesExpected: slides.length,\n  } });\n}\nout.forEach(o => { o.json.batchCount = out.length; });\nreturn out;\n"
+      },
+      "id": "c3f224ff-31e3-49d3-8679-63e3f36a8f69",
+      "name": "Build Slide Batches",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        100704,
+        22096
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://slides.googleapis.com/v1/presentations/{{ $json.presentationId }}:batchUpdate",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ requests: $json.requests }) }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 1500
+            }
+          },
+          "timeout": 180000
+        }
+      },
+      "id": "864c122b-9361-4ccc-ba58-1106f92b3548",
+      "name": "Create Slides",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        100928,
+        22096
+      ],
+      "retryOnFail": false,
+      "credentials": {
+        "googleOAuth2Api": {
+          "id": "zqpCaDcnpV6T6BqM",
+          "name": "rabeh.seven.b"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// بيحسب أرقام الملخص اللي بتظهر في كروت الإيميل (تحسّن/تراجع/ثابت/متوسط التغير).\n// النود ده كان بيبني كمان برومبت لتعليق AI — التعليق اتشال والحسابات فضلت.\nconst cfg = $('Config').first().json;\nconst res = $('Validate Data').first().json;\nconst m = res.months || [];\nconst li = m.length - 1, pi = m.length - 2;\nconst AR_MON = ['يناير','فبراير','مارس','أبريل','مايو','يونيو',\n                'يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];\nfunction arMonth(mo) {\n  if (!mo || !mo.key) return '';\n  const parts = String(mo.key).split('-');\n  return (AR_MON[Number(parts[1]) - 1] || parts[1]) + ' ' + parts[0];\n}\nfunction arWeek(mo) {\n  if (!mo || !mo.startDate) return '';\n  const s = new Date(mo.startDate + 'T00:00:00Z');\n  const e = new Date(mo.endDate   + 'T00:00:00Z');\n  const sm = AR_MON[s.getUTCMonth()], em = AR_MON[e.getUTCMonth()];\n  const y  = e.getUTCFullYear();\n  return sm === em\n    ? 'أسبوع ' + s.getUTCDate() + ' – ' + e.getUTCDate() + ' ' + em + ' ' + y\n    : 'أسبوع ' + s.getUTCDate() + ' ' + sm + ' – ' + e.getUTCDate() + ' ' + em + ' ' + y;\n}\n// نفس النود للتقريرين — الفرق بس في تسمية الفترة.\nconst periodLabel = cfg.cadence === 'weekly' ? arWeek : arMonth;\nconst lastLabel = m.length ? periodLabel(m[li]) : '';\nconst prevLabel = pi >= 0 ? periodLabel(m[pi]) : '';\n\nlet up = 0, down = 0, same = 0, gone = 0, fresh = 0, sum = 0, n = 0;\n(res.data || []).forEach(d => {\n  const last = d.positions[li], prev = pi >= 0 ? d.positions[pi] : null;\n  if (prev === null && last !== null) { fresh++; return; }\n  if (prev !== null && last === null) { gone++; return; }\n  if (prev !== null && last !== null && prev !== 0) {\n    const pct = Math.round(((prev - last) / prev) * 1000) / 10;\n    sum += pct; n++;\n    if (pct > 0) up++; else if (pct < 0) down++; else same++;\n  }\n});\nconst avg = n ? Math.round((sum / n) * 10) / 10 : 0;\n\n// ---- حالة بناء العرض التقديمي ----\n// Create Slides شغّال بـ continueRegularOutput (مايعملش retry لأن الـ objectIds\n// بتتبعت من عندنا والطلب مش idempotent). فلازم نقرا ردوده بنفسنا ونقول في\n// الإيميل لو العرض ما اكتملش، بدل ما نبعت لينك لعرض ناقص من غير ما حد يعرف.\nconst batches = $('Create Slides').all();\nconst plan    = $('Build Slide Batches').first().json || {};\nlet slidesDone = 0;\nconst slideErrors = [];\nbatches.forEach((b, i) => {\n  const j = b.json || {};\n  const err = j.error;\n  if (err !== undefined && err !== null) {\n    const txt = typeof err === 'string' ? err : (err.message || JSON.stringify(err));\n    if (slideErrors.length < 10) slideErrors.push(String(txt).slice(0, 300));\n    return;\n  }\n  const planned = $('Build Slide Batches').all()[i];\n  slidesDone += Number((planned && planned.json.slidesInBatch) || 0);\n});\nconst slidesExpected = Number(plan.slidesExpected || 0);\nconst slidesOk = slideErrors.length === 0 && (!slidesExpected || slidesDone === slidesExpected);\n\nreturn [{ json: { up, down, same, fresh, gone, avg, lastLabel, prevLabel,\n                  slidesOk, slidesDone, slidesExpected, slideErrors } }];\n"
+      },
+      "id": "aeda2dd9-f2ab-4d02-9a6a-89e3bf0f6cdd",
+      "name": "Report Stats",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        101152,
+        22096
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const cfg = $('Config').first().json;\nconst res = $('Validate Data').first().json;\nconst st  = $('Report Stats').first().json;\n\n// ============ الألوان وحجم الخط — غيّرها من هنا ============\nconst BG    = '#f2f1ee';   // خلفية 242,241,238\nconst INK   = '#142f38';   // اللون الأساسي 20,47,56\nconst LINE  = '#d8d6d0';   // لون الحدود\nconst GREEN = '#1e7a34', RED = '#c0392b', GREY = '#7a7a7a';\nconst FS    = '14px';      // حجم الخط الموحّد لكل النصوص\n// ========================================================\n\nconst AR_MON = ['يناير','فبراير','مارس','أبريل','مايو','يونيو',\n                'يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];\nfunction arMonth(mo) {\n  if (!mo || !mo.key) return '';\n  const parts = String(mo.key).split('-');\n  return (AR_MON[Number(parts[1]) - 1] || parts[1]) + ' ' + parts[0];\n}\nfunction arWeek(mo) {\n  if (!mo || !mo.startDate) return '';\n  const s = new Date(mo.startDate + 'T00:00:00Z');\n  const e = new Date(mo.endDate   + 'T00:00:00Z');\n  const sm = AR_MON[s.getUTCMonth()], em = AR_MON[e.getUTCMonth()];\n  const y  = e.getUTCFullYear();\n  return sm === em\n    ? 'أسبوع ' + s.getUTCDate() + ' – ' + e.getUTCDate() + ' ' + em + ' ' + y\n    : 'أسبوع ' + s.getUTCDate() + ' ' + sm + ' – ' + e.getUTCDate() + ' ' + em + ' ' + y;\n}\n// نفس النود للتقريرين — الفرق في تسمية الفترة وكلمة \"أسبوعي/شهري\" بس.\nconst WEEKLY = cfg.cadence === 'weekly';\nconst periodLabel = WEEKLY ? arWeek : arMonth;\nconst CAD_ADJ  = WEEKLY ? 'الأسبوعي' : 'الشهري';\nconst CAD_LAST = WEEKLY ? 'الأسبوع الأخير' : 'الشهر الأخير';\nconst withPrefix = (label) => (WEEKLY || !label) ? label : ('شهر ' + label);\n\nconst m  = res.months || [];\nconst li = m.length - 1, pi = m.length - 2;\nconst nowLabel  = m.length ? periodLabel(m[li]) : '';\nconst prevLabel = pi >= 0 ? periodLabel(m[pi]) : '';\n\nconst esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\n\n// عدد مرات البحث: الأصل من الإكسل (نود Keywords)، وأي تعديل يدوي في نود\n// \"Search Volume\" بيكسب.\nconst svOverride = $('Search Volume').first().json || {};\nfunction svText(d) {\n  const manual = svOverride[d.keyword];\n  const raw = (manual !== undefined && String(manual).trim() !== '') ? manual : d.sv;\n  if (raw === undefined || raw === null || String(raw).trim() === '') return '–';\n  const n = Number(String(raw).replace(/[^0-9.]/g, ''));\n  return (isFinite(n) && n > 0) ? n.toLocaleString('en-US') : String(raw).trim();\n}\n\nconst rows = (res.data || []).map(d => {\n  const last = d.positions[li], prev = pi >= 0 ? d.positions[pi] : null;\n  let pct = null, color = GREY, arrow = '–', txt = '–';\n  if (prev !== null && last !== null && prev !== 0) {\n    pct = Math.round(((prev - last) / prev) * 1000) / 10;\n    if (pct > 0)      { color = GREEN; arrow = '▲'; txt = '+' + pct + '%'; }\n    else if (pct < 0) { color = RED;   arrow = '▼'; txt = pct + '%'; }\n    else              { txt = '0%'; }\n  } else if (prev === null && last !== null) { color = GREEN; arrow = '★'; txt = 'جديدة'; }\n  else if (prev !== null && last === null)   { color = RED;   arrow = '✕'; txt = 'اختفت'; }\n  // نجمة على الكلمات اللي رقمها على مستوى الموقع كله مش على صفحة محددة —\n  // عشان اللي بيراجع في Search Console يعرف يحط الفلتر الصح.\n  const siteWide = d.scope !== 'page';\n  return { d, last, prev, pct, color, arrow, txt, sv: svText(d), siteWide };\n});\nrows.sort((a, b) => (b.pct === null ? -999 : b.pct) - (a.pct === null ? -999 : a.pct));\n\nconst td = 'padding:9px 10px;border-bottom:1px solid ' + LINE + ';font-size:' + FS + ';color:' + INK + ';';\nconst body = rows.map((r, i) => '<tr style=\"background:' + (i % 2 ? '#ffffff' : BG) + ';\">' +\n  '<td style=\"' + td + '\">' + esc(r.d.keyword) + (r.siteWide ? ' <span style=\"color:' + GREY + ';\">*</span>' : '') + '</td>' +\n  '<td style=\"' + td + '\">' + esc(r.d.section) + '</td>' +\n  '<td style=\"' + td + 'text-align:center;\">' + esc(r.d.country) + '</td>' +\n  '<td style=\"' + td + 'text-align:center;\">' + r.sv + '</td>' +\n  '<td style=\"' + td + 'text-align:center;\">' + (r.prev === null ? '–' : r.prev) + '</td>' +\n  '<td style=\"' + td + 'text-align:center;font-weight:bold;\">' + (r.last === null ? '–' : r.last) + '</td>' +\n  '<td style=\"' + td + 'text-align:center;\">' + (r.d.impressions || 0) + '</td>' +\n  '<td style=\"' + td + 'text-align:center;color:' + r.color + ';font-weight:bold;white-space:nowrap;\">' +\n  r.arrow + ' ' + r.txt + '</td></tr>').join('');\n\nconst th = 'padding:11px 10px;text-align:right;font-size:' + FS + ';color:#ffffff;background:' + INK + ';font-weight:bold;';\nconst card = (label, val, color) =>\n  '<td style=\"padding:14px 8px;text-align:center;background:' + BG + ';border:1px solid ' + LINE + ';border-radius:6px;\">' +\n  '<div style=\"font-size:' + FS + ';font-weight:bold;color:' + color + ';\">' + val + '</div>' +\n  '<div style=\"font-size:' + FS + ';color:' + INK + ';margin-top:3px;\">' + label + '</div></td>';\n\nconst slides = 'https://docs.google.com/presentation/d/' + cfg.presentationId;\n\n// سطر جودة البيانات — بيخلي أي خانة ناقصة مرئية بدل ما تعدّي في صمت.\nconst q = res.quality || {};\nconst holes = (q.tally || {}).holes || 0;\nconst qualityNote = holes\n  ? 'ملاحظة: ' + holes + ' خانة لسه فاضية وهتتسحب في الرن الجاي.'\n  : 'كل الخانات مسحوبة ومتأكد منها.';\n\n// تحذير العرض التقديمي: الأرقام في الإيميل والشيت صح في كل الأحوال (الشيت\n// بيتكتب قبل بناء العرض)، بس ممكن العرض نفسه ما يكونش اكتمل.\nconst slidesNote = (st.slidesOk === false)\n  ? 'العرض التقديمي ما اكتملش: اتبنى ' + (st.slidesDone || 0) + ' سلايد من ' +\n    (st.slidesExpected || 0) + '. الأرقام اللي فوق وفي الشيت صح ومكتملة. ' +\n    'الرن الجاي بيمسح العرض ويبنيه من أول تلقائيًا.' +\n    ((st.slideErrors || []).length ? ' السبب: ' + st.slideErrors[0] : '')\n  : '';\n\n// ---- إزاي تراجع أي رقم في التقرير على Search Console ----\n// الأرقام دي مش تقديرات: كل رقم ليه فلتر محدد في الواجهة. السطور دي بتقول\n// الفلتر بالظبط عشان أي حد يفتح Search Console ويطلّع نفس الرقم.\nconst lastMonth = m.length ? m[li] : {};\nconst rangeTxt = (lastMonth.startDate && lastMonth.endDate)\n  ? lastMonth.startDate + ' → ' + lastMonth.endDate\n  : nowLabel;\nconst countryTxt = (cfg.countries || []).map(c => c.name).join(' / ');\nconst siteWideCount = rows.filter(r => r.siteWide).length;\n\nconst verifySteps = [\n  'افتح Search Console → Performance → Search results.',\n  'Date: Custom → ' + rangeTxt + ' (نفس أيام العمود الأخير في التقرير).',\n  'Search type: Web.',\n  'Query: Exact query = الكلمة زي ما هي مكتوبة في التقرير بالحرف.',\n  'Country: ' + countryTxt + '.',\n  'Page: Exact URL = رابط الصفحة المستهدفة للكلمة (جدول الروابط مرفق في الشيت).' +\n    (siteWideCount ? ' الكلمات اللي جنبها * مالهاش صفحة مستهدفة، فسيب فلتر Page فاضي.' : ''),\n];\nconst excluded = ($('Keywords').first().json.excluded) || [];\nconst verifyNote = 'ملحوظة: بيانات جوجل نهائية (final) بس، وأي فلتر ناقص أو زايد ' +\n  'بيغيّر الرقم — خصوصًا فلتر الدولة وفلتر الصفحة.' +\n  (siteWideCount ? ' في التقرير ده ' + siteWideCount + ' كلمة من غير صفحة مستهدفة (*).' : '') +\n  (excluded.length ? ' و' + excluded.length + ' كلمة مستبعدة من التقرير لأن مالهاش صفحة منشورة.' : '');\n\nconst html =\n'<div style=\"font-family:Calibri,Arial,sans-serif;direction:rtl;text-align:right;background:' + BG + ';padding:22px;font-size:' + FS + ';color:' + INK + ';\">' +\n'<div style=\"max-width:900px;margin:0 auto;background:#ffffff;border-radius:10px;overflow:hidden;border:1px solid ' + LINE + ';\">' +\n'<div style=\"background:' + INK + ';padding:22px;\">' +\n  '<div style=\"color:#ffffff;font-size:' + FS + ';font-weight:bold;\">تقرير SEO الأسبوعي — ' + esc(cfg.company) + '</div>' +\n  '<div style=\"color:' + BG + ';font-size:' + FS + ';margin-top:6px;\">' + withPrefix(nowLabel) + (prevLabel ? ' &nbsp;•&nbsp; مقارنةً بـ' + withPrefix(prevLabel) : '') + '</div>' +\n'</div><div style=\"padding:22px;\">' +\n  '<table width=\"100%\" cellspacing=\"8\" cellpadding=\"0\" style=\"margin-bottom:20px;\"><tr>' +\n    card('تحسّن', st.up, GREEN) + card('تراجع', st.down, RED) +\n    card('ثابت', st.same, GREY) + card('متوسط التغير', (st.avg > 0 ? '+' : '') + st.avg + '%', st.avg >= 0 ? GREEN : RED) +\n  '</tr></table>' +\n  '<table width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" style=\"border-collapse:collapse;border:1px solid ' + LINE + ';\">' +\n  '<tr><th style=\"' + th + '\">الكلمة</th><th style=\"' + th + '\">القسم</th>' +\n  '<th style=\"' + th + 'text-align:center;\">الدولة</th>' +\n  '<th style=\"' + th + 'text-align:center;\">عدد مرات البحث</th>' +\n  '<th style=\"' + th + 'text-align:center;\">السابق</th>' +\n  '<th style=\"' + th + 'text-align:center;\">الحالي</th>' +\n  '<th style=\"' + th + 'text-align:center;\">الظهور (' + CAD_LAST + ')</th>' +\n  '<th style=\"' + th + 'text-align:center;\">التغير</th></tr>' + body + '</table>' +\n  '<div style=\"margin-top:22px;text-align:center;\">' +\n    '<a href=\"' + slides + '\" style=\"display:inline-block;background:' + INK + ';color:#ffffff;padding:12px 30px;' +\n    'border-radius:6px;text-decoration:none;font-size:' + FS + ';font-weight:bold;\">عرض التقرير الكامل</a></div>' +\n  '<div style=\"margin-top:16px;font-size:' + FS + ';color:' + INK + ';text-align:center;\">الرقم الأقل = ترتيب أفضل</div>' +\n  '<div style=\"margin-top:8px;font-size:12px;color:' + GREY + ';text-align:center;\">' + esc(qualityNote) + '</div>' +\n  (slidesNote ? '<div style=\"margin-top:12px;background:#fdf3f1;border:1px solid #e6b9b0;border-radius:6px;' +\n    'padding:10px 14px;font-size:12px;line-height:1.8;color:' + INK + ';\">' + esc(slidesNote) + '</div>' : '') +\n  '<div style=\"margin-top:18px;background:' + BG + ';border:1px solid ' + LINE + ';border-radius:6px;padding:14px 16px;font-size:12px;line-height:1.9;\">' +\n    '<b>تحب تراجع أي رقم بنفسك على Search Console؟</b>' +\n    '<ol style=\"margin:8px 0 0 0;padding-inline-start:18px;\">' +\n    verifySteps.map(t => '<li>' + esc(t) + '</li>').join('') + '</ol>' +\n    '<div style=\"margin-top:8px;color:' + GREY + ';\">' + esc(verifyNote) + '</div>' +\n  '</div>' +\n  (excluded.length ? '<div style=\"margin-top:12px;border:1px dashed ' + LINE + ';border-radius:6px;' +\n    'padding:10px 14px;font-size:12px;line-height:1.9;color:' + GREY + ';\">' +\n    '<b style=\"color:' + INK + ';\">كلمات خارج التقرير (' + excluded.length + ')</b> — ' +\n    'مالهاش صفحة منشورة، فمفيش رابط نقيس عليه. أول ما تتنشر صفحتها ويتحط رابطها ' +\n    'في ملف الكلمات، بتدخل التقرير أوتوماتيك:<br>' +\n    excluded.map(function (e) { return esc(e.keyword); }).join(' • ') + '</div>' : '') +\n'</div></div></div>';\n\n// نسخة نصية — مهمة جدًا لتوصيل الإيميل: الرسائل اللي فيها HTML بس من غير\n// نسخة نص عادي بتاخد سكور سبام أعلى عند جيميل وأوتلوك.\nconst textRows = rows.map(r =>\n  '- ' + r.d.keyword + (r.siteWide ? ' *' : '') + ' (' + r.d.section + ') | بحث شهري: ' + r.sv +\n  ' | السابق: ' + (r.prev === null ? '-' : r.prev) +\n  ' | الحالي: ' + (r.last === null ? '-' : r.last) +\n  ' | الظهور: ' + (r.d.impressions || 0) +\n  ' | التغير: ' + r.txt);\n\nconst text = ['تقرير SEO ' + CAD_ADJ + ' — ' + cfg.company,\n              withPrefix(nowLabel) + (prevLabel ? ' مقارنةً بـ' + withPrefix(prevLabel) : ''), '']\n  .concat(['تحسّن: ' + st.up + ' | تراجع: ' + st.down + ' | ثابت: ' + st.same +\n           ' | متوسط التغير: ' + (st.avg > 0 ? '+' : '') + st.avg + '%', ''])\n  .concat(textRows)\n  .concat(['', 'الرقم الأقل = ترتيب أفضل.', qualityNote])\n  .concat(slidesNote ? ['', '⚠ ' + slidesNote] : [])\n  .concat(['', 'مراجعة الأرقام على Search Console:'])\n  .concat(verifySteps.map((t, i) => (i + 1) + ') ' + t))\n  .concat([verifyNote])\n  .concat(excluded.length\n    ? ['', 'كلمات خارج التقرير (' + excluded.length + ') — مالهاش صفحة منشورة:']\n        .concat(excluded.map(function (e) { return '- ' + e.keyword; }))\n    : [])\n  .concat(['', 'التقرير الكامل بالسلايدز: ' + slides])\n  .join('\\n');\n\nreturn [{ json: {\n  emailHtml: html,\n  emailText: text,\n  periodLabel: nowLabel,\n  subject: 'تقرير SEO ' + CAD_ADJ + ' — ' + cfg.company + ' — ' + withPrefix(nowLabel),\n} }];\n"
+      },
+      "id": "eb13306e-0097-4274-a714-10705516a2e5",
+      "name": "Build Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        101376,
+        22096
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $('Config').first().json.mailFromDisplay }}",
+        "toEmail": "={{ $('Config').first().json.mailTo }}",
+        "subject": "={{ $json.subject }}",
+        "emailFormat": "both",
+        "text": "={{ $json.emailText }}",
+        "html": "={{ $json.emailHtml }}",
+        "options": {
+          "appendAttribution": false,
+          "ccEmail": "={{ $('Config').first().json.mailCc }}",
+          "replyTo": "={{ $('Config').first().json.mailReplyTo }}"
+        }
+      },
+      "id": "0b579103-574f-4073-859e-409bb07a5007",
+      "name": "Send Report Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        101584,
+        22096
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "alwaysOutputData": true,
+      "webhookId": "92dbc6d1-b011-4a96-bdca-679e12667ca5",
+      "credentials": {
+        "smtp": {
+          "id": "u4SuwA3OxF79v0f6",
+          "name": "Rabeh SMTP"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// بيقرأ رد سيرفر الـ SMTP الحقيقي بعد إرسال التقرير.\n//\n// المشكلة اللي بيحلها: نود Send Email بيعتبر الإرسال ناجح طالما السيرفر\n// استلم الرسالة، حتى لو رفض بعض المستلمين (وده اللي بيحصل مع إيميلات جيميل\n// لما السيرفر مش مسموح له يوصّل بره الدومين). فالرن بيبان أخضر والإيميل\n// مش واصل. هنا بنقارن المستلمين المتوقعين بالمستلمين اللي السيرفر قبلهم\n// فعلاً، وأي حد اترفض بنبعتله رسالة منفصلة وبنسجّل السبب.\nconst cfg  = $('Config').first().json;\nconst info = $input.first() ? ($input.first().json || {}) : {};\n\nconst norm = e => String(e || '').trim().toLowerCase();\nconst addrOf = (e) => {\n  const s = String(e || '');\n  const m = s.match(/<([^>]+)>/);\n  return norm(m ? m[1] : s);\n};\n\nconst expected = (cfg.mailAllList || []).map(norm).filter(Boolean);\n\nconst accepted = []\n  .concat(Array.isArray(info.accepted) ? info.accepted : [])\n  .map(addrOf).filter(Boolean);\nconst rejected = []\n  .concat(Array.isArray(info.rejected) ? info.rejected : [])\n  .concat(Array.isArray(info.pending)  ? info.pending  : [])\n  .map(addrOf).filter(Boolean);\n\n// الإرسال نفسه وقع (نود Send Report Email شغّال بـ continueRegularOutput):\n// كل المستلمين محتاجين إعادة إرسال فردي، ولازم يوصل تنبيه.\nconst sendError = (info.error !== undefined && info.error !== null)\n  ? (typeof info.error === 'string' ? info.error : (info.error.message || JSON.stringify(info.error))).slice(0, 300)\n  : '';\n\n// لو السيرفر مرجّعش قائمة accepted أصلاً مانفترضش الأسوأ ومانبعتش مرتين.\nconst knowsAccepted = accepted.length > 0 || rejected.length > 0;\n\nconst missing = sendError\n  ? expected.slice()\n  : (knowsAccepted ? expected.filter(e => accepted.indexOf(e) === -1) : []);\n\nconst base = {\n  expected,\n  accepted,\n  rejected,\n  missing,\n  knowsAccepted,\n  sendError,\n  messageId: info.messageId || '',\n  smtpResponse: sendError || String(info.response || '').slice(0, 300),\n  envelopeFrom: (info.envelope && info.envelope.from) || '',\n  subject: $('Build Email').first().json.subject,\n};\n\nif (!missing.length) {\n  return [{ json: Object.assign({ __resend: false, resendCount: 0 }, base) }];\n}\n\nreturn missing.map((recipient, i) => ({ json: Object.assign({\n  __resend: true,\n  recipient,\n  resendIndex: i,\n  resendCount: missing.length,\n}, base) }));\n"
+      },
+      "id": "91c18ed4-1ef1-4696-b85b-096e55abbe86",
+      "name": "Delivery Audit",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        101808,
+        22096
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "needs_resend",
+              "leftValue": "={{ $json.__resend }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a258058d-c229-4008-b8e6-92b86d36e8ce",
+      "name": "Needs Resend?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        102032,
+        22096
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $('Config').first().json.mailFromDisplay }}",
+        "toEmail": "={{ $json.recipient }}",
+        "subject": "={{ $('Build Email').first().json.subject }}",
+        "emailFormat": "both",
+        "text": "={{ $('Build Email').first().json.emailText }}",
+        "html": "={{ $('Build Email').first().json.emailHtml }}",
+        "options": {
+          "appendAttribution": false,
+          "replyTo": "={{ $('Config').first().json.mailReplyTo }}"
+        }
+      },
+      "id": "fa01ef7c-5296-45b6-ae73-40196c58453a",
+      "name": "Resend Individually",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        102256,
+        22288
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000,
+      "alwaysOutputData": true,
+      "webhookId": "c8565fdf-5e76-4f65-b746-03211c27f18b",
+      "credentials": {
+        "smtp": {
+          "id": "u4SuwA3OxF79v0f6",
+          "name": "Rabeh SMTP"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// بيلمّ نتايج الإرسال الفردي ويبني تنبيه بحالة التوصيل لكل مستلم.\nconst cfg   = $('Config').first().json;\nconst audit = $('Delivery Audit').first().json || {};\nconst tries = $input.all();\n\nconst norm = e => String(e || '').trim().toLowerCase();\nconst addrOf = (e) => {\n  const s = String(e || '');\n  const m = s.match(/<([^>]+)>/);\n  return norm(m ? m[1] : s);\n};\n\n// الربط بـ pairedItem زي باقي النودات — الترتيب لوحده مش ضمان.\nconst auditItems = $('Delivery Audit').all();\nfunction srcIndex(item, fallbackIndex) {\n  const p = item ? item.pairedItem : undefined;\n  if (typeof p === 'number') return p;\n  if (p && typeof p.item === 'number') return p.item;\n  if (Array.isArray(p) && p.length && p[0] && typeof p[0].item === 'number') return p[0].item;\n  return fallbackIndex;\n}\n\nconst rows = [];\ntries.forEach((item, i) => {\n  const j = item.json || {};\n  const src = auditItems[srcIndex(item, i)] || auditItems[i] || {};\n  const target = norm((src.json || {}).recipient || '');\n  const err = (j.error !== undefined && j.error !== null)\n    ? (typeof j.error === 'string' ? j.error : (j.error.message || JSON.stringify(j.error))).slice(0, 300)\n    : '';\n  const accepted = (Array.isArray(j.accepted) ? j.accepted : []).map(addrOf);\n  rows.push({\n    recipient: target,\n    ok: !err && accepted.indexOf(target) !== -1,\n    error: err,\n    response: String(j.response || '').slice(0, 200),\n  });\n});\n\nconst failed = rows.filter(r => !r.ok);\nconst fixed  = rows.filter(r => r.ok);\n\nconst esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\n\nconst line = r => (r.ok ? 'وصل بعد إعادة الإرسال' : 'ما وصلش') + ' — ' + r.recipient +\n                  (r.error ? ' — ' + r.error : (r.response ? ' — ' + r.response : ''));\n\nconst text = [\n  'تقرير حالة توصيل إيميل SEO — ' + cfg.company,\n  '',\n  'الموضوع: ' + (audit.subject || ''),\n  'المستلمين المتوقعين: ' + (audit.expected || []).join(', '),\n  'اللي السيرفر قبلهم في الإرسال الأول: ' + ((audit.accepted || []).join(', ') || 'مفيش'),\n  'اللي اترفضوا أو ماتأكدوش: ' + ((audit.missing || []).join(', ') || 'مفيش'),\n  'رد سيرفر SMTP: ' + (audit.smtpResponse || '—'),\n  '',\n  'نتيجة إعادة الإرسال الفردي:',\n].concat(rows.map(r => '- ' + line(r)))\n .concat(failed.length ? [\n   '',\n   'المستلمين دول لسه ما وصلهمش الإيميل. ده معناه إن سيرفر SMTP نفسه رافض',\n   'يوصّل لبره الدومين، أو إن الرسالة بتتحجب عند المستلم. الحل في الإعدادات',\n   'مش في الأوتوميشن — راجع ملف EMAIL-DELIVERABILITY.md.',\n ] : ['', 'كل المستلمين وصلهم الإيميل بعد إعادة الإرسال الفردي.'])\n .join('\\n');\n\nconst html =\n'<div style=\"font-family:Calibri,Arial,sans-serif;direction:rtl;text-align:right;background:#f2f1ee;padding:24px;color:#142f38;font-size:14px;\">' +\n'<div style=\"max-width:700px;margin:0 auto;background:#ffffff;border:1px solid #d8d6d0;border-radius:10px;padding:22px;\">' +\n'<h3 style=\"margin:0 0 12px 0;font-size:16px;\">حالة توصيل إيميل التقرير — ' + esc(cfg.company) + '</h3>' +\n'<p style=\"line-height:1.9;margin:0 0 14px 0;\">الإرسال الأول ما وصلش لكل المستلمين، فأعدنا الإرسال لكل واحد لوحده. ' +\n'دي النتيجة النهائية:</p>' +\n'<table width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" style=\"border-collapse:collapse;border:1px solid #d8d6d0;\">' +\n'<tr><th style=\"padding:10px;background:#142f38;color:#fff;text-align:right;\">المستلم</th>' +\n'<th style=\"padding:10px;background:#142f38;color:#fff;text-align:center;\">الحالة</th>' +\n'<th style=\"padding:10px;background:#142f38;color:#fff;text-align:right;\">رد السيرفر</th></tr>' +\nrows.map((r, i) => '<tr style=\"background:' + (i % 2 ? '#ffffff' : '#f2f1ee') + ';\">' +\n  '<td style=\"padding:9px 10px;border-bottom:1px solid #d8d6d0;\">' + esc(r.recipient) + '</td>' +\n  '<td style=\"padding:9px 10px;border-bottom:1px solid #d8d6d0;text-align:center;color:' +\n    (r.ok ? '#1e7a34' : '#c0392b') + ';font-weight:bold;\">' + (r.ok ? 'وصل' : 'ما وصلش') + '</td>' +\n  '<td style=\"padding:9px 10px;border-bottom:1px solid #d8d6d0;\">' + esc(r.error || r.response || '—') + '</td></tr>').join('') +\n'</table>' +\n'<p style=\"margin:14px 0 0 0;line-height:1.9;\"><b>رد سيرفر SMTP في الإرسال الأول:</b> ' + esc(audit.smtpResponse || '—') + '</p>' +\n(failed.length\n  ? '<p style=\"margin:10px 0 0 0;line-height:1.9;\">لسه فيه ' + failed.length + ' مستلم ما وصلهوش. ' +\n    'المشكلة في إعدادات السيرفر مش في الأوتوميشن — راجع ملف <b>EMAIL-DELIVERABILITY.md</b> ' +\n    '(صلاحية الإرسال الخارجي + SPF و DKIM و DMARC).</p>'\n  : '<p style=\"margin:10px 0 0 0;line-height:1.9;color:#1e7a34;\">كل المستلمين وصلهم الإيميل بعد إعادة الإرسال الفردي.</p>') +\n'</div></div>';\n\nreturn [{ json: {\n  deliveryRows: rows,\n  stillFailing: failed.map(r => r.recipient),\n  recovered: fixed.map(r => r.recipient),\n  alertSubject: (failed.length ? 'إيميل التقرير ما وصلش لكل المستلمين — ' : 'إيميل التقرير اتصلّح بعد إعادة الإرسال — ') + cfg.company,\n  alertHtml: html,\n  alertText: text,\n} }];\n"
+      },
+      "id": "deb9b0c3-9e73-45a6-9900-afc056809259",
+      "name": "Delivery Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        102464,
+        22096
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $('Config').first().json.mailFromDisplay }}",
+        "toEmail": "={{ $('Config').first().json.mailAlert }}",
+        "subject": "={{ $json.alertSubject }}",
+        "emailFormat": "both",
+        "text": "={{ $json.alertText }}",
+        "html": "={{ $json.alertHtml }}",
+        "options": {
+          "appendAttribution": false,
+          "replyTo": "={{ $('Config').first().json.mailReplyTo }}"
+        }
+      },
+      "id": "a8b46604-06a0-4b57-b065-be3a1fa1dde2",
+      "name": "Delivery Alert Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        102688,
+        22096
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000,
+      "webhookId": "95ace57c-6db0-435d-b77a-f59cc20ddd29",
+      "credentials": {
+        "smtp": {
+          "id": "u4SuwA3OxF79v0f6",
+          "name": "Rabeh SMTP"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "https://searchconsole.googleapis.com/webmasters/v3/sites",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleOAuth2Api",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "359e1d24-e2dc-47a7-a3ca-3f00ee9d7f45",
+      "name": "List GSC Sites",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        96528,
+        22512
+      ],
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "googleOAuth2Api": {
+          "id": "zqpCaDcnpV6T6BqM",
+          "name": "rabeh.seven.b"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// بيحوّل \"مقدرناش نوصل لـ Search Console\" لسبب محدد وخطوة واضحة.\n//\n// بيقرا حاجتين:\n//   1) رد طلب الموقع المحدد في Config  (نود Verify GSC Access)\n//   2) قائمة المواقع اللي الحساب المربوط شايفها فعلاً (نود List GSC Sites)\n// ومن الاتنين دول بيعرف: التوكن واقع؟ ولا الحساب مالوش صلاحية؟ ولا الرابط\n// المكتوب في Config مش مطابق لشكل الموقع المسجّل في جوجل؟\nconst cfg    = $('Config').first().json;\nconst verify = $('Verify GSC Access').first().json || {};\nconst listed = $input.first() ? ($input.first().json || {}) : {};\n\nfunction errText(e) {\n  if (e === undefined || e === null) return '';\n  if (typeof e === 'string') return e;\n  if (e.message) return String(e.message);\n  try { return JSON.stringify(e); } catch (x) { return String(e); }\n}\n\nconst verifyErr = errText(verify.error);\nconst listErr   = errText(listed.error);\nconst blob      = (verifyErr + ' ' + listErr);\n\n// المواقع اللي الحساب شايفها\nconst entries = Array.isArray(listed.siteEntry) ? listed.siteEntry : [];\nconst sites = entries.map(e => ({\n  url: String(e.siteUrl || ''),\n  level: String(e.permissionLevel || ''),\n}));\n\nconst want = String(cfg.siteUrl || '');\nconst norm = (u) => String(u || '').trim().toLowerCase()\n  .replace(/^sc-domain:/, '').replace(/^https?:\\/\\//, '').replace(/^www\\./, '').replace(/\\/+$/, '');\nconst wantN = norm(want);\n\nconst exact  = sites.find(s => s.url === want);\nconst sameHost = sites.filter(s => norm(s.url) === wantN && s.url !== want);\nconst readOnly = sites.filter(s => /^(siteUnverifiedUser|siteRestrictedUser)$/.test(s.level));\n\n// ---------------- تحديد السبب ----------------\nlet cause, action, severity = 'blocked';\n\nif (/invalid_grant|invalid_token|Token has been expired|revoked|unauthorized_client/i.test(blob)\n    || /\\b401\\b/.test(blob)) {\n  cause = 'صلاحية حساب جوجل المربوط بالأوتوميشن انتهت أو اتسحبت. '\n        + 'ده بيحصل لما الباسورد يتغيّر، أو حد يشيل صلاحية n8n من إعدادات الحساب، '\n        + 'أو التوكن يقعد فترة طويلة من غير استخدام.';\n  action = 'افتح n8n ← Credentials ← \"' + 'rabeh.seven.b' + '\" ← اضغط Reconnect وسجّل دخول '\n         + 'بحساب جوجل اللي عنده صلاحية على الموقع، وبعدين شغّل الأوتوميشن يدويًا من Manual Trigger.';\n} else if (sameHost.length) {\n  cause = 'الرابط المكتوب في إعدادات الأوتوميشن مش مطابق لشكل الموقع المسجّل في '\n        + 'Search Console. جوجل بيعتبرهم موقعين مختلفين تمامًا حتى لو نفس الدومين.';\n  action = 'غيّر SITE_URL في نود Config من \"' + want + '\" لـ \"' + sameHost[0].url + '\" بالظبط '\n         + '(انسخه زي ما هو من الجدول تحت).';\n} else if (sites.length && !exact) {\n  cause = 'الحساب المربوط بالأوتوميشن شغّال تمام، بس الموقع \"' + want + '\" مش موجود '\n        + 'في المواقع اللي الحساب ده عنده صلاحية عليها.';\n  action = 'يا إما تضيف الحساب ده كمستخدم على الموقع في Search Console '\n         + '(الإعدادات ← المستخدمون والأذونات ← إضافة مستخدم)، يا إما تظبط SITE_URL في '\n         + 'نود Config على واحد من المواقع الموجودة في الجدول تحت.';\n} else if (/\\b403\\b|does not have sufficient permission|insufficientPermissions|forbidden/i.test(blob)) {\n  cause = 'الحساب المربوط متصل بس مالوش صلاحية على الموقع ده في Search Console.';\n  action = 'من Search Console: الإعدادات ← المستخدمون والأذونات ← إضافة مستخدم، '\n         + 'وضيف حساب جوجل المربوط بالأوتوميشن بصلاحية \"كامل\" أو \"مقيّد\".';\n} else if (/\\b404\\b|notFound/i.test(blob) && !sites.length) {\n  cause = 'جوجل بيقول إن الموقع ده مش موجود عنده، والأوتوميشن كمان مقدرش يجيب قائمة '\n        + 'المواقع — غالبًا الصلاحية واقعة أو الـ API مش مفعّل على المشروع.';\n  action = 'راجع كريدنشيال جوجل في n8n (Reconnect)، واتأكد إن Search Console API مفعّل '\n         + 'في Google Cloud Console على المشروع اللي عامل منه الـ OAuth.';\n} else if (/\\b429\\b|quota|rateLimit/i.test(blob)) {\n  cause = 'جوجل رفض الطلب مؤقتًا بسبب تجاوز حد الاستخدام.';\n  action = 'مفيش حاجة تتعمل — شغّل الأوتوميشن تاني بعد شوية. لو اتكررت كل مرة، '\n         + 'راجع حصة Search Console API في Google Cloud Console.';\n  severity = 'temporary';\n} else if (/ETIMEDOUT|ECONNRESET|ENOTFOUND|socket hang up|timeout|\\b5\\d\\d\\b/i.test(blob)) {\n  cause = 'الاتصال بجوجل نفسه فشل (شبكة أو عطل مؤقت عند جوجل).';\n  action = 'شغّل الأوتوميشن تاني من Manual Trigger. لو فضل بيفشل، راجع اتصال سيرفر n8n بالإنترنت.';\n  severity = 'temporary';\n} else if (!verifyErr && !verify.siteUrl) {\n  cause = 'جوجل رد على الطلب بس الرد مالهوش الشكل المتوقع (مفيش siteUrl في الرد).';\n  action = 'ابعت لقطة من مخرجات نود \"Verify GSC Access\" — التفاصيل الخام تحت في الإيميل ده.';\n} else {\n  cause = 'مقدرناش نحدد السبب أوتوماتيك من رد جوجل.';\n  action = 'راجع رسالة الخطأ الخام تحت، وابدأ بعمل Reconnect لكريدنشيال جوجل في n8n.';\n}\n\n// ---------------- بناء الإيميل ----------------\nconst esc = t => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\n\nconst LEVEL_AR = {\n  siteOwner: 'مالك', siteFullUser: 'صلاحية كاملة',\n  siteRestrictedUser: 'صلاحية مقيّدة', siteUnverifiedUser: 'غير مُتحقّق',\n};\n\nconst sitesHtml = sites.length\n  ? '<table width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" style=\"border-collapse:collapse;border:1px solid #d8d6d0;margin-top:8px;\">'\n    + '<tr><th style=\"padding:9px 10px;background:#142f38;color:#fff;text-align:right;font-size:13px;\">الموقع كما هو مسجّل في جوجل</th>'\n    + '<th style=\"padding:9px 10px;background:#142f38;color:#fff;text-align:center;font-size:13px;\">الصلاحية</th></tr>'\n    + sites.map((s, i) => '<tr style=\"background:' + (i % 2 ? '#ffffff' : '#f2f1ee') + ';\">'\n      + '<td style=\"padding:8px 10px;border-bottom:1px solid #d8d6d0;font-family:monospace;direction:ltr;text-align:left;\">'\n      + esc(s.url) + '</td>'\n      + '<td style=\"padding:8px 10px;border-bottom:1px solid #d8d6d0;text-align:center;\">'\n      + esc(LEVEL_AR[s.level] || s.level) + '</td></tr>').join('')\n    + '</table>'\n  : '<p style=\"margin:8px 0 0 0;color:#c0392b;\">مقدرناش نجيب قائمة المواقع كمان — '\n    + 'ده بيرجّح إن المشكلة في صلاحية الحساب نفسه مش في الموقع.</p>';\n\nconst raw = [\n  verifyErr ? 'رد فحص الموقع: ' + verifyErr : '',\n  listErr   ? 'رد قائمة المواقع: ' + listErr : '',\n].filter(Boolean).join('\\n') || 'مفيش رسالة خطأ صريحة من جوجل.';\n\nconst subject = 'تقرير SEO ' + (cfg.cadence === 'weekly' ? 'الأسبوعي' : 'الشهري')\n              + ' لم يُرسل — ' + cfg.company + ' — مشكلة في الوصول لـ Search Console';\n\nconst text = [\n  'تقرير SEO ما اتبعتش — ' + cfg.company,\n  '',\n  'إيه اللي حصل:',\n  cause,\n  '',\n  'إيه اللي تعمله:',\n  action,\n  '',\n  'الموقع المطلوب في الإعدادات: ' + want,\n  'المواقع اللي الحساب المربوط شايفها (' + sites.length + '):',\n].concat(sites.length\n    ? sites.map(s => '  - ' + s.url + '   [' + (LEVEL_AR[s.level] || s.level) + ']')\n    : ['  (مقدرناش نجيبها)'])\n .concat([\n  '',\n  'رسالة جوجل الخام:',\n  raw,\n  '',\n  'الشيت والعرض التقديمي ما اتلمسوش خالص — مفيش أي بيانات اتغيرت.',\n ]).join('\\n');\n\nconst html =\n'<div style=\"font-family:Calibri,Arial,sans-serif;direction:rtl;text-align:right;background:#f2f1ee;padding:24px;color:#142f38;font-size:14px;\">'\n+ '<div style=\"max-width:700px;margin:0 auto;background:#ffffff;border:1px solid #d8d6d0;border-radius:10px;padding:22px;\">'\n+ '<h3 style=\"margin:0 0 4px 0;font-size:16px;\">تقرير SEO ما اتبعتش — ' + esc(cfg.company) + '</h3>'\n+ '<div style=\"color:#7a7a7a;margin-bottom:16px;\">مشكلة في الوصول لـ Google Search Console</div>'\n\n+ '<div style=\"background:#f2f1ee;border-right:4px solid #c0392b;border-radius:4px;padding:12px 16px;margin-bottom:14px;\">'\n+ '<b>إيه اللي حصل بالظبط</b>'\n+ '<p style=\"margin:6px 0 0 0;line-height:1.9;\">' + esc(cause) + '</p></div>'\n\n+ '<div style=\"background:#f2f1ee;border-right:4px solid #1e7a34;border-radius:4px;padding:12px 16px;margin-bottom:14px;\">'\n+ '<b>إيه اللي تعمله</b>'\n+ '<p style=\"margin:6px 0 0 0;line-height:1.9;\">' + esc(action) + '</p></div>'\n\n+ '<p style=\"margin:0 0 4px 0;\"><b>الموقع المطلوب في إعدادات الأوتوميشن:</b></p>'\n+ '<div style=\"font-family:monospace;direction:ltr;text-align:left;background:#f2f1ee;border:1px solid #d8d6d0;'\n+ 'border-radius:4px;padding:8px 10px;margin-bottom:14px;\">' + esc(want) + '</div>'\n\n+ '<p style=\"margin:0 0 4px 0;\"><b>المواقع اللي الحساب المربوط شايفها فعلاً:</b></p>'\n+ sitesHtml\n\n+ '<p style=\"margin:16px 0 4px 0;\"><b>رسالة جوجل الخام (للفني):</b></p>'\n+ '<div style=\"font-family:monospace;direction:ltr;text-align:left;background:#f2f1ee;border:1px solid #d8d6d0;'\n+ 'border-radius:4px;padding:8px 10px;white-space:pre-wrap;word-break:break-word;font-size:12px;\">'\n+ esc(raw) + '</div>'\n\n+ '<p style=\"margin:16px 0 0 0;line-height:1.9;background:#f2f1ee;border-radius:4px;padding:10px 14px;\">'\n+ '<b>الشيت والعرض التقديمي ما اتلمسوش خالص</b> — مفيش أي بيانات اتغيرت ولا اتمسحت. '\n+ 'بعد ما تظبط السبب، شغّل الأوتوميشن يدويًا من زرار Manual Trigger.</p>'\n\n+ '</div></div>';\n\nreturn [{ json: {\n  alertSubject: subject, alertHtml: html, alertText: text,\n  diagnosis: { cause, action, severity, want, sites, raw, readOnly: readOnly.length },\n} }];\n"
+      },
+      "id": "65f100df-106f-4f8a-9917-1f2f52e0856c",
+      "name": "GSC Diagnose",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        96752,
+        22512
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $('Config').first().json.mailFromDisplay }}",
+        "toEmail": "={{ $('Config').first().json.mailTo }}",
+        "subject": "={{ $json.alertSubject }}",
+        "emailFormat": "both",
+        "text": "={{ $json.alertText }}",
+        "html": "={{ $json.alertHtml }}",
+        "options": {
+          "appendAttribution": false,
+          "ccEmail": "={{ $('Config').first().json.mailCc }}",
+          "replyTo": "={{ $('Config').first().json.mailReplyTo }}"
+        }
+      },
+      "id": "971eb3a5-72a3-400f-8635-96e212be51cc",
+      "name": "GSC Alert Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        96976,
+        22512
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000,
+      "webhookId": "820edc50-00c6-4e38-9f91-eb741112e1cf",
+      "credentials": {
+        "smtp": {
+          "id": "u4SuwA3OxF79v0f6",
+          "name": "Rabeh SMTP"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $('Config').first().json.mailFromDisplay }}",
+        "toEmail": "={{ $('Config').first().json.mailAlert }}",
+        "subject": "={{ $json.alertSubject }}",
+        "emailFormat": "both",
+        "text": "={{ $json.alertText }}",
+        "html": "={{ $json.alertHtml }}",
+        "options": {
+          "appendAttribution": false,
+          "replyTo": "={{ $('Config').first().json.mailReplyTo }}"
+        }
+      },
+      "id": "6668bab1-f788-467a-ae5c-09c2ebe44065",
+      "name": "Data Alert Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        99392,
+        22512
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000,
+      "webhookId": "1d020f2f-d7e5-46a5-987a-948fb63367c7",
+      "credentials": {
+        "smtp": {
+          "id": "u4SuwA3OxF79v0f6",
+          "name": "Rabeh SMTP"
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Emails": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Verify GSC Access",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify GSC Access": {
+      "main": [
+        [
+          {
+            "node": "GSC Access Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GSC Access Check": {
+      "main": [
+        [
+          {
+            "node": "GSC Freshness",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "List GSC Sites",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List GSC Sites": {
+      "main": [
+        [
+          {
+            "node": "GSC Diagnose",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GSC Diagnose": {
+      "main": [
+        [
+          {
+            "node": "GSC Alert Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GSC Freshness": {
+      "main": [
+        [
+          {
+            "node": "Freshness Guard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Freshness Guard": {
+      "main": [
+        [
+          {
+            "node": "Keywords",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Keywords": {
+      "main": [
+        [
+          {
+            "node": "Search Volume",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Volume": {
+      "main": [
+        [
+          {
+            "node": "Fetch Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Sheet": {
+      "main": [
+        [
+          {
+            "node": "Read Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Sheet": {
+      "main": [
+        [
+          {
+            "node": "Build Tasks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Tasks": {
+      "main": [
+        [
+          {
+            "node": "GSC Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GSC Query": {
+      "main": [
+        [
+          {
+            "node": "Collect Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Results": {
+      "main": [
+        [
+          {
+            "node": "Needs Retry?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs Retry?": {
+      "main": [
+        [
+          {
+            "node": "GSC Retry Query",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Merge History",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GSC Retry Query": {
+      "main": [
+        [
+          {
+            "node": "Merge History",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge History": {
+      "main": [
+        [
+          {
+            "node": "Validate Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Data": {
+      "main": [
+        [
+          {
+            "node": "Data Quality Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data Quality Gate": {
+      "main": [
+        [
+          {
+            "node": "Write To Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Data Alert Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write To Sheet": {
+      "main": [
+        [
+          {
+            "node": "Get Presentation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Presentation": {
+      "main": [
+        [
+          {
+            "node": "Build Delete Requests",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Delete Requests": {
+      "main": [
+        [
+          {
+            "node": "Has Old Slides?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Old Slides?": {
+      "main": [
+        [
+          {
+            "node": "Delete Old Slides",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Slide Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete Old Slides": {
+      "main": [
+        [
+          {
+            "node": "Build Slide Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Slide Batches": {
+      "main": [
+        [
+          {
+            "node": "Create Slides",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Slides": {
+      "main": [
+        [
+          {
+            "node": "Report Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Report Stats": {
+      "main": [
+        [
+          {
+            "node": "Build Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Email": {
+      "main": [
+        [
+          {
+            "node": "Send Report Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Report Email": {
+      "main": [
+        [
+          {
+            "node": "Delivery Audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delivery Audit": {
+      "main": [
+        [
+          {
+            "node": "Needs Resend?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs Resend?": {
+      "main": [
+        [
+          {
+            "node": "Resend Individually",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resend Individually": {
+      "main": [
+        [
+          {
+            "node": "Delivery Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delivery Report": {
+      "main": [
+        [
+          {
+            "node": "Delivery Alert Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "timezone": "Africa/Cairo",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "e721a907-e4be-49ab-9e47-2ae70b05f6ed",
+  "meta": {
+    "instanceId": "aa8780e8c0405eba19bbb0ba4d101fe64f7d0dfda606add777633b76f4833f0a"
+  },
+  "nodeGroups": [],
+  "id": "aSDFkiOtFouoYb2W",
+  "tags": []
+}
