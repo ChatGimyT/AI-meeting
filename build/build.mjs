@@ -34,6 +34,11 @@ const SHEET_TAB = arg('sheet-tab', '');
 const GS_TYPE   = arg('sheets-credential-type', 'googleSheetsOAuth2Api');
 const GS_ID     = arg('sheets-credential-id', 'zqpCaDcnpV6T6BqM');
 const GS_NAME   = arg('sheets-credential-name', 'Google Sheets account');
+const GM_TYPE   = arg('gmail-credential-type', 'gmailOAuth2');
+const GM_ID     = arg('gmail-credential-id', 'REPLACE_ME');
+const GM_NAME   = arg('gmail-credential-name', 'Gmail account');
+const SMTP_ID   = arg('smtp-credential-id', 'REPLACE_ME');
+const SMTP_NAME = arg('smtp-credential-name', 'SMTP account');
 const WF_NAME   = arg('name', VARIANT === 'default'
                   ? 'AI Editorial Boardroom — محرك كتابة المحتوى بطاولة اجتماعات'
                   : 'AI Editorial Boardroom — ' + VARIANT);
@@ -151,6 +156,14 @@ for (const n of nodes) {
       node.parameters.sheetName.value = SHEET_TAB;
       node.parameters.sheetName.cachedResultName = SHEET_TAB;
     }
+  }
+
+  /* ---- اعتماد Gmail / SMTP لعقد الإرسال ---- */
+  if (n.credentials && n.credentials.gmailOAuth2) {
+    node.credentials = { [GM_TYPE]: { id: GM_ID, name: GM_NAME } };
+  }
+  if (n.credentials && n.credentials.smtp) {
+    node.credentials = { smtp: { id: SMTP_ID, name: SMTP_NAME } };
   }
 
   /* ---- الملف التعريفي الافتراضي في عقدة الطلب ---- */

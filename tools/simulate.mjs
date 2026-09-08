@@ -19,6 +19,11 @@ const profileArg = (process.argv.find((a) => a.startsWith('--profile=')) || '').
 const briefArg   = (process.argv.find((a) => a.startsWith('--brief=')) || '').split('=')[1];
 const outArg     = (process.argv.find((a) => a.startsWith('--out=')) || '').split('=')[1];
 const concArg    = Number((process.argv.find((a) => a.startsWith('--concurrency=')) || '').split('=')[1]) || 4;
+const CORRUPT    = process.argv.includes('--corrupt-number');
+const TO_ARG     = (process.argv.find((a) => a.startsWith('--to=')) || '').split('=')[1];
+/* عناوين الاختبار الافتراضية: دومين العميل + Gmail + Gmail بنقاط ووسم +
+   + عنوان تالف — لإثبات أن الجيميل يمر وأن المستبعد يُسجَّل بسببه */
+const TEST_TO = TO_ARG || 'reports@rabeh.org, Rabeh Team <rabeh.marketing@gmail.com>, rabehmarketing@googlemail.com, not-an-email';
 
 /* ---------- نداء حقيقي للمزوّد (وضع --live) ---------- */
 const API_KEY = process.env.LLM_API_KEY || process.env.DEEPSEEK_API_KEY || process.env.ANTHROPIC_API_KEY || '';
@@ -87,6 +92,7 @@ const runs = {};                       /* آخر مخرجات كل عقدة */
 const mock = makeMock();
 const trace = [];
 const sheetWrites = [];
+const mailSends = [];
 let llmCalls = 0;
 
 /* صف تجريبي يحاكي ما يملأه المستخدم في الورقة1 */
@@ -102,7 +108,8 @@ const SHEET_ROWS = () => {
       'الكلمات المرتبطة': (base.semantic_keywords || []).join('\n'),
       'العناوين الداخلية': (base.headings || []).join('\n'),
       'الروابط الداخلية': (base.internal_links || []).map((l) => l.anchor + ' | ' + l.url).join('\n'),
-      'استشهادات إلزامية': '', 'دور المقالة': 'Pillar', 'المقالة الحالية': '', 'ملاحظات': '' },
+      'استشهادات إلزامية': '', 'دور المقالة': 'Pillar', 'المقالة الحالية': '', 'ملاحظات': '',
+      'مستلمو التقرير': TEST_TO, 'نسخة إلى': '' },
     { row_number: 3, 'تشغيل': '', 'الحالة': '', 'عنوان المقال': 'صف غير مُعلَّم — يجب تجاهله' }
   ];
 };
@@ -133,6 +140,9 @@ function evalIf(node, items) {
     case '🚦 Has Links?':       return j.skip_links === false;
     case '🚦 Webhook Reply?':   return $('🧾 Normalize Brief').first().json.brief.delivery === 'webhook';
     case '🚦 From Sheet?':      return j.row_number != null;
+    case '🚦 Needs Adjudication?': return j.needs_adjudication === true;
+    case '🚦 Send Report?':     return j.send === true;
+    case '🚦 Gmail Transport?': return j.use_gmail === true;
     default: throw new Error('No evaluator for IF node ' + node.name);
   }
 }
@@ -150,6 +160,7 @@ async function runNode(node, items) {
       if (briefArg) brief = JSON.parse(fs.readFileSync(path.resolve(ROOT, briefArg), 'utf8'));
       else if (profileArg) brief = PRESETS[profileArg] || Object.assign({}, parsed, { profile_id: profileArg });
       if (profileArg) brief.profile_id = profileArg;
+      if (!brief.recipients) brief.recipients = TEST_TO;
       return { outputs: [[{ json: brief }]] };
     }
 
@@ -189,6 +200,22 @@ async function runNode(node, items) {
     case 'n8n-nodes-base.noOp':
     case 'n8n-nodes-base.respondToWebhook':
       return { outputs: [items] };
+
+    case 'n8n-nodes-base.gmail':
+    case 'n8n-nodes-base.emailSend': {
+      /* محاكاة الناقل: لا شبكة، لكن نسجّل ما كان سيُرسل ولمن بالضبط */
+      return { outputs: [items.map((it) => {
+        const j = it.json;
+        mailSends.push({
+          node: node.name,
+          to: j.to, cc: j.cc, bcc: j.bcc,
+          subject: j.subject, mode: j.mode,
+          domains: Object.keys(j.recipient_domains || {}),
+          dropped: j.dropped_recipients || []
+        });
+        return { json: { id: 'mock-msg-' + (mailSends.length), labelIds: ['SENT'], threadId: 'mock-thread' } };
+      })] };
+    }
 
     case 'n8n-nodes-base.scheduleTrigger':
       return { outputs: [items] };
@@ -240,6 +267,7 @@ const PRESETS = {
   }
 };
 $LAST.profile = profileArg || 'rabeh_article_ar';
+$LAST.corrupt = CORRUPT;
 let queue = [{ name: startName, items: [{ json: {} }] }];
 const pendingMerge = {};                 /* عقد لها أكثر من مصدر: تُنفَّذ عند وصول أول دفعة */
 let steps = 0;
@@ -311,6 +339,33 @@ if (sheetWrites.length) {
     });
   });
 }
+if (pack.numbers) {
+  const n = pack.numbers;
+  console.log('\n  🔢 بوابة الأرقام:');
+  console.log('    الحكم: ' + n.verdict + ' | مصرَّح بالإرسال: ' + (n.can_send ? 'نعم' : 'لا'));
+  console.log('    فُحص ' + n.scanned + ' رقمًا · يحتاج عهدة ' + n.audited + ' · موثّق ' + n.verified + ' (' + n.coverage_pct + '%)');
+  console.log('    حرج ' + n.high + ' · متوسط ' + n.medium + ' · ملاحظات ' + n.low);
+  (n.block_reasons || []).forEach((b) => console.log('    ⛔ ' + b));
+  (n.findings || []).slice(0, 8).forEach((f) =>
+    console.log('    ' + ({ high: '🔴', medium: '🟡', low: '⚪' }[f.severity] || '') + ' ' + f.code + ' سطر ' + f.line + ' «' + f.raw + '»: ' + f.message.slice(0, 100)));
+  (n.reconciliation || []).filter((r) => !r.ok).forEach((r) =>
+    console.log('    ❌ مصالحة ' + r.label + ': المحسوب ' + r.expected + ' ≠ المكتوب ' + r.actual));
+  (n.report_orphans || []).slice(0, 6).forEach((o) =>
+    console.log('    ⚠️  رقم في التقرير بلا أصل: «' + o.raw + '» سطر ' + o.line));
+}
+if (mailSends.length) {
+  console.log('\n  📧 البريد:');
+  mailSends.forEach((m) => {
+    console.log('    ' + m.node + ' → ' + m.to + (m.cc ? ' | cc: ' + m.cc : ''));
+    console.log('      النمط: ' + m.mode + ' | الدومينات: ' + m.domains.join('، '));
+    (m.dropped || []).forEach((d) => console.log('      ⛔ استُبعد ' + d.input + ' — ' + d.reason));
+  });
+} else {
+  try {
+    const prep = runs['📧 Build Email'] && runs['📧 Build Email'][0] && runs['📧 Build Email'][0].json;
+    if (prep) console.log('\n  📧 البريد: لم يُرسل — ' + (prep.not_sending_because || []).join(' | '));
+  } catch (e) { /* لا شيء */ }
+}
 if (pack.comparison) {
   const c = pack.comparison;
   console.log('\n  📐 مقابل المرجع (' + c.reference_name + '):');
@@ -351,6 +406,34 @@ if (pack.errors.length)   { console.log('\n  أخطاء تقنية:'); pack.erro
 
 /* ---------- تأكيدات ---------- */
 const isArticle = (pack.content_mode || 'article') !== 'social';
+const NUMS = pack.numbers || {};
+const prep = (runs['📧 Build Email'] && runs['📧 Build Email'][0] && runs['📧 Build Email'][0].json) || {};
+const mailedTo = mailSends.length ? String(mailSends[0].to) : '';
+const mailedHtml = prep.html || '';
+
+/* ── وضع الرقم المغشوش: نُثبت أن البوابة تمسكه ولا يُسلَّم ── */
+if (CORRUPT) {
+  const corruptAssertions = [
+    ['بوابة الأرقام أصدرت حكم hold', NUMS.verdict === 'hold'],
+    ['رُصدت مخالفة رقمية حرجة واحدة على الأقل', (NUMS.high || 0) >= 1],
+    ['المخالفة من نوع value_mismatch (رقم لا يطابق مصدره)',
+      (NUMS.findings || []).some((f) => f.code === 'value_mismatch')],
+    ['المفتش الآلي رسب في الفحص الرقمي داخل الدورة', pack.mechanical.pass === false],
+    ['التقرير مُنع من النشر', pack.ready_to_publish === false],
+    ['البريد أُرسل كإشعار حجز لا كتقرير', prep.mode === 'hold_notice'],
+    ['المقال لم يُرفق في إشعار الحجز', mailedHtml.indexOf('<h3>المقال</h3>') === -1],
+    ['إشعار الحجز وصل رغم ذلك إلى المستلمين', mailSends.length === 1],
+    ['سبب الحجز مكتوب في الرسالة', mailedHtml.indexOf('لماذا حُجز التقرير') !== -1]
+  ];
+  console.log('\n  تأكيدات وضع الرقم المغشوش:');
+  let cfailed = 0;
+  corruptAssertions.forEach(([label, ok]) => { if (!ok) cfailed++; console.log('    ' + (ok ? '✅' : '❌') + ' ' + label); });
+  console.log('');
+  if (cfailed) { console.error('❌ فشل ' + cfailed + ' تأكيدًا في وضع الرقم المغشوش.\n'); process.exit(1); }
+  console.log('✅ البوابة أمسكت الرقم المغشوش ومنعت تسليمه.\n');
+  process.exit(0);
+}
+
 const assertions = [
   ['وصلت إلى حزمة النشر', !!pack],
   ['دارت الجلسة أكثر من دورة واحدة', pack.rounds_used >= 2],
@@ -365,7 +448,31 @@ const assertions = [
 ].concat(isArticle ? [] : [
   ['حزمة السوشيال أنتجت بوستات', pack.mechanical.checks.some((c) => c.id === 'posts_found' && c.pass)]
 ]).concat([
-  ['لا أخطاء تقنية', pack.errors.length === 0]
+  ['لا أخطاء تقنية', pack.errors.length === 0],
+
+  /* ── بوابة الأرقام ── */
+  ['بوابة الأرقام أصدرت حكمًا', !!NUMS.verdict],
+  /* الفجوة الوحيدة المقبولة هي رقم من طرف العميل رُفع له ليؤكده — لا رقم مجهول */
+  ['كل رقم يحتاج عهدة وُثِّق بمصدره أو رُفع للعميل',
+    (NUMS.coverage_pct || 0) === 100 ||
+    (NUMS.findings || []).filter((f) => f.code === 'first_party_number').length >=
+      ((NUMS.audited || 0) - (NUMS.verified || 0))],
+  ['لا مخالفة رقمية حرجة', (NUMS.high || 0) === 0],
+  ['أرقام التقرير صولحت بلا اختلاف', (NUMS.reconciliation_failures || []).length === 0],
+  ['المصالحة غطّت أرقام التقرير الأساسية', (NUMS.reconciliation || []).length >= 8],
+  ['لا رقم في التقرير بلا أصل', (NUMS.report_orphans || []).length === 0],
+  ['التقرير حمل بطاقة الأرقام المعتمدة',
+    (pack.audit_report_markdown || '').indexOf('بطاقة الأرقام المعتمدة') !== -1],
+
+  /* ── التسليم بالبريد ── */
+  ['البريد جُهِّز للإرسال', prep.send === true],
+  ['وصل إلى عنوان على دومين العميل', /@rabeh\.org/.test(mailedTo)],
+  ['وصل إلى عنوان Gmail', /@gmail\.com/.test(mailedTo)],
+  ['العنوان التالف استُبعد بسبب مكتوب',
+    (prep.dropped_recipients || []).some((d) => d.reason && d.reason.length > 3)],
+  ['لا قائمة دومينات تحجب أحدًا',
+    !(prep.dropped_recipients || []).some((d) => /allow_domains/.test(d.reason || ''))],
+  ['المقال أُرفق في تقرير مصرَّح به', mailedHtml.indexOf('<h3>المقال</h3>') !== -1]
 ]);
 console.log('\n  التأكيدات:');
 let failed = 0;

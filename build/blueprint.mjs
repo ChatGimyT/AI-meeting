@@ -3,8 +3,11 @@
  * build.mjs يقرأ هذا الملف ويحقن كود المراحل ومكتبة المساعدات.
  * ============================================================= */
 
+/* الدقة قبل السرعة: التوزيع على دفعات يمنع انفجار حد المعدل عند المزوّد،
+ * وهو الفارق بين أتمتة محترمة وأتمتة تُوقَف حسابها بعد أسبوع. */
 const LLM_OPTS = {
   timeout: 300000,
+  batching: { batch: { batchSize: 3, batchInterval: 1500 } },
   response: { response: { neverError: true, responseFormat: 'json' } }
 };
 
@@ -51,6 +54,46 @@ const sheets = (name, pos, params, note) => ({
   retryOnFail: true, maxTries: 3, waitBetweenTries: 3000,
   credentials: { googleSheetsOAuth2Api: { id: 'REPLACE_ME', name: 'Google Sheets account' } },
   parameters: Object.assign({ documentId: docRL(), sheetName: tabRL() }, params)
+});
+
+/** عقدة إرسال عبر Gmail API (تصل إلى أي عنوان: دومين العميل أو Gmail أو غيرهما) */
+const gmailSend = (name, pos, note) => ({
+  name, pos, note,
+  type: 'n8n-nodes-base.gmail', typeVersion: 2.1,
+  retryOnFail: true, maxTries: 3, waitBetweenTries: 5000,
+  onError: 'continueRegularOutput',
+  credentials: { gmailOAuth2: { id: 'REPLACE_ME', name: 'Gmail account' } },
+  parameters: {
+    sendTo: '={{ $json.to }}',
+    subject: '={{ $json.subject }}',
+    emailType: 'html',
+    message: '={{ $json.html }}',
+    options: {
+      ccList: '={{ $json.cc }}',
+      bccList: '={{ $json.bcc }}',
+      senderName: '={{ $json.from_name }}',
+      appendAttribution: false
+    }
+  }
+});
+
+/** عقدة إرسال عبر SMTP — لمن يفضّل خادمه الخاص بدل Gmail API */
+const smtpSend = (name, pos, note) => ({
+  name, pos, note,
+  type: 'n8n-nodes-base.emailSend', typeVersion: 2.1,
+  retryOnFail: true, maxTries: 3, waitBetweenTries: 5000,
+  onError: 'continueRegularOutput',
+  credentials: { smtp: { id: 'REPLACE_ME', name: 'SMTP account' } },
+  parameters: {
+    fromEmail: '={{ $json.from_email }}',
+    toEmail: '={{ $json.to }}',
+    ccEmail: '={{ $json.cc }}',
+    bccEmail: '={{ $json.bcc }}',
+    subject: '={{ $json.subject }}',
+    emailFormat: 'html',
+    html: '={{ $json.html }}',
+    options: {}
+  }
 });
 
 const sticky = (content, pos, w, h, color) => ({
@@ -176,7 +219,13 @@ export const nodes = [
     onError: 'continueRegularOutput', retryOnFail: false,
     note: 'فحص حياة كل رابط قبل الاستشهاد به.',
     parameters: { method: 'HEAD', url: '={{ $json.url }}',
+      sendHeaders: true,
+      headerParameters: { parameters: [
+        { name: 'User-Agent', value: 'AI-Editorial-Boardroom/1.0 (link verification; +https://www.rabeh.org)' },
+        { name: 'Accept', value: '*/*' }
+      ] },
       options: { timeout: 15000, redirect: { redirect: { followRedirects: true } },
+        batching: { batch: { batchSize: 2, batchInterval: 1200 } },
         response: { response: { neverError: true, fullResponse: true, responseFormat: 'text' } } } } },
 
   { name: '➖ No Links', type: 'n8n-nodes-base.noOp', typeVersion: 1, pos: [2220, 180], parameters: {} },
@@ -224,30 +273,70 @@ export const nodes = [
   llm('🧠 LLM · Final Auditor', [6400, 60]),
   code('📦 Publish Pack', '22-publish-pack', [6620, 60], 'المقال + الميتا + Schema + التقارير + محضر الاجتماع.'),
 
-  code('📐 Compare vs Reference', '25-compare-vs-reference', [6840, 60],
+  /* ═══ 9. بوابة الأرقام: لا يغادر رقم واحد قبل مراجعته ═══ */
+  code('🔢 Numbers: Reconcile', '27-numbers-reconcile', [6840, 60],
+       'يعيد اشتقاق كل رقم في التقرير من مصدره، ويعيد فحص أرقام المقال تمريرة ثانية مستقلة.'),
+
+  { name: '🚦 Needs Adjudication?', type: 'n8n-nodes-base.if', typeVersion: 2.2, pos: [7060, 60],
+    note: 'لا يُستدعى مراجع الأرقام إلا إن بقيت حالة رمادية — توفيرًا للنداءات.',
+    parameters: { conditions: { options: { caseSensitive: true, leftValue: '', typeValidation: 'loose', version: 2 },
+      conditions: [{ id: 'c-adj', leftValue: '={{ $json.needs_adjudication }}', rightValue: '',
+        operator: { type: 'boolean', operation: 'true', singleValue: true } }], combinator: 'and' }, options: {} } },
+
+  llm('🧠 LLM · Number Auditor', [7280, -40], 'يحكم في الأرقام الرمادية فقط — ولا يملك تبرئة مخالفة حرجة.'),
+
+  { name: '➖ No Adjudication', type: 'n8n-nodes-base.noOp', typeVersion: 1, pos: [7280, 180], parameters: {} },
+
+  code('🧮 Numbers: Verdict', '28-numbers-verdict', [7500, 60],
+       'الحكم النهائي على الأرقام + بطاقة الأرقام المعتمدة + إذن مغادرة التقرير.'),
+
+  code('📐 Compare vs Reference', '25-compare-vs-reference', [7720, 60],
        'يقيس الناتج مقابل المقال المرجعي: الفحوص + بصمة الأسلوب.'),
 
-  { name: '🚦 From Sheet?', type: 'n8n-nodes-base.if', typeVersion: 2.2, pos: [7060, 60],
+  /* ═══ 10. التسليم بالبريد ═══ */
+  code('📧 Build Email', '29-build-email', [7940, 60],
+       'يطبّع عناوين المستلمين ويتحقق منها بلا أي تقييد على الدومين، ويبني الرسالة.'),
+
+  { name: '🚦 Send Report?', type: 'n8n-nodes-base.if', typeVersion: 2.2, pos: [8160, 60],
+    parameters: { conditions: { options: { caseSensitive: true, leftValue: '', typeValidation: 'loose', version: 2 },
+      conditions: [{ id: 'c-send', leftValue: '={{ $json.send }}', rightValue: '',
+        operator: { type: 'boolean', operation: 'true', singleValue: true } }], combinator: 'and' }, options: {} } },
+
+  { name: '🚦 Gmail Transport?', type: 'n8n-nodes-base.if', typeVersion: 2.2, pos: [8380, -40],
+    note: 'Gmail API يصل إلى أي عنوان. SMTP relay هو ما يُقيَّد عادةً بدومين واحد.',
+    parameters: { conditions: { options: { caseSensitive: true, leftValue: '', typeValidation: 'loose', version: 2 },
+      conditions: [{ id: 'c-gmail', leftValue: '={{ $json.use_gmail }}', rightValue: '',
+        operator: { type: 'boolean', operation: 'true', singleValue: true } }], combinator: 'and' }, options: {} } },
+
+  gmailSend('📧 Gmail: Send Report', [8600, -140], 'الاعتماد: Gmail OAuth2 بصلاحية gmail.send.'),
+  smtpSend('📧 SMTP: Send Report', [8600, 60], 'الاعتماد: SMTP — تأكد أن الخادم يسمح بالإرسال خارج دومينك.'),
+
+  { name: '➖ Not Sent', type: 'n8n-nodes-base.noOp', typeVersion: 1, pos: [8380, 260], parameters: {} },
+
+  code('📮 Delivery Log', '30-delivery-log', [8820, 60],
+       'يثبّت: هل وصل؟ لمن؟ ومن استُبعد ولماذا — في الشيت وفي رد الـ webhook.'),
+
+  { name: '🚦 From Sheet?', type: 'n8n-nodes-base.if', typeVersion: 2.2, pos: [9040, 60],
     parameters: { conditions: { options: { caseSensitive: true, leftValue: '', typeValidation: 'loose', version: 2 },
       conditions: [{ id: 'c-sheet', leftValue: '={{ $json.row_number }}', rightValue: '',
         operator: { type: 'number', operation: 'exists', singleValue: true } }], combinator: 'and' }, options: {} } },
 
-  sheets('📝 Sheets: Write Results', [7280, -60],
+  sheets('📝 Sheets: Write Results', [9260, -60],
     { operation: 'update',
       columns: { mappingMode: 'autoMapInputData', matchingColumns: ['row_number'], value: {}, schema: [] },
       options: {} },
-    'يكتب المقال والتقارير والمقارنة في الصف نفسه.'),
+    'يكتب المقال والتقارير والمقارنة وحكم بوابة الأرقام وحالة الإرسال في الصف نفسه.'),
 
-  { name: '🚦 Webhook Reply?', type: 'n8n-nodes-base.if', typeVersion: 2.2, pos: [7280, 200],
+  { name: '🚦 Webhook Reply?', type: 'n8n-nodes-base.if', typeVersion: 2.2, pos: [9260, 200],
     parameters: { conditions: { options: { caseSensitive: true, leftValue: '', typeValidation: 'loose', version: 2 },
       conditions: [{ id: 'c-hook', leftValue: '={{ $(\'🧾 Normalize Brief\').first().json.brief.delivery }}', rightValue: 'webhook',
         operator: { type: 'string', operation: 'equals' } }], combinator: 'and' }, options: {} } },
 
-  { name: '📤 Respond to Webhook', type: 'n8n-nodes-base.respondToWebhook', typeVersion: 1.1, pos: [7500, 140],
+  { name: '📤 Respond to Webhook', type: 'n8n-nodes-base.respondToWebhook', typeVersion: 1.1, pos: [9480, 140],
     onError: 'continueRegularOutput',
     parameters: { respondWith: 'json', responseBody: '={{ JSON.stringify($json) }}', options: {} } },
 
-  { name: '✅ Done', type: 'n8n-nodes-base.noOp', typeVersion: 1, pos: [7500, 300], parameters: {} },
+  { name: '✅ Done', type: 'n8n-nodes-base.noOp', typeVersion: 1, pos: [9480, 300], parameters: {} },
 
   /* ═══ ملاحظات على اللوحة ═══ */
   sticky([
@@ -342,8 +431,48 @@ export const nodes = [
     '- Scorecard + Opportunities + Critical Issues',
     '- **محضر الاجتماع كاملًا** (من قال ماذا ولماذا)',
     '',
-    '➕ أضف بعد `📦 Publish Pack` عقدة Google Docs / WordPress / Sheets / Slack كما تشاء.'
-  ].join('\n'), [6620, -380], 800, 400, 7)
+    '➕ أضف بعد `📦 Publish Pack` عقدة Google Docs / WordPress / Slack كما تشاء.'
+  ].join('\n'), [6620, -380], 800, 400, 7),
+
+  sticky([
+    '## 8️⃣ بوابة الأرقام — لا يغادر رقم قبل مراجعته',
+    '',
+    'الأرقام تُفحص **مرتين**: مرة داخل `🔍 Mechanical Inspector` فتدخل مخالفاتها موجز',
+    'التعديل وتُصلَّح على الطاولة، ومرة هنا كتمريرة مستقلة قبل الإرسال مباشرة.',
+    '',
+    '**`🔢 Numbers: Reconcile`** يُعيد اشتقاق كل رقم في التقرير من مصدره الأصلي:',
+    'عدد الكلمات، أسئلة FAQ، صفوف جدول المصادر، استشهادات الـ Schema،',
+    'عدّاد المخالفات، الدرجة النهائية (متوسط بنود اللائحة لا ما أعلنه النموذج)،',
+    'ثم يمسح التقرير والمحضر بحثًا عن أي رقم لا أصل له في المقال ولا في الأدلة.',
+    '',
+    '**`🧠 LLM · Number Auditor`** لا يُستدعى إلا إن بقيت حالة رمادية،',
+    'ولا يملك تبرئة مخالفة حرجة — أقصى ما يملكه تصعيدها، أو تبرئة رقم رمادي',
+    'بسبب مكتوب يُنشر بنصه في تقرير العميل.',
+    '',
+    '**`🧮 Numbers: Verdict`** يحسم: `clear` · `clear_with_notes` · `hold`.',
+    'عند `hold` لا يُرسَل المقال إطلاقًا — يُرسَل إشعار حجز يشرح الخلل فقط.'
+  ].join('\n'), [6840, -420], 1080, 440, 3),
+
+  sticky([
+    '## 9️⃣ البريد — يصل إلى Gmail كما يصل إلى دومينك',
+    '',
+    'سبب وصول الرسائل إلى عناوين الدومين دون Gmail هو دائمًا الناقل، لا الكود:',
+    '',
+    '**١. Google Workspace SMTP relay** مضبوط على «Only addresses in my domains».',
+    'هذا الخيار يرفض كل مستلم خارجي بصمت. الحل: بدّله إلى',
+    '«Any addresses» في Admin console، أو استخدم مسار Gmail API هنا.',
+    '',
+    '**٢. اعتماد Gmail بصلاحية ناقصة** — لا بد من `gmail.send`.',
+    '',
+    '**٣. SPF / DKIM / DMARC غير مضبوطة على الدومين** — الرسائل الداخلية تمر',
+    'لأنها لا تخرج من الخادم، والخارجية تُرفض أو تُصنَّف spam.',
+    '',
+    '**٤. قائمة دومينات مسموحة في الكود** — هنا `allow_domains` فارغة عمدًا،',
+    'أي **بلا أي تقييد**. وكل عنوان يُستبعد يُسجَّل مع سببه في',
+    '`dropped_recipients` وفي عمود «حالة الإرسال» بالشيت.',
+    '',
+    'التفاصيل كاملة: `docs/EMAIL.md`'
+  ].join('\n'), [7940, -420], 1080, 440, 6)
 ];
 
 export const connections = {
@@ -404,8 +533,23 @@ export const connections = {
 
   '🗓️ Agenda: Final Audit': [['🧠 LLM · Final Auditor']],
   '🧠 LLM · Final Auditor': [['📦 Publish Pack']],
-  '📦 Publish Pack':        [['📐 Compare vs Reference']],
-  '📐 Compare vs Reference':[['🚦 From Sheet?']],
+  '📦 Publish Pack':        [['🔢 Numbers: Reconcile']],
+
+  '🔢 Numbers: Reconcile':  [['🚦 Needs Adjudication?']],
+  '🚦 Needs Adjudication?': [['🧠 LLM · Number Auditor'], ['➖ No Adjudication']],
+  '🧠 LLM · Number Auditor':[['🧮 Numbers: Verdict']],
+  '➖ No Adjudication':      [['🧮 Numbers: Verdict']],
+  '🧮 Numbers: Verdict':    [['📐 Compare vs Reference']],
+  '📐 Compare vs Reference':[['📧 Build Email']],
+
+  '📧 Build Email':         [['🚦 Send Report?']],
+  '🚦 Send Report?':        [['🚦 Gmail Transport?'], ['➖ Not Sent']],
+  '🚦 Gmail Transport?':    [['📧 Gmail: Send Report'], ['📧 SMTP: Send Report']],
+  '📧 Gmail: Send Report':  [['📮 Delivery Log']],
+  '📧 SMTP: Send Report':   [['📮 Delivery Log']],
+  '➖ Not Sent':             [['📮 Delivery Log']],
+
+  '📮 Delivery Log':        [['🚦 From Sheet?']],
   '⛔ Intake Rejected':     [['🚦 From Sheet?']],
   '🚦 From Sheet?':         [['📝 Sheets: Write Results'], ['🚦 Webhook Reply?']],
   '📝 Sheets: Write Results': [['🚦 Webhook Reply?']],

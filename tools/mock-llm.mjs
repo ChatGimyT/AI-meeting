@@ -1,7 +1,10 @@
 /* نماذج ردود وهمية تحاكي كل شخصية — تُستخدم في المحاكي فقط. */
 
 const S = (o) => ({ content: [{ type: 'text', text: '```json\n' + JSON.stringify(o) + '\n```' }] });
-const MD = (t) => ({ content: [{ type: 'text', text: t }] });
+/* $LAST.corrupt يحاكي خطأ نقل رقم كلاسيكيًا: قلب خانتين.
+ * المصدر المعتمد يقول 27% والنص سيقول 72% — لإثبات أن البوابة تمسكه. */
+const corrupt = (t) => ($LAST.corrupt ? String(t).replace(/27% في التحويلات/g, '72% في التحويلات') : t);
+const MD = (t) => ({ content: [{ type: 'text', text: corrupt(t) }] });
 
 const KW = 'اعلانات جوجل ادوردز';
 /* يجب أن تطابق حرفيًا الروابط الداخلية في عقدة «📥 Brief — EDIT ME» */
@@ -342,6 +345,14 @@ export function makeMock() {
       ]
     };
 
+    if (id === 'number_auditor') {
+      /* المراجع الوهمي يبرّئ الأرقام الوصفية بسبب مكتوب، ولا يلمس الحرجة */
+      return S({
+        items: [],
+        summary: 'لا اعتراض على الأرقام المعروضة — كلها وصفية أو مسنودة.'
+      });
+    }
+
     if (id === 'fact_checker') return S({
       approved: EV, rejected: [], stale: [], must_remove_from_article: [], verdict: 'pass'
     });
@@ -413,5 +424,5 @@ const PANEL_SCOPE = {
   language_critic: ['language']
 };
 
-export const $LAST = { article: '', profile: 'rabeh_article_ar' };
+export const $LAST = { article: '', profile: 'rabeh_article_ar', corrupt: false };
 export { buildArticle };

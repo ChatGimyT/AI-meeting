@@ -21,7 +21,9 @@ const SHEET = {
     citations:      'استشهادات إلزامية',
     cluster:        'دور المقالة',
     existing:       'المقالة الحالية',
-    notes:          'ملاحظات'
+    notes:          'ملاحظات',
+    recipients:     'مستلمو التقرير',
+    recipients_cc:  'نسخة إلى'
   },
 
   /* أعمدة النتائج — يكتبها المحرك */
@@ -40,6 +42,9 @@ const SHEET = {
     audit:          'تقرير التدقيق',
     minutes:        'محضر الاجتماع',
     sources:        'المصادر',
+    numbers_verdict: 'بوابة الأرقام',
+    numbers_detail: 'ملاحظات الأرقام',
+    delivery:       'حالة الإرسال',
     finished_at:    'وقت التنفيذ',
     run_id:         'رقم التشغيل'
   },

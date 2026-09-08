@@ -39,6 +39,8 @@ const brief = {
   cluster_role:          txt(IN.cluster),
   existing_article:      txt(IN.existing),
   notes:                 txt(IN.notes),
+  recipients:            txt(IN.recipients),
+  recipients_cc:         txt(IN.recipients_cc),
   allow_auto_headings:   txt(IN.headings) === '',
   delivery:              'sheet',
   sheet_row:             r.row_number || null

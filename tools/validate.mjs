@@ -31,6 +31,9 @@ for (const n of wf.nodes) {
     catch (e) { errs.push(n.name + ': jsCode syntax error → ' + e.message); }
     if (n.parameters.jsCode.includes('__STAGE__')) errs.push(n.name + ': stage code was not injected');
     if (n.parameters.jsCode.includes('__PROFILES__')) errs.push(n.name + ': profiles were not injected');
+    if (n.parameters.jsCode.includes('__NUMBERS__')) errs.push(n.name + ': numeric lab was not injected');
+    if (n.parameters.jsCode.includes('__SHEET__')) errs.push(n.name + ': sheet config was not injected');
+    if (n.parameters.jsCode.includes('__REFERENCE__')) errs.push(n.name + ': reference article was not injected');
     if (!/^\s*return\s|\n\s*return\s/.test(n.parameters.jsCode)) warns.push(n.name + ': no return statement found');
   }
   if ((n.type === 'n8n-nodes-base.webhook' || n.type === 'n8n-nodes-base.formTrigger') && !n.webhookId) {

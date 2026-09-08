@@ -125,6 +125,23 @@ row[O.article]      = clip(pack.article_markdown);
 row[O.audit]        = clip((pack.audit_report_markdown || '') + '\n\n' + comparison.markdown);
 row[O.minutes]      = clip(pack.meeting_minutes_markdown);
 row[O.sources]      = (pack.sources || []).map(function (s) { return (s.publisher || '') + ' — ' + s.url; }).join('\n') || '—';
+
+/* --- بوابة الأرقام: الحكم وملاحظاته يظهران في الشيت بجوار المقال --- */
+const NUM = pack.numbers || null;
+row[O.numbers_verdict] = NUM
+  ? ({ clear: '✅ كل رقم موثّق', clear_with_notes: '🟡 موثّق مع ملاحظات', hold: '🔴 محجوز — أرقام مخالفة' }[NUM.verdict] || NUM.verdict) +
+    ' (' + NUM.verified + '/' + NUM.audited + ' — ' + NUM.coverage_pct + '%)'
+  : '—';
+row[O.numbers_detail] = NUM
+  ? ((NUM.block_reasons || []).map(function (b) { return '⛔ ' + b; })
+      .concat((NUM.findings || []).map(function (f) {
+        return ({ high: '🔴', medium: '🟡', low: '⚪' }[f.severity] || '') + ' سطر ' + f.line + ' «' + f.raw + '»: ' + f.message;
+      }))
+      .concat((NUM.reconciliation_failures || []).map(function (r) {
+        return '🔴 ' + r.label + ': المحسوب ' + r.expected + ' ≠ المكتوب ' + r.actual;
+      }))
+      .join('\n') || 'لا ملاحظات — كل رقم مطابق لمصدره.')
+  : '—';
 row[O.finished_at]  = new Date().toISOString().replace('T', ' ').slice(0, 19);
 row[O.run_id]       = pack.run_id;
 
