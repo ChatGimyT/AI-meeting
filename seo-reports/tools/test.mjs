@@ -20,7 +20,7 @@ const head = (t) => console.log('\n' + t);
 /* المحاكي بيتنفّذ في عملية منفصلة ويرجّع الحالة كاملة كـ JSON */
 /* كل التقارير الأربعة: عميلين × إيقاعين */
 const ALL = [];
-for (const client of ['alojan', 'alrawda', 'shoug'])
+for (const client of ['alojan', 'alrawda', 'epush', 'shoug'])
   for (const cadence of ['monthly', 'weekly']) ALL.push({ client, cadence, tag: client + '/' + cadence });
 
 function run(cadence, scenario, client) {
@@ -53,7 +53,7 @@ function run(cadence, scenario, client) {
 }
 
 /* ══════════ ضمانة عدم الانحراف بين التقارير ══════════ */
-head('بنية الملفات — الست تقارير على كود واحد');
+head('بنية الملفات — التمن تقارير على كود واحد');
 {
   const fs2 = await import('node:fs');
   const crypto = await import('node:crypto');
@@ -76,7 +76,7 @@ head('بنية الملفات — الست تقارير على كود واحد')
   const dataDriven = ['Config', 'Keywords'];
   const drifted = Object.keys(codes).filter((n) =>
     dataDriven.indexOf(n) === -1 && new Set(Object.values(codes[n])).size > 1);
-  T('كل نودات المنطق بنفس الكود بالحرف في الستة', drifted.length === 0,
+  T('كل نودات المنطق بنفس الكود بالحرف في التمنية', drifted.length === 0,
     JSON.stringify(drifted));
   T('عدد النودات المشتركة = ' + (Object.keys(codes).length - dataDriven.length),
     Object.keys(codes).length - dataDriven.length >= 16);
@@ -87,7 +87,7 @@ head('بنية الملفات — الست تقارير على كود واحد')
    * حد لحساب مش بتاعه. الفحص ده بيمسح **الملف كله** مش خانة الكريدنشيال بس. */
   {
     const clients = JSON.parse(fs2.readFileSync(path.join(ROOT, 'clients', 'alojan.json'), 'utf8'));
-    const all = ['alojan', 'alrawda', 'shoug'].map((id) =>
+    const all = ['alojan', 'alrawda', 'epush', 'shoug'].map((id) =>
       JSON.parse(fs2.readFileSync(path.join(ROOT, 'clients', id + '.json'), 'utf8')));
 
     files.forEach(({ tag, wf }) => {
@@ -103,16 +103,30 @@ head('بنية الملفات — الست تقارير على كود واحد')
         .concat(Object.values(me.cadences).map((c) => c.presentationId))
         .filter(Boolean));
 
+      /* المعرّفات المميزة (IDs · روابط · أسماء شركات) بتتفحص في الملف كله،
+       * لأن أي ظهور ليها معناه تلوث. أما **أسماء الكريدنشيال** فبتتفحص في
+       * خانات الكريدنشيال بس — واحد منها اسمه حرفيًا "Google"، والكلمة دي
+       * موجودة في كل ملف (Google Sheets · Search Console)، فمسحها في النص
+       * كله بيدي إنذار كاذب مش تلوث حقيقي. */
+      const credNames = new Set();
+      wf.nodes.forEach((n) => Object.values(n.credentials || {})
+        .forEach((c) => credNames.add(c.name + '|' + c.id)));
+
       const marks = [];
       others.forEach((o) => {
-        const ids = [o.googleCredential && o.googleCredential.id,
-                     o.googleCredential && o.googleCredential.name,
-                     o.siteUrl, o.company]
+        const distinct = [o.googleCredential && o.googleCredential.id, o.siteUrl, o.company]
           .concat(Object.values(o.cadences).map((c) => c.spreadsheetId))
           .concat(Object.values(o.cadences).map((c) => c.presentationId))
           .filter(Boolean)
           .filter((v) => !own.has(v));
-        ids.forEach((v) => { if (blob.indexOf(v) !== -1) marks.push(o.id + ':' + String(v).slice(0, 24)); });
+        distinct.forEach((v) => {
+          if (blob.indexOf(v) !== -1) marks.push(o.id + ':' + String(v).slice(0, 24));
+        });
+        /* الكريدنشيال بيتقارن بالزوج (اسم + id) — الاسم لوحده مش دليل */
+        if (o.googleCredential && o.googleCredential.id !== me.googleCredential.id) {
+          const key = o.googleCredential.name + '|' + o.googleCredential.id;
+          if (credNames.has(key)) marks.push(o.id + ':cred ' + key);
+        }
       });
       T(tag + ': مفيش أي معرّف بتاع عميل تاني في الملف', marks.length === 0,
         JSON.stringify(marks));
@@ -144,7 +158,7 @@ head('بنية الملفات — الست تقارير على كود واحد')
 /* ══════════ قائمة الكلمات ══════════ */
 head('قائمة الكلمات — قاعدة «مفيش رابط يبقى مفيش صف»');
 {
-  for (const client of ['alojan', 'alrawda', 'shoug']) {
+  for (const client of ['alojan', 'alrawda', 'epush', 'shoug']) {
     const k = run('monthly', 'happy', client).keywords;
     T(client + ': كل كلمة في التقرير ليها رابط صفحة',
       k.keywords.length > 0 && k.keywords.every((x) => x.page && /^https?:\/\//.test(x.page)),
@@ -163,6 +177,9 @@ head('قائمة الكلمات — قاعدة «مفيش رابط يبقى مف
   T('الروضة: 18 معتمدة و0 مستبعدة',
     run('monthly', 'happy', 'alrawda').keywords.keywordCount === 18 &&
     run('monthly', 'happy', 'alrawda').keywords.excludedCount === 0);
+  T('ايبوش: 37 معتمدة و0 مستبعدة',
+    run('monthly', 'happy', 'epush').keywords.keywordCount === 37 &&
+    run('monthly', 'happy', 'epush').keywords.excludedCount === 0);
 }
 
 /* ══════════ الحساب اللي كان بيطلع غلط ══════════ */

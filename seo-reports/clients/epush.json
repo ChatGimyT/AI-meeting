@@ -1,0 +1,51 @@
+{
+  "id": "epush",
+  "cadences": {
+    "monthly": {
+      "spreadsheetId": "1JgWIc0qybPTPjNYvF6e7vvWTFNm7RAhnQVqSV-sbJwY",
+      "sheetTab": "Sheet1",
+      "presentationId": "1sNzvStZ_71ORozr251XB5WkH0Np5LBWHZbXpVw7anBU",
+      "columns": 15
+    },
+    "weekly": {
+      "spreadsheetId": "1JY5uq6AxT3zRKcB0bbRRrFGpz0gqTrjz6V7jfvV0KGM",
+      "sheetTab": "الورقة1",
+      "presentationId": "1tYcYLroLHrnX-rWuiXbLHNXwVNoxrNit-n_A_a5l-2c",
+      "columns": 15
+    }
+  },
+  "siteUrl": "https://epushagency.eg/",
+  "company": "ايبوش",
+  "manager": "بشمهندس أيمن مصطفى",
+  "mailFrom": "M.gamal@rabeh.org",
+  "mailFromName": "رابح — تقارير SEO",
+  "countries": [
+    {
+      "code": "egy",
+      "name": "مصر"
+    }
+  ],
+  "recipients": {
+    "to": [
+      "m.gamal.zaid1@gmail.com"
+    ],
+    "cc": [
+      "M.gamal@rabeh.org",
+      "gm@rabeh.org",
+      "soaad@rabeh.org",
+      "nouralashtokhy180@gmail.com"
+    ]
+  },
+  "googleCredential": {
+    "id": "eAFsFY5y1jlvRQZZ",
+    "name": "Google"
+  },
+  "aiComment": true,
+  "aiCredential": {
+    "id": "UtZ5Hq48pibn5oXX",
+    "name": "DeepSeek"
+  },
+  "aiUrl": "https://api.deepseek.com/chat/completions",
+  "aiModel": "deepseek-chat",
+  "keywordsFile": "keywords/epush.json"
+}

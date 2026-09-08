@@ -1,0 +1,269 @@
+{
+  "client": "epush",
+  "source": "EPUSH - Monthly Final v2 (نود Keywords)",
+  "sheet": "—",
+  "extractedAt": "2026-09-08",
+  "rule": "أي كلمة من غير رابط صفحة مستهدفة تُستبعد — عشان كل رقم يبقى قابل للمراجعة بفلتر Query + Page",
+  "keywords": [
+    {
+      "group": "SMS service ar",
+      "page": "https://epushagency.eg/ar/%d8%a7%d8%b1%d8%b3%d8%a7%d9%84-%d8%b1%d8%b3%d8%a7%d8%a6%d9%84-sms-%d8%a8%d8%a7%d8%b3%d9%85-%d8%b4%d8%b1%d9%83%d8%aa%d9%83/",
+      "keyword": "موقع ارسال رسائل sms",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "SMS service ar",
+      "page": "https://epushagency.eg/ar/%d8%a7%d8%b1%d8%b3%d8%a7%d9%84-%d8%b1%d8%b3%d8%a7%d8%a6%d9%84-sms-%d8%a8%d8%a7%d8%b3%d9%85-%d8%b4%d8%b1%d9%83%d8%aa%d9%83/",
+      "keyword": "ارسال رسائل sms باسم شركتك",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "SMS service ar",
+      "page": "https://epushagency.eg/ar/%d8%a7%d8%b1%d8%b3%d8%a7%d9%84-%d8%b1%d8%b3%d8%a7%d8%a6%d9%84-sms-%d8%a8%d8%a7%d8%b3%d9%85-%d8%b4%d8%b1%d9%83%d8%aa%d9%83/",
+      "keyword": "موقع إرسال رسائل sms باسم شركتك",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "SMS service ar",
+      "page": "https://epushagency.eg/ar/%d8%a7%d8%b1%d8%b3%d8%a7%d9%84-%d8%b1%d8%b3%d8%a7%d8%a6%d9%84-sms-%d8%a8%d8%a7%d8%b3%d9%85-%d8%b4%d8%b1%d9%83%d8%aa%d9%83/",
+      "keyword": "شركات إرسال رسائل sms في مصر",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "SMS service EN",
+      "page": "https://epushagency.eg/bulk-sms-egypt/",
+      "keyword": "bulk sms egypt",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "SMS service EN",
+      "page": "https://epushagency.eg/bulk-sms-egypt/",
+      "keyword": "bulk sms sender",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "SMS service EN",
+      "page": "https://epushagency.eg/bulk-sms-egypt/",
+      "keyword": "sms provider egypt",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "SMS service EN",
+      "page": "https://epushagency.eg/bulk-sms-egypt/",
+      "keyword": "sms service provider in egypt",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "الصفحة الرئيسية",
+      "page": "https://epushagency.eg/ar/",
+      "keyword": "شركة دعاية واعلان",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "الصفحة الرئيسية",
+      "page": "https://epushagency.eg/ar/",
+      "keyword": "وكالة دعاية واعلان",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "الصفحة الرئيسية",
+      "page": "https://epushagency.eg/ar/",
+      "keyword": "مكتب دعاية وإعلان",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "طباعة أوفست",
+      "page": "https://epushagency.eg/ar/طباعة-أوفست/",
+      "keyword": "طباعة أوفست",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "طباعة أوفست",
+      "page": "https://epushagency.eg/ar/طباعة-أوفست/",
+      "keyword": "مطابع اوفست بالقاهرة",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "طباعة ديجيتال",
+      "page": "https://epushagency.eg/ar/طباعة-ديجيتال/",
+      "keyword": "طباعة ديجيتال",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "طباعة ديجيتال",
+      "page": "https://epushagency.eg/ar/طباعة-ديجيتال/",
+      "keyword": "مطابع ديجيتال",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "طباعة ديجيتال",
+      "page": "https://epushagency.eg/ar/طباعة-ديجيتال/",
+      "keyword": "مطابع ديجيتال في القاهرة",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "طباعة على التيشرتات",
+      "page": "https://epushagency.eg/ar/طباعة-على-الملابس/",
+      "keyword": "طباعة تيشرتات",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "طباعة على التيشرتات",
+      "page": "https://epushagency.eg/ar/طباعة-على-الملابس/",
+      "keyword": "طباعة على التيشرتات",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "طباعة على التيشرتات",
+      "page": "https://epushagency.eg/ar/طباعة-على-الملابس/",
+      "keyword": "أسعار الطباعة على التيشرتات في مصر",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "طباعة على التيشرتات",
+      "page": "https://epushagency.eg/ar/طباعة-على-الملابس/",
+      "keyword": "طباعة تيشرتات ديجيتال",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "طباعة بوسترات",
+      "page": "https://epushagency.eg/ar/طباعة-بوسترات/",
+      "keyword": "طباعة بوسترات",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "طباعة بوسترات",
+      "page": "https://epushagency.eg/ar/طباعة-بوسترات/",
+      "keyword": "طباعة بوسترات مصر",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "طباعة بوسترات",
+      "page": "https://epushagency.eg/ar/طباعة-بوسترات/",
+      "keyword": "اسعار طباعة البوسترات",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "طباعة مجات",
+      "page": "https://epushagency.eg/ar/طباعة-مجات/",
+      "keyword": "طباعة مجات",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "طباعة مجات",
+      "page": "https://epushagency.eg/ar/طباعة-مجات/",
+      "keyword": "سعر طباعة الصور على المجات",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "طباعة كروت شخصية",
+      "page": "https://epushagency.eg/ar/طباعة-كروت-شخصية/",
+      "keyword": "طباعة كروت شخصية",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "طباعة كروت شخصية",
+      "page": "https://epushagency.eg/ar/طباعة-كروت-شخصية/",
+      "keyword": "مطبعة كروت",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "طباعة كروت شخصية",
+      "page": "https://epushagency.eg/ar/طباعة-كروت-شخصية/",
+      "keyword": "مطبعة كروت شخصية",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "طباعة كروت شخصية",
+      "page": "https://epushagency.eg/ar/طباعة-كروت-شخصية/",
+      "keyword": "مكتب طباعة كروت شخصية",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "مطبعة اكياس",
+      "page": "https://epushagency.eg/ar/طباعة-اكياس/",
+      "keyword": "اكياس كرافت",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "مطبعة اكياس",
+      "page": "https://epushagency.eg/ar/طباعة-اكياس/",
+      "keyword": "اكياس كرافت مصر",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "مطبعة اكياس",
+      "page": "https://epushagency.eg/ar/طباعة-اكياس/",
+      "keyword": "طباعة اكياس",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "مطبعة اكياس",
+      "page": "https://epushagency.eg/ar/طباعة-اكياس/",
+      "keyword": "طباعة اكياس ورقية",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "مطبعة اكياس",
+      "page": "https://epushagency.eg/ar/طباعة-اكياس/",
+      "keyword": "مطبعة اكياس",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "مطبعة اكياس",
+      "page": "https://epushagency.eg/ar/طباعة-اكياس/",
+      "keyword": "مطبعة اكياس ورق",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "هدايا دعائية للشركات",
+      "page": "https://epushagency.eg/ar/شركات-هدايا-دعائية-في-مصر/",
+      "keyword": "شركات هدايا دعائية في مصر",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "هدايا دعائية للشركات",
+      "page": "https://epushagency.eg/ar/شركات-هدايا-دعائية-في-مصر/",
+      "keyword": "هدايا دعائية للشركات",
+      "sv": "",
+      "article": ""
+    }
+  ],
+  "dropped": []
+}
