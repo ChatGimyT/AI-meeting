@@ -1,0 +1,426 @@
+{
+  "client": "rabeh",
+  "source": "RABEH - Monthly Final v2 (نود Keywords)",
+  "sheet": "—",
+  "extractedAt": "2026-09-08",
+  "rule": "أي كلمة من غير رابط صفحة مستهدفة تُستبعد. وكل كلمة ليها دولتها — مش ضرب كامل في كل الدول.",
+  "keywords": [
+    {
+      "country": "السعودية",
+      "group": "الصفحة الرئيسية",
+      "page": "https://www.rabeh.org/ar",
+      "keyword": "تسويق الكتروني",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "السعودية",
+      "group": "الصفحة الرئيسية",
+      "page": "https://www.rabeh.org/ar",
+      "keyword": "شركات التسويق الالكتروني",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "السعودية",
+      "group": "الصفحة الرئيسية",
+      "page": "https://www.rabeh.org/ar",
+      "keyword": "شركات تسويق الكتروني",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "السعودية",
+      "group": "الصفحة الرئيسية",
+      "page": "https://www.rabeh.org/ar",
+      "keyword": "شركة تسويق",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "السعودية",
+      "group": "الصفحة الرئيسية",
+      "page": "https://www.rabeh.org/ar",
+      "keyword": "شركة تسويق الكتروني",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "السعودية",
+      "group": "الصفحة الرئيسية",
+      "page": "https://www.rabeh.org/ar",
+      "keyword": "شركة تسويق الكتروني في السعودية",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "السعودية",
+      "group": "الصفحة الرئيسية",
+      "page": "https://www.rabeh.org/ar",
+      "keyword": "شركة تسويق الكتروني في جدة",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "السعودية",
+      "group": "الصفحة الرئيسية",
+      "page": "https://www.rabeh.org/ar",
+      "keyword": "شركة للتسويق الالكتروني",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "السعودية",
+      "group": "الصفحة الرئيسية",
+      "page": "https://www.rabeh.org/ar",
+      "keyword": "باقات التسويق الالكتروني",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "السعودية",
+      "group": "المدونة",
+      "page": "https://www.rabeh.org/ar/blog-show/%D8%A3%D9%81%D8%B6%D9%84-%D8%B4%D8%B1%D9%83%D8%A9-%D8%AA%D8%B3%D9%88%D9%8A%D9%82-%D8%A7%D9%84%D9%83%D8%AA%D8%B1%D9%88%D9%86%D9%8A-%D9%81%D9%89-%D9%85%D8%B5%D8%B1",
+      "keyword": "شركة تسويق الكتروني في مصر",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "السعودية",
+      "group": "المدونة",
+      "page": "https://www.rabeh.org/ar/blog-show/%D8%B4%D8%B1%D9%83%D8%A9-%D8%AA%D8%B3%D9%88%D9%8A%D9%82-%D8%A7%D9%84%D9%83%D8%AA%D8%B1%D9%88%D9%86%D9%8A-%D9%81%D9%8A-%D8%A7%D9%84%D8%B1%D9%8A%D8%A7%D8%B6",
+      "keyword": "شركة تسويق الكتروني بالرياض",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "السعودية",
+      "group": "السوشيال ميديا",
+      "page": "https://www.rabeh.org/ar/service/%D8%A7%D8%AF%D8%A7%D8%B1%D8%A9-%D8%AD%D8%B3%D8%A7%D8%A8%D8%A7%D8%AA-%D8%A7%D9%84%D8%AA%D9%88%D8%A7%D8%B5%D9%84-%D8%A7%D9%84%D8%A7%D8%AC%D8%AA%D9%85%D8%A7%D8%B9%D9%8A",
+      "keyword": "ادارة حسابات التواصل الاجتماعي",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "السعودية",
+      "group": "السوشيال ميديا",
+      "page": "https://www.rabeh.org/ar/service/%D8%A7%D8%AF%D8%A7%D8%B1%D8%A9-%D8%AD%D8%B3%D8%A7%D8%A8%D8%A7%D8%AA-%D8%A7%D9%84%D8%AA%D9%88%D8%A7%D8%B5%D9%84-%D8%A7%D9%84%D8%A7%D8%AC%D8%AA%D9%85%D8%A7%D8%B9%D9%8A",
+      "keyword": "ادارة حسابات السوشيال ميديا",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "السعودية",
+      "group": "السوشيال ميديا",
+      "page": "https://www.rabeh.org/ar/service/%D8%A7%D8%AF%D8%A7%D8%B1%D8%A9-%D8%AD%D8%B3%D8%A7%D8%A8%D8%A7%D8%AA-%D8%A7%D9%84%D8%AA%D9%88%D8%A7%D8%B5%D9%84-%D8%A7%D9%84%D8%A7%D8%AC%D8%AA%D9%85%D8%A7%D8%B9%D9%8A",
+      "keyword": "ادارة مواقع التواصل الاجتماعي",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "السعودية",
+      "group": "السوشيال ميديا",
+      "page": "https://www.rabeh.org/ar/service/%D8%A7%D8%AF%D8%A7%D8%B1%D8%A9-%D8%AD%D8%B3%D8%A7%D8%A8%D8%A7%D8%AA-%D8%A7%D9%84%D8%AA%D9%88%D8%A7%D8%B5%D9%84-%D8%A7%D9%84%D8%A7%D8%AC%D8%AA%D9%85%D8%A7%D8%B9%D9%8A",
+      "keyword": "باقات ادارة حسابات التواصل الاجتماعي",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "السعودية",
+      "group": "السوشيال ميديا",
+      "page": "https://www.rabeh.org/ar/service/%D8%A7%D8%AF%D8%A7%D8%B1%D8%A9-%D8%AD%D8%B3%D8%A7%D8%A8%D8%A7%D8%AA-%D8%A7%D9%84%D8%AA%D9%88%D8%A7%D8%B5%D9%84-%D8%A7%D9%84%D8%A7%D8%AC%D8%AA%D9%85%D8%A7%D8%B9%D9%8A",
+      "keyword": "شركة ادارة حسابات السوشيال ميديا",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "السعودية",
+      "group": "إعلانات جوجل",
+      "page": "https://www.rabeh.org/ar/service/%D8%B4%D8%B1%D9%83%D8%A9-%D8%A7%D8%AF%D8%A7%D8%B1%D8%A9-%D8%A7%D8%B9%D9%84%D8%A7%D9%86%D8%A7%D8%AA-%D8%AC%D9%88%D8%AC%D9%84-%D8%A7%D8%AF%D8%B2",
+      "keyword": "ادارة اعلانات جوجل",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "السعودية",
+      "group": "إعلانات جوجل",
+      "page": "https://www.rabeh.org/ar/service/%D8%B4%D8%B1%D9%83%D8%A9-%D8%A7%D8%AF%D8%A7%D8%B1%D8%A9-%D8%A7%D8%B9%D9%84%D8%A7%D9%86%D8%A7%D8%AA-%D8%AC%D9%88%D8%AC%D9%84-%D8%A7%D8%AF%D8%B2",
+      "keyword": "شركة اعلانات جوجل",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "السعودية",
+      "group": "السيو",
+      "page": "https://www.rabeh.org/ar/service/%D8%B4%D8%B1%D9%83%D8%A9-%D8%B3%D9%8A%D9%88-%D8%AA%D9%87%D9%8A%D8%A6%D8%A9-%D8%A7%D9%84%D9%85%D9%88%D8%A7%D9%82%D8%B9-%D9%84%D9%85%D8%AD%D8%B1%D9%83%D8%A7%D8%AA-%D8%A7%D9%84%D8%A8%D8%AD%D8%AB",
+      "keyword": "أفضل شركة خدمات سيو",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "السعودية",
+      "group": "السيو",
+      "page": "https://www.rabeh.org/ar/service/%D8%B4%D8%B1%D9%83%D8%A9-%D8%B3%D9%8A%D9%88-%D8%AA%D9%87%D9%8A%D8%A6%D8%A9-%D8%A7%D9%84%D9%85%D9%88%D8%A7%D9%82%D8%B9-%D9%84%D9%85%D8%AD%D8%B1%D9%83%D8%A7%D8%AA-%D8%A7%D9%84%D8%A8%D8%AD%D8%AB",
+      "keyword": "أفضل شركة سيو",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "السعودية",
+      "group": "السيو",
+      "page": "https://www.rabeh.org/ar/service/%D8%B4%D8%B1%D9%83%D8%A9-%D8%B3%D9%8A%D9%88-%D8%AA%D9%87%D9%8A%D8%A6%D8%A9-%D8%A7%D9%84%D9%85%D9%88%D8%A7%D9%82%D8%B9-%D9%84%D9%85%D8%AD%D8%B1%D9%83%D8%A7%D8%AA-%D8%A7%D9%84%D8%A8%D8%AD%D8%AB",
+      "keyword": "أفضل شركة سيو في السعودية",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "السعودية",
+      "group": "السيو",
+      "page": "https://www.rabeh.org/ar/service/%D8%B4%D8%B1%D9%83%D8%A9-%D8%B3%D9%8A%D9%88-%D8%AA%D9%87%D9%8A%D8%A6%D8%A9-%D8%A7%D9%84%D9%85%D9%88%D8%A7%D9%82%D8%B9-%D9%84%D9%85%D8%AD%D8%B1%D9%83%D8%A7%D8%AA-%D8%A7%D9%84%D8%A8%D8%AD%D8%AB",
+      "keyword": "افضل شركة سيو في مصر",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "السعودية",
+      "group": "السيو",
+      "page": "https://www.rabeh.org/ar/service/%D8%B4%D8%B1%D9%83%D8%A9-%D8%B3%D9%8A%D9%88-%D8%AA%D9%87%D9%8A%D8%A6%D8%A9-%D8%A7%D9%84%D9%85%D9%88%D8%A7%D9%82%D8%B9-%D9%84%D9%85%D8%AD%D8%B1%D9%83%D8%A7%D8%AA-%D8%A7%D9%84%D8%A8%D8%AD%D8%AB",
+      "keyword": "خدمات سيو",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "السعودية",
+      "group": "السيو",
+      "page": "https://www.rabeh.org/ar/service/%D8%B4%D8%B1%D9%83%D8%A9-%D8%B3%D9%8A%D9%88-%D8%AA%D9%87%D9%8A%D8%A6%D8%A9-%D8%A7%D9%84%D9%85%D9%88%D8%A7%D9%82%D8%B9-%D9%84%D9%85%D8%AD%D8%B1%D9%83%D8%A7%D8%AA-%D8%A7%D9%84%D8%A8%D8%AD%D8%AB",
+      "keyword": "شركة seo",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "السعودية",
+      "group": "السيو",
+      "page": "https://www.rabeh.org/ar/service/%D8%B4%D8%B1%D9%83%D8%A9-%D8%B3%D9%8A%D9%88-%D8%AA%D9%87%D9%8A%D8%A6%D8%A9-%D8%A7%D9%84%D9%85%D9%88%D8%A7%D9%82%D8%B9-%D9%84%D9%85%D8%AD%D8%B1%D9%83%D8%A7%D8%AA-%D8%A7%D9%84%D8%A8%D8%AD%D8%AB",
+      "keyword": "شركة خدمات سيو",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "السعودية",
+      "group": "السيو",
+      "page": "https://www.rabeh.org/ar/service/%D8%B4%D8%B1%D9%83%D8%A9-%D8%B3%D9%8A%D9%88-%D8%AA%D9%87%D9%8A%D8%A6%D8%A9-%D8%A7%D9%84%D9%85%D9%88%D8%A7%D9%82%D8%B9-%D9%84%D9%85%D8%AD%D8%B1%D9%83%D8%A7%D8%AA-%D8%A7%D9%84%D8%A8%D8%AD%D8%AB",
+      "keyword": "شركة سيو",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "مصر",
+      "group": "الصفحة الرئيسية",
+      "page": "https://www.rabeh.org/ar",
+      "keyword": "تسويق الكتروني",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "مصر",
+      "group": "الصفحة الرئيسية",
+      "page": "https://www.rabeh.org/ar",
+      "keyword": "شركة تسويق الكتروني",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "مصر",
+      "group": "الصفحة الرئيسية",
+      "page": "https://www.rabeh.org/ar",
+      "keyword": "شركة تسويق",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "مصر",
+      "group": "الصفحة الرئيسية",
+      "page": "https://www.rabeh.org/ar",
+      "keyword": "شركات تسويق الكتروني",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "مصر",
+      "group": "الصفحة الرئيسية",
+      "page": "https://www.rabeh.org/ar",
+      "keyword": "شركة للتسويق الالكتروني",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "مصر",
+      "group": "الصفحة الرئيسية",
+      "page": "https://www.rabeh.org/ar",
+      "keyword": "شركة تسويق الكتروني في السعودية",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "مصر",
+      "group": "الصفحة الرئيسية",
+      "page": "https://www.rabeh.org/ar",
+      "keyword": "شركة تسويق الكتروني في جدة",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "مصر",
+      "group": "المدونة",
+      "page": "https://www.rabeh.org/ar/blog-show/%D8%A3%D9%81%D8%B6%D9%84-%D8%B4%D8%B1%D9%83%D8%A9-%D8%AA%D8%B3%D9%88%D9%8A%D9%82-%D8%A7%D9%84%D9%83%D8%AA%D8%B1%D9%88%D9%86%D9%8A-%D9%81%D9%89-%D9%85%D8%B5%D8%B1",
+      "keyword": "شركة تسويق الكتروني في مصر",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "مصر",
+      "group": "المدونة",
+      "page": "https://www.rabeh.org/ar/blog-show/%D8%A8%D8%A7%D9%82%D8%A7%D8%AA-%D8%A7%D9%84%D8%AA%D8%B3%D9%88%D9%8A%D9%82-%D8%A7%D9%84%D8%A7%D9%84%D9%83%D8%AA%D8%B1%D9%88%D9%86%D9%8A-%D9%81%D9%8A-%D9%85%D8%B5%D8%B1",
+      "keyword": "باقات التسويق الالكتروني",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "مصر",
+      "group": "المدونة",
+      "page": "https://www.rabeh.org/ar/blog-show/%D8%B4%D8%B1%D9%83%D8%A9-%D8%AA%D8%B3%D9%88%D9%8A%D9%82-%D8%A7%D9%84%D9%83%D8%AA%D8%B1%D9%88%D9%86%D9%8A-%D9%81%D9%8A-%D8%A7%D9%84%D8%B1%D9%8A%D8%A7%D8%B6",
+      "keyword": "شركة تسويق الكتروني بالرياض",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "مصر",
+      "group": "السوشيال ميديا",
+      "page": "https://www.rabeh.org/ar/service/%D8%A7%D8%AF%D8%A7%D8%B1%D8%A9-%D8%AD%D8%B3%D8%A7%D8%A8%D8%A7%D8%AA-%D8%A7%D9%84%D8%AA%D9%88%D8%A7%D8%B5%D9%84-%D8%A7%D9%84%D8%A7%D8%AC%D8%AA%D9%85%D8%A7%D8%B9%D9%8A",
+      "keyword": "ادارة حسابات التواصل الاجتماعي",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "مصر",
+      "group": "السوشيال ميديا",
+      "page": "https://www.rabeh.org/ar/service/%D8%A7%D8%AF%D8%A7%D8%B1%D8%A9-%D8%AD%D8%B3%D8%A7%D8%A8%D8%A7%D8%AA-%D8%A7%D9%84%D8%AA%D9%88%D8%A7%D8%B5%D9%84-%D8%A7%D9%84%D8%A7%D8%AC%D8%AA%D9%85%D8%A7%D8%B9%D9%8A",
+      "keyword": "ادارة حسابات السوشيال ميديا",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "مصر",
+      "group": "السوشيال ميديا",
+      "page": "https://www.rabeh.org/ar/service/%D8%A7%D8%AF%D8%A7%D8%B1%D8%A9-%D8%AD%D8%B3%D8%A7%D8%A8%D8%A7%D8%AA-%D8%A7%D9%84%D8%AA%D9%88%D8%A7%D8%B5%D9%84-%D8%A7%D9%84%D8%A7%D8%AC%D8%AA%D9%85%D8%A7%D8%B9%D9%8A",
+      "keyword": "ادارة مواقع التواصل الاجتماعي",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "مصر",
+      "group": "السوشيال ميديا",
+      "page": "https://www.rabeh.org/ar/service/%D8%A7%D8%AF%D8%A7%D8%B1%D8%A9-%D8%AD%D8%B3%D8%A7%D8%A8%D8%A7%D8%AA-%D8%A7%D9%84%D8%AA%D9%88%D8%A7%D8%B5%D9%84-%D8%A7%D9%84%D8%A7%D8%AC%D8%AA%D9%85%D8%A7%D8%B9%D9%8A",
+      "keyword": "شركة ادارة حسابات السوشيال ميديا",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "مصر",
+      "group": "السوشيال ميديا",
+      "page": "https://www.rabeh.org/ar/service/%D8%A7%D8%AF%D8%A7%D8%B1%D8%A9-%D8%AD%D8%B3%D8%A7%D8%A8%D8%A7%D8%AA-%D8%A7%D9%84%D8%AA%D9%88%D8%A7%D8%B5%D9%84-%D8%A7%D9%84%D8%A7%D8%AC%D8%AA%D9%85%D8%A7%D8%B9%D9%8A",
+      "keyword": "باقات ادارة حسابات التواصل الاجتماعي",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "مصر",
+      "group": "إعلانات جوجل",
+      "page": "https://www.rabeh.org/ar/service/%D8%B4%D8%B1%D9%83%D8%A9-%D8%A7%D8%AF%D8%A7%D8%B1%D8%A9-%D8%A7%D8%B9%D9%84%D8%A7%D9%86%D8%A7%D8%AA-%D8%AC%D9%88%D8%AC%D9%84-%D8%A7%D8%AF%D8%B2",
+      "keyword": "شركة اعلانات جوجل",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "مصر",
+      "group": "إعلانات جوجل",
+      "page": "https://www.rabeh.org/ar/service/%D8%B4%D8%B1%D9%83%D8%A9-%D8%A7%D8%AF%D8%A7%D8%B1%D8%A9-%D8%A7%D8%B9%D9%84%D8%A7%D9%86%D8%A7%D8%AA-%D8%AC%D9%88%D8%AC%D9%84-%D8%A7%D8%AF%D8%B2",
+      "keyword": "ادارة اعلانات جوجل",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "مصر",
+      "group": "السيو",
+      "page": "https://www.rabeh.org/ar/service/%D8%B4%D8%B1%D9%83%D8%A9-%D8%B3%D9%8A%D9%88-%D8%AA%D9%87%D9%8A%D8%A6%D8%A9-%D8%A7%D9%84%D9%85%D9%88%D8%A7%D9%82%D8%B9-%D9%84%D9%85%D8%AD%D8%B1%D9%83%D8%A7%D8%AA-%D8%A7%D9%84%D8%A8%D8%AD%D8%AB",
+      "keyword": "شركة سيو",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "مصر",
+      "group": "السيو",
+      "page": "https://www.rabeh.org/ar/service/%D8%B4%D8%B1%D9%83%D8%A9-%D8%B3%D9%8A%D9%88-%D8%AA%D9%87%D9%8A%D8%A6%D8%A9-%D8%A7%D9%84%D9%85%D9%88%D8%A7%D9%82%D8%B9-%D9%84%D9%85%D8%AD%D8%B1%D9%83%D8%A7%D8%AA-%D8%A7%D9%84%D8%A8%D8%AD%D8%AB",
+      "keyword": "شركة seo",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "مصر",
+      "group": "السيو",
+      "page": "https://www.rabeh.org/ar/service/%D8%B4%D8%B1%D9%83%D8%A9-%D8%B3%D9%8A%D9%88-%D8%AA%D9%87%D9%8A%D8%A6%D8%A9-%D8%A7%D9%84%D9%85%D9%88%D8%A7%D9%82%D8%B9-%D9%84%D9%85%D8%AD%D8%B1%D9%83%D8%A7%D8%AA-%D8%A7%D9%84%D8%A8%D8%AD%D8%AB",
+      "keyword": "خدمات سيو",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "مصر",
+      "group": "السيو",
+      "page": "https://www.rabeh.org/ar/service/%D8%B4%D8%B1%D9%83%D8%A9-%D8%B3%D9%8A%D9%88-%D8%AA%D9%87%D9%8A%D8%A6%D8%A9-%D8%A7%D9%84%D9%85%D9%88%D8%A7%D9%82%D8%B9-%D9%84%D9%85%D8%AD%D8%B1%D9%83%D8%A7%D8%AA-%D8%A7%D9%84%D8%A8%D8%AD%D8%AB",
+      "keyword": "خدمات سيو فى مصر",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "مصر",
+      "group": "السيو",
+      "page": "https://www.rabeh.org/ar/service/%D8%B4%D8%B1%D9%83%D8%A9-%D8%B3%D9%8A%D9%88-%D8%AA%D9%87%D9%8A%D8%A6%D8%A9-%D8%A7%D9%84%D9%85%D9%88%D8%A7%D9%82%D8%B9-%D9%84%D9%85%D8%AD%D8%B1%D9%83%D8%A7%D8%AA-%D8%A7%D9%84%D8%A8%D8%AD%D8%AB",
+      "keyword": "أفضل شركة خدمات سيو",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "مصر",
+      "group": "السيو",
+      "page": "https://www.rabeh.org/ar/service/%D8%B4%D8%B1%D9%83%D8%A9-%D8%B3%D9%8A%D9%88-%D8%AA%D9%87%D9%8A%D8%A6%D8%A9-%D8%A7%D9%84%D9%85%D9%88%D8%A7%D9%82%D8%B9-%D9%84%D9%85%D8%AD%D8%B1%D9%83%D8%A7%D8%AA-%D8%A7%D9%84%D8%A8%D8%AD%D8%AB",
+      "keyword": "أفضل شركة سيو في السعودية",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "مصر",
+      "group": "السيو",
+      "page": "https://www.rabeh.org/ar/service/%D8%B4%D8%B1%D9%83%D8%A9-%D8%B3%D9%8A%D9%88-%D8%AA%D9%87%D9%8A%D8%A6%D8%A9-%D8%A7%D9%84%D9%85%D9%88%D8%A7%D9%82%D8%B9-%D9%84%D9%85%D8%AD%D8%B1%D9%83%D8%A7%D8%AA-%D8%A7%D9%84%D8%A8%D8%AD%D8%AB",
+      "keyword": "أفضل شركة سيو",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "مصر",
+      "group": "السيو",
+      "page": "https://www.rabeh.org/ar/service/%D8%B4%D8%B1%D9%83%D8%A9-%D8%B3%D9%8A%D9%88-%D8%AA%D9%87%D9%8A%D8%A6%D8%A9-%D8%A7%D9%84%D9%85%D9%88%D8%A7%D9%82%D8%B9-%D9%84%D9%85%D8%AD%D8%B1%D9%83%D8%A7%D8%AA-%D8%A7%D9%84%D8%A8%D8%AD%D8%AB",
+      "keyword": "افضل شركة سيو في مصر",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "country": "مصر",
+      "group": "السيو",
+      "page": "https://www.rabeh.org/ar/service/%D8%B4%D8%B1%D9%83%D8%A9-%D8%B3%D9%8A%D9%88-%D8%AA%D9%87%D9%8A%D8%A6%D8%A9-%D8%A7%D9%84%D9%85%D9%88%D8%A7%D9%82%D8%B9-%D9%84%D9%85%D8%AD%D8%B1%D9%83%D8%A7%D8%AA-%D8%A7%D9%84%D8%A8%D8%AD%D8%AB",
+      "keyword": "شركة خدمات سيو",
+      "sv": "",
+      "article": ""
+    }
+  ],
+  "dropped": []
+}

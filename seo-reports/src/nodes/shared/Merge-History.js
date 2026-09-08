@@ -56,11 +56,15 @@ const noPageKws = {};     // كلمات من غير رابط صفحة مستهد
 //   • الكلمة ليها ترتيب بصفحات تانية    → الرابط اللي عندنا غالبًا غلط
 // التانية دي بتخلي التقرير يقول "مفيش ظهور" لصفحة شغالة فعلًا — رقم غلط
 // بيعدّي من غير ما حد يشك فيه، لأن الرابط بيفتح عادي لما تجربه بإيدك.
-const pageEvidence = {};  // keyword → { periods, seen, queryRanked, samples }
+// المفتاح لازم يكون (الدولة + الكلمة) زي صفوف التقرير بالظبط. لو فهرسناها
+// بالكلمة لوحدها، العميل اللي بيستهدف نفس الكلمة في سوقين بتتلم صفوفه في
+// إدخال واحد — فنص الشهادات بتختفي والتقرير بيقول "كله تمام" وهو مش فاحص.
+const pageEvidence = {};  // country||keyword → { periods, seen, queryRanked, samples }
 function noteEvidence(j, cell) {
-  const e = pageEvidence[j.keyword] || (pageEvidence[j.keyword] = {
-    keyword: j.keyword, page: j.page || '', periods: 0, seen: 0,
-    queryRanked: 0, samples: [],
+  const ek = (j.countryName || '') + '||' + j.keyword;
+  const e = pageEvidence[ek] || (pageEvidence[ek] = {
+    keyword: j.keyword, country: j.countryName || '', page: j.page || '',
+    periods: 0, seen: 0, queryRanked: 0, samples: [],
   });
   if (!j.page) return;
   if (cell.verdict === 'failed') return;      // فشل السحب مش شهادة على الرابط
@@ -105,8 +109,8 @@ if (!noFetch) {
 
 // ---------- 2b) حكم على كل رابط ----------
 const pageAudit = { ok: [], suspect: [], notRanking: [], unchecked: [] };
-Object.keys(pageEvidence).forEach(function (kw) {
-  const e = pageEvidence[kw];
+Object.keys(pageEvidence).forEach(function (ek) {
+  const e = pageEvidence[ek];
   if (!e.periods)        { pageAudit.unchecked.push(e); return; }
   if (e.seen > 0)        { pageAudit.ok.push(e); return; }
   // الصفحة ما ظهرتش ولا مرة، لكن الكلمة ليها ترتيب بصفحات تانية → شبهة رابط
@@ -169,8 +173,25 @@ function resolve(rowKey, key, isReportPeriod) {
   return { state: 'hole', position: null, impressions: 0, cell: '' };
 }
 
-cfg.countries.forEach(c => {
-  kws.forEach(k => {
+/* نفس منطق التوزيع اللي في Build Tasks بالحرف — لو اختلفوا، صفوف التقرير
+ * هتبقى غير الطلبات اللي اتبعتت فعلاً، وده أخطر من غلطة حسابية لأنه بيبان سليم. */
+const byCountryName = {};
+cfg.countries.forEach(function (c, i) { byCountryName[c.name] = { c: c, i: i }; });
+const perKeywordCountry = kws.some(function (k) { return k && k.country; });
+
+const pairs = [];
+if (perKeywordCountry) {
+  kws.forEach(function (k) {
+    const hit = byCountryName[k.country] || { c: cfg.countries[0], i: 0 };
+    pairs.push({ c: hit.c, k: k });
+  });
+} else {
+  cfg.countries.forEach(function (c) { kws.forEach(function (k) { pairs.push({ c: c, k: k }); }); });
+}
+
+pairs.forEach(function (pair) {
+  const c = pair.c, k = pair.k;
+  {
     const rowKey = c.name + '||' + k.keyword;
 
     // --- الصف الكامل لكل الأعمدة (بيتكتب في الشيت زي ما هو) ---
@@ -212,7 +233,7 @@ cfg.countries.forEach(c => {
       scope: (lastCell && lastCell.scope) || (k.page ? 'page' : 'site'),
       matchedPage: (lastCell && lastCell.matchedPage) || '',
     });
-  });
+  }
 });
 
 const safe = v => (typeof v === 'number' && !isFinite(v)) ? '' : v;
@@ -239,10 +260,12 @@ return [{ json: {
     keywordsWithoutPage: Object.keys(noPageKws),
     pageAudit: {
       ok: pageAudit.ok.length,
-      notRanking: pageAudit.notRanking.map(function (e) { return e.keyword; }),
+      notRanking: pageAudit.notRanking.map(function (e) {
+        return e.country ? (e.keyword + ' (' + e.country + ')') : e.keyword;
+      }),
       suspect: pageAudit.suspect.map(function (e) {
-        return { keyword: e.keyword, page: e.page, periodsRanked: e.queryRanked,
-                 periods: e.periods, samples: e.samples };
+        return { keyword: e.keyword, country: e.country, page: e.page,
+                 periodsRanked: e.queryRanked, periods: e.periods, samples: e.samples };
       }),
     },
     noFetch,
@@ -253,6 +276,8 @@ return [{ json: {
     periodsInSheet: (hist.monthKeys || []).length,
     totalPeriodsStored: allKeys.length,
     keywordCount: kws.length,
+    perKeywordCountry: perKeywordCountry,
+    rowsBuilt: data.length,
     invalidEmails: cfg.mailInvalid || [],
   },
 } }];

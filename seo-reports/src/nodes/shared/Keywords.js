@@ -18,12 +18,23 @@ const excluded = (KW.dropped || []).map(function (d) { return { keyword: d.keywo
 
 // تحقّق دفاعي: أي كلمة فاضية أو مكررة أو من غير رابط توقف الرن.
 // أوقف الرن أحسن من إني أطلّع صف رقمه مش قابل للمراجعة.
+//
+// التكرار بيتحسب على **(الدولة + الكلمة)** مش على الكلمة لوحدها: العميل اللي
+// بيشتغل في أكتر من سوق بيستهدف نفس الكلمة في كل سوق، ودول صفين مختلفين
+// بأرقام مختلفة تمامًا — مش تكرار. التكرار الحقيقي هو نفس الكلمة مرتين في
+// نفس الدولة، لأنه بيطلّع صفين متطابقين في التقرير.
 const seen = {};
 keywords.forEach(function (k, i) {
   const kw = String(k.keyword || '').trim();
   if (!kw) throw new Error('Keywords: الصف رقم ' + (i + 1) + ' من غير كلمة مفتاحية.');
-  if (seen[kw]) throw new Error('Keywords: الكلمة "' + kw + '" مكررة.');
-  seen[kw] = 1;
+  const country = String(k.country || '').trim();
+  const key = country ? (country + '||' + kw) : kw;
+  if (seen[key]) {
+    throw new Error('Keywords: الكلمة "' + kw + '"' +
+                    (country ? ' مكررة في "' + country + '"' : ' مكررة') + '.');
+  }
+  seen[key] = 1;
+  k.country = country;
   k.keyword = kw;
   k.group   = String(k.group || 'بدون قسم').trim();
   k.page    = String(k.page || '').trim();

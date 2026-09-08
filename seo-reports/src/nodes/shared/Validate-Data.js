@@ -67,7 +67,11 @@ if (badNumbers.length) {
 }
 
 // --- 6) عدد الصفوف ---
-const expectedRows = (cfg.countries || []).length * Number(q.keywordCount || 0);
+/* عدد الصفوف المتوقع بيتبع نفس قاعدة التوزيع: كل كلمة في كل دولة، ولا صف واحد
+ * لكل كلمة لو القائمة نفسها بتحدد دولة كل كلمة (زي رابح: سوقين بكلمات مختلفة). */
+const expectedRows = q.perKeywordCountry
+  ? Number(q.keywordCount || 0)
+  : (cfg.countries || []).length * Number(q.keywordCount || 0);
 if ((res.data || []).length !== expectedRows) {
   problems.push('عدد صفوف التقرير ' + (res.data || []).length +
                 ' والمتوقع ' + expectedRows + '.');
@@ -117,7 +121,8 @@ if (suspect.length) {
     'غالبًا مش الرابط الكانوني اللي جوجل مسجّله، والخانة بتطلع "مفيش ظهور" وهي غلط. ' +
     'راجع: ' + suspect.slice(0, 6).map(function (x) {
       const sample = (x.samples || [])[0];
-      return x.keyword + (sample ? ' (جوجل شايف: ' + sample.topPage + ')' : '');
+      return x.keyword + (x.country ? ' [' + x.country + ']' : '') +
+             (sample ? ' (جوجل شايف: ' + sample.topPage + ')' : '');
     }).join(' | ') + (suspect.length > 6 ? ' …' : ''));
 }
 if ((pa.notRanking || []).length) {

@@ -7,6 +7,7 @@
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import fs3 from 'node:fs';
 import { TARGET, isHomepage } from './fixtures.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -20,7 +21,7 @@ const head = (t) => console.log('\n' + t);
 /* المحاكي بيتنفّذ في عملية منفصلة ويرجّع الحالة كاملة كـ JSON */
 /* كل التقارير الأربعة: عميلين × إيقاعين */
 const ALL = [];
-for (const client of ['alojan', 'alrawda', 'epush', 'shoug'])
+for (const client of ['alojan', 'alrawda', 'epush', 'rabeh', 'shoug'])
   for (const cadence of ['monthly', 'weekly']) ALL.push({ client, cadence, tag: client + '/' + cadence });
 
 function run(cadence, scenario, client) {
@@ -53,7 +54,7 @@ function run(cadence, scenario, client) {
 }
 
 /* ══════════ ضمانة عدم الانحراف بين التقارير ══════════ */
-head('بنية الملفات — التمن تقارير على كود واحد');
+head('بنية الملفات — العشر تقارير على كود واحد');
 {
   const fs2 = await import('node:fs');
   const crypto = await import('node:crypto');
@@ -76,7 +77,7 @@ head('بنية الملفات — التمن تقارير على كود واحد
   const dataDriven = ['Config', 'Keywords'];
   const drifted = Object.keys(codes).filter((n) =>
     dataDriven.indexOf(n) === -1 && new Set(Object.values(codes[n])).size > 1);
-  T('كل نودات المنطق بنفس الكود بالحرف في التمنية', drifted.length === 0,
+  T('كل نودات المنطق بنفس الكود بالحرف في العشرة', drifted.length === 0,
     JSON.stringify(drifted));
   T('عدد النودات المشتركة = ' + (Object.keys(codes).length - dataDriven.length),
     Object.keys(codes).length - dataDriven.length >= 16);
@@ -87,7 +88,7 @@ head('بنية الملفات — التمن تقارير على كود واحد
    * حد لحساب مش بتاعه. الفحص ده بيمسح **الملف كله** مش خانة الكريدنشيال بس. */
   {
     const clients = JSON.parse(fs2.readFileSync(path.join(ROOT, 'clients', 'alojan.json'), 'utf8'));
-    const all = ['alojan', 'alrawda', 'epush', 'shoug'].map((id) =>
+    const all = ['alojan', 'alrawda', 'epush', 'rabeh', 'shoug'].map((id) =>
       JSON.parse(fs2.readFileSync(path.join(ROOT, 'clients', id + '.json'), 'utf8')));
 
     files.forEach(({ tag, wf }) => {
@@ -158,7 +159,7 @@ head('بنية الملفات — التمن تقارير على كود واحد
 /* ══════════ قائمة الكلمات ══════════ */
 head('قائمة الكلمات — قاعدة «مفيش رابط يبقى مفيش صف»');
 {
-  for (const client of ['alojan', 'alrawda', 'epush', 'shoug']) {
+  for (const client of ['alojan', 'alrawda', 'epush', 'rabeh', 'shoug']) {
     const k = run('monthly', 'happy', client).keywords;
     T(client + ': كل كلمة في التقرير ليها رابط صفحة',
       k.keywords.length > 0 && k.keywords.every((x) => x.page && /^https?:\/\//.test(x.page)),
@@ -180,6 +181,9 @@ head('قائمة الكلمات — قاعدة «مفيش رابط يبقى مف
   T('ايبوش: 37 معتمدة و0 مستبعدة',
     run('monthly', 'happy', 'epush').keywords.keywordCount === 37 &&
     run('monthly', 'happy', 'epush').keywords.excludedCount === 0);
+  T('رابح: 52 معتمدة و0 مستبعدة',
+    run('monthly', 'happy', 'rabeh').keywords.keywordCount === 52 &&
+    run('monthly', 'happy', 'rabeh').keywords.excludedCount === 0);
 }
 
 /* ══════════ الحساب اللي كان بيطلع غلط ══════════ */
@@ -233,6 +237,31 @@ head('فشل السحب ≠ الكلمة اختفت');
   T('ولا كلمة اتقالت "اختفت"', !r.stats, 'Report Stats المفروض ماتشتغلش أصلًا');
 }
 
+/* ══════════ توزيع الكلمات على الدول ══════════ */
+head('كلمة لكل دولة ≠ ضرب كامل');
+{
+  /* رابح: 52 كلمة، كل واحدة بدولتها (26 سعودية + 26 مصرية) على سوقين.
+   * الضرب الكامل كان هيطلّع 104 صف، نصهم كلمة اتسألت في سوق مش مستهدفة فيه. */
+  const r = run('monthly', 'happy', 'rabeh');
+  T('رابح: 52 صف مش 104', r.merge.data.length === 52, r.merge.data.length);
+  T('والقاعدة اتحددت أوتوماتيك من القائمة',
+    r.merge.quality.perKeywordCountry === true);
+  const byC = {};
+  r.merge.data.forEach((d) => { byC[d.country] = (byC[d.country] || 0) + 1; });
+  T('كل كلمة راحت لدولتها هي (26 + 26)',
+    byC['السعودية'] === 26 && byC['مصر'] === 26, JSON.stringify(byC));
+  T('بوابة الجودة عدّت بعدد الصفوف الصح', r.validate.ok === true,
+    JSON.stringify(r.validate.problems));
+  T('عدد الطلبات = 52 كلمة × الفترات، مش 104',
+    r.httpCalls.gsc === 52 * r.merge.months.length + 1, r.httpCalls.gsc);
+
+  /* العملاء اللي كلماتهم من غير دولة لسه بالضرب الكامل (دولة واحدة عندهم) */
+  const a = run('monthly', 'happy', 'alojan');
+  T('العوجان: القاعدة القديمة زي ما هي',
+    a.merge.quality.perKeywordCountry === false && a.merge.data.length === 27,
+    a.merge.data.length);
+}
+
 /* ══════════ التعليق التحليلي ══════════ */
 head('التعليق التحليلي — ممنوع يمرّر رقم مالوش أصل');
 {
@@ -257,10 +286,23 @@ head('التعليق التحليلي — ممنوع يمرّر رقم مالو�
   T('فشل نداء التعليق مابيوقفش التقرير', off.ai.aiSkipped === true &&
     off.mailSent.some((m) => m.node === 'Send Report Email'));
 
-  const none = run('monthly', 'happy', 'alojan');
-  T('العميل اللي مقفّل التعليق مابيعملش نداء',
-    !none.trace.includes('AI Comment API'));
-  T('وإيميله من غير تعليق', none.ai.aiSkipped === true && none.ai.aiComment === '');
+  for (const client of ['alojan', 'shoug', 'rabeh']) {
+    const none = run('monthly', 'happy', client);
+    T(client + ': مقفّل التعليق فمابيعملش نداء لـ DeepSeek',
+      !none.trace.includes('AI Comment API'));
+    T(client + ': وإيميله من غير تعليق', none.ai === null || none.ai.aiComment === '');
+    /* مش بس مابينداش — النودات نفسها مش موجودة في الملف خالص */
+    const wf = JSON.parse(fs3.readFileSync(path.join(ROOT, 'dist',
+      client.toUpperCase() + '-Monthly-v4.json'), 'utf8'));
+    const names = wf.nodes.map((n) => n.name);
+    T(client + ': نودات التعليق مش موجودة في الملف أصلاً',
+      !names.includes('AI Comment API') && !names.includes('Build AI Comment'),
+      JSON.stringify(names.filter((n) => /AI/.test(n))));
+    T(client + ': ومفيش أي أثر لديب سيك في الملف',
+      !/deepseek/i.test(JSON.stringify(wf)));
+    T(client + ': وReport Stats بيروح لـ Build Email على طول',
+      (wf.connections['Report Stats'].main[0] || [])[0].node === 'Build Email');
+  }
 }
 
 /* ══════════ توافق الشيت القديم ══════════ */

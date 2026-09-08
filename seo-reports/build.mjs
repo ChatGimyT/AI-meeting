@@ -131,8 +131,12 @@ for (const cadence of CADENCES) {
     }
   }
   if (fs.existsSync(sharedDir)) {
+    /* نودات اختيارية حسب إعدادات العميل — غيابها مش خطأ */
+    const optional = client.aiComment ? [] : ['Build-AI-Comment.js', 'Check-AI-Comment.js'];
     for (const f of fs.readdirSync(sharedDir).filter((x) => x.endsWith('.js'))) {
-      if (!seenShared.has(f)) throw new Error('shared: ملف كود مالوش نود مقابل: ' + f);
+      if (!seenShared.has(f) && optional.indexOf(f) === -1) {
+        throw new Error('shared: ملف كود مالوش نود مقابل: ' + f);
+      }
     }
   }
 

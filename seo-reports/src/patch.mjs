@@ -97,9 +97,11 @@ export function nodes(cadence, wf, client) {
       notesInFlow: true,
     },
 
-    /* ═══ التعليق التحليلي (الروضة بس حاليًا) ═══
-     * بيتحط بين Report Stats و Build Email. لو العميل مقفّله، النودات
-     * موجودة بس بتمرّ من غير نداء — فالبنية تفضل واحدة للجميع. */
+    /* ═══ التعليق التحليلي ═══
+     * العميل اللي مقفّله (aiComment: false) **ما بتتحطّلوش النودات أصلاً** —
+     * مش بتتحط وتتخطى. ملف من غير نود لمزوّد خارجي أوضح لأي حد بيراجعه،
+     * ومفيش احتمال إن حد يشغّله بالغلط من الواجهة. */
+    ...(client && client.aiComment ? [
     codeNode('Build AI Comment', [x + 180, y + 620]),
 
     {
@@ -148,6 +150,7 @@ export function nodes(cadence, wf, client) {
     },
 
     codeNode('Check AI Comment', [x + 540, y + 620]),
+    ] : []),
 
     /* بوابة: تنبيه التوصيل يتبعت بس لما يكون فيه مستلم ما وصلهوش */
     (function () {
@@ -173,7 +176,7 @@ export function nodes(cadence, wf, client) {
 }
 
 /* ---------- وصلات ---------- */
-export function connections(cadence, wf) {
+export function connections(cadence, wf, client) {
   /* بندخّل سلسلة فحص الروابط بين Keywords و Search Volume */
   return {
     'Keywords':          { main: [[{ node: 'Prep Page Checks', type: 'main', index: 0 }]] },
@@ -188,15 +191,20 @@ export function connections(cadence, wf) {
       [{ node: 'Build Gmail Fallback',  type: 'main', index: 0 }],
     ] },
 
-    /* التعليق التحليلي بين إحصائيات التقرير وبناء الإيميل */
-    'Report Stats':      { main: [[{ node: 'Build AI Comment', type: 'main', index: 0 }]] },
-    'Build AI Comment':  { main: [[{ node: 'AI Comment?', type: 'main', index: 0 }]] },
-    'AI Comment?': { main: [
-      [{ node: 'AI Comment API',   type: 'main', index: 0 }],
-      [{ node: 'Check AI Comment', type: 'main', index: 0 }],
-    ] },
-    'AI Comment API':    { main: [[{ node: 'Check AI Comment', type: 'main', index: 0 }]] },
-    'Check AI Comment':  { main: [[{ node: 'Build Email', type: 'main', index: 0 }]] },
+    /* التعليق التحليلي بين إحصائيات التقرير وبناء الإيميل — لو مقفول،
+     * Report Stats بيروح لـ Build Email على طول والسلسلة مش موجودة أصلاً. */
+    ...((client && client.aiComment) ? {
+      'Report Stats':      { main: [[{ node: 'Build AI Comment', type: 'main', index: 0 }]] },
+      'Build AI Comment':  { main: [[{ node: 'AI Comment?', type: 'main', index: 0 }]] },
+      'AI Comment?': { main: [
+        [{ node: 'AI Comment API',   type: 'main', index: 0 }],
+        [{ node: 'Check AI Comment', type: 'main', index: 0 }],
+      ] },
+      'AI Comment API':    { main: [[{ node: 'Check AI Comment', type: 'main', index: 0 }]] },
+      'Check AI Comment':  { main: [[{ node: 'Build Email', type: 'main', index: 0 }]] },
+    } : {
+      'Report Stats':      { main: [[{ node: 'Build Email', type: 'main', index: 0 }]] },
+    }),
 
     /* المسار البديل: Gmail API لما SMTP يرفض الخارجيين */
     'Build Gmail Fallback': { main: [[{ node: 'Gmail Fallback?', type: 'main', index: 0 }]] },

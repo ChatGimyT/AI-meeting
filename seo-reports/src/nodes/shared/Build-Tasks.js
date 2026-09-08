@@ -81,10 +81,38 @@ if (!periods.length) {
 
 const forceFrom = periods.length - (cfg.refetchLast || 0);
 
+/* ---------- توزيع الكلمات على الدول ----------
+ * فيه شكلين لقائمة الكلمات، والفرق بينهم مش تفصيلة:
+ *
+ *   أ) الكلمة مالهاش دولة → كل كلمة تتسأل في كل دولة (ضرب كامل).
+ *      ده وضع العملاء اللي بيشتغلوا في سوق واحد.
+ *
+ *   ب) الكلمة ليها حقل country → صف واحد لكل كلمة بدولتها هي بس.
+ *      رابح مثلاً بيستهدف السعودية ومصر بكلمات مختلفة لكل سوق. لو عملنا
+ *      ضرب كامل هنا، التقرير هيبقى ضعف حجمه ونصه أرقام لكلمة اتسألت في
+ *      سوق مش مستهدفة فيه أصلاً — أرقام صح حسابيًا وبلا أي معنى.
+ */
+const byCountryName = {};
+cfg.countries.forEach((c, i) => { byCountryName[c.name] = { c: c, i: i }; });
+const perKeywordCountry = kws.some(function (k) { return k && k.country; });
+
+const pairs = [];
+if (perKeywordCountry) {
+  kws.forEach(function (k, ki) {
+    const hit = byCountryName[k.country] || { c: cfg.countries[0], i: 0 };
+    pairs.push({ c: hit.c, ci: hit.i, k: k, ki: ki });
+  });
+} else {
+  cfg.countries.forEach(function (c, ci) {
+    kws.forEach(function (k, ki) { pairs.push({ c: c, ci: ci, k: k, ki: ki }); });
+  });
+}
+
 const out = [];
 let taskIndex = 0;
-cfg.countries.forEach((c, ci) => {
-  kws.forEach((k, ki) => {
+pairs.forEach(function (pair) {
+  const c = pair.c, ci = pair.ci, k = pair.k, ki = pair.ki;
+  {
     const rec = hist.byRow[c.name + '||' + k.keyword] || {};
     periods.forEach((p, pIdx) => {
       const cell = rec[p.key];
@@ -101,7 +129,7 @@ cfg.countries.forEach((c, ci) => {
         __latestDataDate: latest,
       } });
     });
-  });
+  }
 });
 
 if (!out.length) {

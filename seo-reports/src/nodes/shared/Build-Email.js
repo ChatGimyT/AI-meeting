@@ -192,7 +192,8 @@ const html =
     'الكلمات غالبًا مش اللي جوجل مسجّله، والخانة بتطلع «مفيش ظهور» وهي مش صح:<br>' +
     suspectPages.slice(0, 8).map(function (x) {
       const sample = (x.samples || [])[0];
-      return '• ' + esc(x.keyword) + (sample ? ' — جوجل شايف: ' + esc(sample.topPage) : '');
+      return '• ' + esc(x.keyword) + (x.country ? ' (' + esc(x.country) + ')' : '') +
+             (sample ? ' — جوجل شايف: ' + esc(sample.topPage) : '');
     }).join('<br>') + '</div>' : '') +
   (excluded.length ? '<div style="margin-top:12px;border:1px dashed ' + LINE + ';border-radius:6px;' +
     'padding:10px 14px;font-size:12px;line-height:1.9;color:' + GREY + ';">' +

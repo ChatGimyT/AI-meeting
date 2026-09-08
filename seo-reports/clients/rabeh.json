@@ -1,0 +1,49 @@
+{
+  "id": "rabeh",
+  "cadences": {
+    "monthly": {
+      "spreadsheetId": "1EomGPIrn_tEqQwdUCsdrM6pWHAf1p5fMyRaw7Ptvtsw",
+      "sheetTab": "الورقة1",
+      "presentationId": "1X6-1lvPSedi2LUFe03dZx0G-Ctj3N8D6Zzs2tROSiFU",
+      "columns": 15
+    },
+    "weekly": {
+      "spreadsheetId": "1NuPOF8_PmsBp5xrCIMtMhTGABj7IGCyEgM-RYYIE30U",
+      "sheetTab": "الورقة1",
+      "presentationId": "10dEXW3QitufRCmzgFJuIyQCnFucJigyHxzAz1r2uYfA",
+      "columns": 15
+    }
+  },
+  "siteUrl": "https://www.rabeh.org/",
+  "company": "رابح للتسويق الإلكتروني",
+  "manager": "بشمهندس أيمن مصطفى",
+  "mailFrom": "M.gamal@rabeh.org",
+  "mailFromName": "رابح — تقارير SEO",
+  "countries": [
+    {
+      "code": "sau",
+      "name": "السعودية"
+    },
+    {
+      "code": "egy",
+      "name": "مصر"
+    }
+  ],
+  "recipients": {
+    "to": [
+      "m.gamal.zaid1@gmail.com"
+    ],
+    "cc": [
+      "M.gamal@rabeh.org",
+      "ahmedelmawgod@gmail.com",
+      "soaad@rabeh.org",
+      "gm@rabeh.org"
+    ]
+  },
+  "googleCredential": {
+    "id": "WtMx9kSOZNdxaY68",
+    "name": "Google - rabeh.six.b"
+  },
+  "aiComment": false,
+  "keywordsFile": "keywords/rabeh.json"
+}
