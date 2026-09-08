@@ -125,6 +125,11 @@ const verifySteps = [
     (siteWideCount ? ' الكلمات اللي جنبها * مالهاش صفحة مستهدفة، فسيب فلتر Page فاضي.' : ''),
 ];
 const excluded = ($('Keywords').first().json.excluded) || [];
+
+/* التعليق التحليلي — بيدخل بس لو عدّى فحص الأرقام. لو اتشال، بنقول السبب
+ * في التقرير بدل ما نسكت: القارئ يستاهل يعرف إن فيه حاجة اتمنعت وليه. */
+let ai = { aiComment: '', aiOk: true, aiSkipped: true, aiNote: '' };
+try { ai = $('Check AI Comment').first().json || ai; } catch (e) { /* نود مش موجود */ }
 const suspectPages = (((res.quality || {}).pageAudit) || {}).suspect || [];
 const brokenLinks = ((res.pageCheck || {}).problems) || [];
 const verifyNote = 'ملحوظة: بيانات جوجل نهائية (final) بس، وأي فلتر ناقص أو زايد ' +
@@ -139,6 +144,15 @@ const html =
   '<div style="color:#ffffff;font-size:' + FS + ';font-weight:bold;">تقرير SEO الأسبوعي — ' + esc(cfg.company) + '</div>' +
   '<div style="color:' + BG + ';font-size:' + FS + ';margin-top:6px;">' + withPrefix(nowLabel) + (prevLabel ? ' &nbsp;•&nbsp; مقارنةً بـ' + withPrefix(prevLabel) : '') + '</div>' +
 '</div><div style="padding:22px;">' +
+  (ai.aiComment
+    ? '<div style="margin-bottom:20px;background:' + BG + ';border:1px solid ' + LINE + ';border-radius:6px;' +
+      'padding:14px 16px;font-size:' + FS + ';line-height:2;color:' + INK + ';">' +
+      esc(ai.aiComment).replace(/\n+/g, '<br><br>') + '</div>'
+    : (ai.aiOk === false
+      ? '<div style="margin-bottom:20px;background:#fdf3f1;border:1px solid #e6b9b0;border-radius:6px;' +
+        'padding:10px 14px;font-size:12px;line-height:1.9;color:' + INK + ';">' +
+        esc(ai.aiNote) + '</div>'
+      : '')) +
   '<table width="100%" cellspacing="8" cellpadding="0" style="margin-bottom:20px;"><tr>' +
     card('تحسّن', st.up, GREEN) + card('تراجع', st.down, RED) +
     card('ثابت', st.same, GREY) + card('متوسط التغير', (st.avg > 0 ? '+' : '') + st.avg + '%', st.avg >= 0 ? GREEN : RED) +
@@ -199,6 +213,7 @@ const textRows = rows.map(r =>
 
 const text = ['تقرير SEO ' + CAD_ADJ + ' — ' + cfg.company,
               withPrefix(nowLabel) + (prevLabel ? ' مقارنةً بـ' + withPrefix(prevLabel) : ''), '']
+  .concat(ai.aiComment ? [ai.aiComment, ''] : (ai.aiOk === false ? ['⚠ ' + ai.aiNote, ''] : []))
   .concat(['تحسّن: ' + st.up + ' | تراجع: ' + st.down + ' | ثابت: ' + st.same +
            ' | متوسط التغير: ' + (st.avg > 0 ? '+' : '') + st.avg + '%', ''])
   .concat(textRows)

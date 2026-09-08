@@ -36,5 +36,10 @@
       "mohamedamarawork@gmail.com"
     ]
   },
-  "keywordsFile": "keywords/shoug.json"
+  "keywordsFile": "keywords/shoug.json",
+  "googleCredential": {
+    "id": "zqpCaDcnpV6T6BqM",
+    "name": "rabeh.seven.b"
+  },
+  "aiComment": false
 }

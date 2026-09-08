@@ -17,7 +17,7 @@ const codeNode = (name, pos) => ({
 });
 
 /* ---------- نودات جديدة ---------- */
-export function nodes(cadence, wf) {
+export function nodes(cadence, wf, client) {
   const anchor = wf.nodes.find((n) => n.name === 'Keywords') || { position: [0, 0] };
   const [x, y] = anchor.position;
 
@@ -71,7 +71,9 @@ export function nodes(cadence, wf) {
       id: uid('Send via Gmail API'), name: 'Send via Gmail API',
       type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2,
       position: [x + 360, y + 420],
-      credentials: { googleOAuth2Api: { id: 'zqpCaDcnpV6T6BqM', name: 'rabeh.seven.b' } },
+      credentials: { googleOAuth2Api: (client && client.googleCredential)
+        ? { id: client.googleCredential.id, name: client.googleCredential.name }
+        : { id: 'REPLACE_ME', name: 'Google account' } },
       alwaysOutputData: true, onError: 'continueRegularOutput',
       retryOnFail: true, maxTries: 2, waitBetweenTries: 4000,
       notes: 'مسار بديل لما SMTP يرفض المستلمين الخارجيين. محتاج صلاحية gmail.send على نفس كريدنشيال جوجل.',
@@ -94,6 +96,58 @@ export function nodes(cadence, wf) {
       notes: 'يشتغل بس لو MAIL_GMAIL_FALLBACK = true وفيه مستلم رفضه SMTP.',
       notesInFlow: true,
     },
+
+    /* ═══ التعليق التحليلي (الروضة بس حاليًا) ═══
+     * بيتحط بين Report Stats و Build Email. لو العميل مقفّله، النودات
+     * موجودة بس بتمرّ من غير نداء — فالبنية تفضل واحدة للجميع. */
+    codeNode('Build AI Comment', [x + 180, y + 620]),
+
+    {
+      parameters: {
+        method: 'POST',
+        url: (client && client.aiUrl) || 'https://api.deepseek.com/chat/completions',
+        authentication: 'genericCredentialType',
+        genericAuthType: 'httpHeaderAuth',
+        sendBody: true,
+        specifyBody: 'json',
+        jsonBody: '={{ JSON.stringify({ model: ' +
+          JSON.stringify((client && client.aiModel) || 'deepseek-chat') +
+          ', temperature: 0.3, max_tokens: 400, messages: [{ role: "user", content: $json.prompt }] }) }}',
+        options: {
+          timeout: 120000,
+          response: { response: { neverError: true } },
+        },
+      },
+      id: uid('AI Comment API'), name: 'AI Comment API',
+      type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2,
+      position: [x + 360, y + 620],
+      credentials: (client && client.aiCredential)
+        ? { httpHeaderAuth: { id: client.aiCredential.id, name: client.aiCredential.name } }
+        : { httpHeaderAuth: { id: 'REPLACE_ME', name: 'AI API Key' } },
+      alwaysOutputData: true, onError: 'continueRegularOutput',
+      retryOnFail: true, maxTries: 2, waitBetweenTries: 5000,
+      notes: 'تعليق تحليلي قصير. كل رقم فيه بيتفحص في النود اللي بعده قبل ما يدخل الإيميل.',
+      notesInFlow: true,
+    },
+
+    {
+      parameters: {
+        conditions: {
+          options: { caseSensitive: true, leftValue: '', typeValidation: 'loose', version: 2 },
+          conditions: [{ id: 'c-ai', leftValue: '={{ $json.__ai }}', rightValue: '',
+                         operator: { type: 'boolean', operation: 'true', singleValue: true } }],
+          combinator: 'and',
+        },
+        options: {},
+      },
+      id: uid('AI Comment?'), name: 'AI Comment?',
+      type: 'n8n-nodes-base.if', typeVersion: 2.2,
+      position: [x + 360, y + 520],
+      notes: 'العميل اللي مقفّل التعليق بيعدّي من غير نداء ولا تكلفة.',
+      notesInFlow: true,
+    },
+
+    codeNode('Check AI Comment', [x + 540, y + 620]),
 
     /* بوابة: تنبيه التوصيل يتبعت بس لما يكون فيه مستلم ما وصلهوش */
     (function () {
@@ -134,6 +188,16 @@ export function connections(cadence, wf) {
       [{ node: 'Build Gmail Fallback',  type: 'main', index: 0 }],
     ] },
 
+    /* التعليق التحليلي بين إحصائيات التقرير وبناء الإيميل */
+    'Report Stats':      { main: [[{ node: 'Build AI Comment', type: 'main', index: 0 }]] },
+    'Build AI Comment':  { main: [[{ node: 'AI Comment?', type: 'main', index: 0 }]] },
+    'AI Comment?': { main: [
+      [{ node: 'AI Comment API',   type: 'main', index: 0 }],
+      [{ node: 'Check AI Comment', type: 'main', index: 0 }],
+    ] },
+    'AI Comment API':    { main: [[{ node: 'Check AI Comment', type: 'main', index: 0 }]] },
+    'Check AI Comment':  { main: [[{ node: 'Build Email', type: 'main', index: 0 }]] },
+
     /* المسار البديل: Gmail API لما SMTP يرفض الخارجيين */
     'Build Gmail Fallback': { main: [[{ node: 'Gmail Fallback?', type: 'main', index: 0 }]] },
     'Gmail Fallback?': { main: [
@@ -163,6 +227,18 @@ export function rewrite(cadence, wf, client) {
    * all pages". و n8n لما بيعيد نود بيعيده من العنصر صفر مش من العنصر اللي
    * فشل — فأول سلايد بيصطدم بنفسه، والعطل العابر بيتحول لعطل دائم وعرض
    * نص مبني. التقرير الأسبوعي للعوجان كان متصلَّح، والتلاتة التانيين لأ. */
+  /* ═══ كريدنشيال جوجل لكل عميل ═══
+   * الروضة على حساب جوجل مختلف عن العوجان وشوق. البنية واحدة، فالكريدنشيال
+   * لازم يتحقن من ملف العميل مش يتساب زي ما هو في القالب. */
+  const gcred = client && client.googleCredential;
+  if (gcred) {
+    wf.nodes.forEach((n) => {
+      if (n.credentials && n.credentials.googleOAuth2Api) {
+        n.credentials.googleOAuth2Api = { id: gcred.id, name: gcred.name };
+      }
+    });
+  }
+
   const cs = byName['Create Slides'];
   if (cs) {
     delete cs.retryOnFail;

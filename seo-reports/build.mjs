@@ -155,6 +155,16 @@ for (const cadence of CADENCES) {
       }
     }
   }
+  /* حارس: العميل لازم يعلن كريدنشيال جوجل بتاعه — البناء بينسخ بنية عميل
+   * تاني، فلو الكريدنشيال ما اتحقنش التقرير هيسحب من حساب الموقع الغلط. */
+  if (!client.googleCredential) {
+    errs.push('clients/' + client.id + '.json: ناقصه googleCredential');
+  } else {
+    const wrong = wf.nodes.filter((n) => n.credentials && n.credentials.googleOAuth2Api &&
+      n.credentials.googleOAuth2Api.id !== client.googleCredential.id);
+    if (wrong.length) errs.push('كريدنشيال جوجل غلط في: ' + wrong.map((n) => n.name).join(', '));
+  }
+
   /* حارس دائم: أي بناء يرجّع retry على Create Slides يتوقف */
   const cs2 = wf.nodes.find((n) => n.name === 'Create Slides');
   if (cs2 && cs2.retryOnFail) {

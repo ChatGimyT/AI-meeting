@@ -20,7 +20,7 @@ const head = (t) => console.log('\n' + t);
 /* المحاكي بيتنفّذ في عملية منفصلة ويرجّع الحالة كاملة كـ JSON */
 /* كل التقارير الأربعة: عميلين × إيقاعين */
 const ALL = [];
-for (const client of ['alojan', 'shoug'])
+for (const client of ['alojan', 'alrawda', 'shoug'])
   for (const cadence of ['monthly', 'weekly']) ALL.push({ client, cadence, tag: client + '/' + cadence });
 
 function run(cadence, scenario, client) {
@@ -44,6 +44,7 @@ function run(cadence, scenario, client) {
       keywords: pick('Keywords')[0]        || null,
       config:   pick('Config')[0]          || null,
       pageCheckNode: pick('Page Check Report')[0] || null,
+      ai:       pick('Check AI Comment')[0]       || null,
     }));
   `;
   const out = execFileSync('node', ['--input-type=module', '-e', code],
@@ -99,7 +100,7 @@ head('بنية الملفات — التقارير الأربعة على كود 
 /* ══════════ قائمة الكلمات ══════════ */
 head('قائمة الكلمات — قاعدة «مفيش رابط يبقى مفيش صف»');
 {
-  for (const client of ['alojan', 'shoug']) {
+  for (const client of ['alojan', 'alrawda', 'shoug']) {
     const k = run('monthly', 'happy', client).keywords;
     T(client + ': كل كلمة في التقرير ليها رابط صفحة',
       k.keywords.length > 0 && k.keywords.every((x) => x.page && /^https?:\/\//.test(x.page)),
@@ -115,6 +116,9 @@ head('قائمة الكلمات — قاعدة «مفيش رابط يبقى مف
   T('شوق: 25 معتمدة و0 مستبعدة',
     run('monthly', 'happy', 'shoug').keywords.keywordCount === 25 &&
     run('monthly', 'happy', 'shoug').keywords.excludedCount === 0);
+  T('الروضة: 18 معتمدة و0 مستبعدة',
+    run('monthly', 'happy', 'alrawda').keywords.keywordCount === 18 &&
+    run('monthly', 'happy', 'alrawda').keywords.excludedCount === 0);
 }
 
 /* ══════════ الحساب اللي كان بيطلع غلط ══════════ */
@@ -166,6 +170,51 @@ head('فشل السحب ≠ الكلمة اختفت');
     r.mailSent.length === 1 && r.mailSent[0].node === 'Data Alert Email',
     JSON.stringify(r.mailSent.map((m) => m.node)));
   T('ولا كلمة اتقالت "اختفت"', !r.stats, 'Report Stats المفروض ماتشتغلش أصلًا');
+}
+
+/* ══════════ التعليق التحليلي ══════════ */
+head('التعليق التحليلي — ممنوع يمرّر رقم مالوش أصل');
+{
+  const ok = run('monthly', 'happy', 'alrawda');
+  T('التعليق السليم بيعدّي', ok.ai.aiOk === true && ok.ai.aiComment.length > 20,
+    JSON.stringify(ok.ai).slice(0, 160));
+  T('وبيظهر في الإيميل', /تحية طيبة/.test(ok.email.emailText));
+
+  const bad = run('monthly', 'aiInventsNumber', 'alrawda');
+  T('الرقم المختلق (37%) اتمسك', (bad.ai.aiOrphans || []).indexOf('37') !== -1,
+    JSON.stringify(bad.ai.aiOrphans));
+  T('والتعليق كله اتشال مش الرقم بس', bad.ai.aiComment === '');
+  /* الرقم بيظهر في رسالة الرفض نفسها — وده مقصود. المهم إن **الجملة**
+   * اللي فيها الادعاء ما دخلتش التقرير. */
+  T('الجملة اللي فيها الادعاء ما دخلتش الإيميل',
+    !/الزيارات ارتفعت بنسبة/.test(bad.email.emailText) &&
+    !/الزيارات ارتفعت بنسبة/.test(bad.email.emailHtml));
+  T('والسبب مكتوب في التقرير', /مالوش أصل في الأرقام المحسوبة/.test(bad.email.emailText));
+  T('لكن باقي التقرير اتبعت عادي', bad.mailSent.some((m) => m.node === 'Send Report Email'));
+
+  const off = run('monthly', 'aiUnavailable', 'alrawda');
+  T('فشل نداء التعليق مابيوقفش التقرير', off.ai.aiSkipped === true &&
+    off.mailSent.some((m) => m.node === 'Send Report Email'));
+
+  const none = run('monthly', 'happy', 'alojan');
+  T('العميل اللي مقفّل التعليق مابيعملش نداء',
+    !none.trace.includes('AI Comment API'));
+  T('وإيميله من غير تعليق', none.ai.aiSkipped === true && none.ai.aiComment === '');
+}
+
+/* ══════════ توافق الشيت القديم ══════════ */
+head('الشيت القديم (٤ أعمدة ثابتة) لازم يتقرا من غير ما يضيع الأرشيف');
+{
+  const r = run('monthly', 'legacySheet', 'alrawda');
+  const h = r.merge.quality;
+  T('الأعمدة القديمة اتقرت بالاسم مش بالترتيب', h.periodsInSheet === 2, h.periodsInSheet);
+  T('الرن كمّل عادي', r.validate.ok === true, JSON.stringify(r.validate.problems));
+  const header = r.validate.sheetValues[0];
+  T('الكتابة الجديدة بتضيف عمود Article',
+    header[0] === 'Country' && header[3] === 'Page' && header[4] === 'Article',
+    JSON.stringify(header.slice(0, 6)));
+  T('وثلاث أعمدة التعريف الأولى في نفس مكانها (عشان القراءة الجاية)',
+    header.slice(0, 3).join('|') === 'Country|Section|Keyword');
 }
 
 /* ══════════ فحص الروابط الفعلي ══════════ */

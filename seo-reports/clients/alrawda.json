@@ -1,0 +1,50 @@
+{
+  "id": "alrawda",
+  "cadences": {
+    "monthly": {
+      "spreadsheetId": "1RTdoz0cql2yT84hs8ThT0iF6r48w94q2Ho3Yl_4S0VI",
+      "sheetTab": "الورقة1",
+      "presentationId": "1n6wSgrtKwHy-F375zKuwbjat-1iaetD-WB4mHv6bzJo",
+      "columns": 15
+    },
+    "weekly": {
+      "spreadsheetId": "1XyffTIyULuPcNy-Uqv-pQaLEVy5HyooOjgfXBO8ZFcE",
+      "sheetTab": "الورقة1",
+      "presentationId": "1AaqSskvs9WEPKZCgK1vbuRB15HxQkt-PJdUqUd7rjLw",
+      "columns": 15
+    }
+  },
+  "siteUrl": "https://www.rgh.com.sa/",
+  "company": "مصنع الروضة للبيوت المحمية",
+  "manager": "بشمهندس أيمن مصطفى",
+  "mailFrom": "M.gamal@rabeh.org",
+  "mailFromName": "رابح — تقارير SEO",
+  "countries": [
+    {
+      "code": "sau",
+      "name": "السعودية"
+    }
+  ],
+  "recipients": {
+    "to": [
+      "m.gamal.zaid1@gmail.com"
+    ],
+    "cc": [
+      "M.gamal@rabeh.org",
+      "gm@rabeh.org",
+      "soaad@rabeh.org"
+    ]
+  },
+  "googleCredential": {
+    "id": "WtMx9kSOZNdxaY68",
+    "name": "Google - rabeh.six.b"
+  },
+  "keywordsFile": "keywords/alrawda.json",
+  "aiComment": true,
+  "aiCredential": {
+    "id": "UtZ5Hq48pibn5oXX",
+    "name": "DeepSeek"
+  },
+  "aiUrl": "https://api.deepseek.com/chat/completions",
+  "aiModel": "deepseek-chat"
+}

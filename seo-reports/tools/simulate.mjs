@@ -71,6 +71,7 @@ function evalIf(node, items) {
     case 'Needs Resend?':      return j.__resend === true;
     case 'Delivery Alert?':    return j.__silent !== true;
     case 'Gmail Fallback?':    return j.__gmailSend === true;
+    case 'AI Comment?':        return j.__ai === true;
     default: throw new Error('مفيش تقييم للنود الشرطي: ' + node.name);
   }
 }
@@ -97,6 +98,13 @@ function httpFor(node, items) {
       httpCalls.gsc++;
       return { json: scenario.gscResponse(it.json, { retry, index: i }), pairedItem: { item: i } };
     });
+  }
+  if (node.name === 'AI Comment API') {
+    const body = (scenario.aiComment !== undefined)
+      ? scenario.aiComment
+      : 'تحية طيبة بشمهندس أيمن مصطفى المدير،\n\nالفترة دي شافت استقرارًا في معظم الكلمات.\n\nالتوصية: ركّز على الصفحات اللي ترتيبها اتحسّن.';
+    if (body === null) return [{ json: { error: { message: 'AI unavailable' } } }];
+    return [{ json: { choices: [{ message: { content: body } }] } }];
   }
   if (node.name === 'Send via Gmail API') {
     return items.map((it, i) => {

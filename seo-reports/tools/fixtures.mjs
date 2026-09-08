@@ -172,6 +172,48 @@ export const SCENARIOS = {
     smtpAccepts: () => true,
   },
 
+  /* النموذج اخترع رقم في فقرة الرأي — لازم التعليق كله يتشال.
+   * دي الحالة اللي بتخلي تقرير أرقامه صح يوصل فيه رقم مختلق. */
+  aiInventsNumber: {
+    freshnessDates,
+    sheet: emptySheet,
+    existingSlides: [],
+    gscResponse: (task) => steadyResponse(task),
+    pageCheck: healthyPage,
+    smtpAccepts: () => true,
+    aiComment: 'تحية طيبة بشمهندس أيمن مصطفى المدير،\n\n' +
+      'الفترة دي شافت تحسّنًا واضحًا، والزيارات ارتفعت بنسبة 37% مقارنة بالفترة السابقة.\n\n' +
+      'التوصية: زوّد المحتوى على الصفحات الأعلى ترتيبًا.',
+  },
+
+  /* نداء التعليق فشل — الرن يكمّل عادي والتقرير يتبعت من غيره */
+  aiUnavailable: {
+    freshnessDates,
+    sheet: emptySheet,
+    existingSlides: [],
+    gscResponse: (task) => steadyResponse(task),
+    pageCheck: healthyPage,
+    smtpAccepts: () => true,
+    aiComment: null,
+  },
+
+  /* شيت قديم بالشكل اللي كان بيكتبه جيل v2 عند الروضة:
+   * ٤ أعمدة ثابتة (Country · Section · Keyword · Page) من غير عمود Article.
+   * الكود الجديد بيكتب ٥ — فلازم نتأكد إنه بيقرا القديم صح ومابيضيّعش الأرشيف. */
+  legacySheet: {
+    freshnessDates,
+    sheet: {
+      values: [
+        ['Country', 'Section', 'Keyword', 'Page', '2026-07 Pos', '2026-07 Impr', '2026-08 Pos', '2026-08 Impr'],
+        ['السعودية', 'قسم', 'مصنع الروضة للبيوت المحمية', 'https://www.rgh.com.sa/', '4.5', '320', '3.9', '410'],
+      ],
+    },
+    existingSlides: [],
+    gscResponse: (task) => steadyResponse(task),
+    pageCheck: healthyPage,
+    smtpAccepts: () => true,
+  },
+
   /* نفس الحالة بس المسار البديل (Gmail API) مفتوح — لازم يوصل للجيميل */
   gmailFallback: {
     freshnessDates,

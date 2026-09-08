@@ -1,0 +1,136 @@
+{
+  "client": "alrawda",
+  "source": "ALRAWDA - Monthly Final v2 (نود Keywords)",
+  "sheet": "—",
+  "extractedAt": "2026-09-08",
+  "rule": "أي كلمة من غير رابط صفحة مستهدفة تُستبعد — عشان كل رقم يبقى قابل للمراجعة بفلتر Query + Page",
+  "keywords": [
+    {
+      "group": "مصنع الروضة للبيوت المحمية",
+      "page": "https://www.rgh.com.sa/",
+      "keyword": "مصنع الروضة للبيوت المحمية",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "بلاستيك البيوت المحمية",
+      "page": "https://www.rgh.com.sa/%D8%A8%D9%84%D8%A7%D8%B3%D8%AA%D9%8A%D9%83-%D8%A8%D9%8A%D9%88%D8%AA-%D9%85%D8%AD%D9%85%D9%8A%D8%A9-%D9%84%D9%84%D8%A8%D9%8A%D8%B9/",
+      "keyword": "بلاستيك البيوت المحمية",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "شبك زراعي اخضر",
+      "page": "https://www.rgh.com.sa/%D8%B4%D8%A8%D9%83-%D8%B1%D9%88%D9%83%D9%84%D9%8A%D9%86-%D8%B2%D8%B1%D8%A7%D8%B9%D9%8A-%D9%84%D9%84%D8%B8%D9%84/",
+      "keyword": "شبك زراعي اخضر",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "شبك زراعي اخضر",
+      "page": "https://www.rgh.com.sa/%D8%B4%D8%A8%D9%83-%D8%B1%D9%88%D9%83%D9%84%D9%8A%D9%86-%D8%B2%D8%B1%D8%A7%D8%B9%D9%8A-%D9%84%D9%84%D8%B8%D9%84/",
+      "keyword": "شبك زراعي اخضر للبيع",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "مشاتل زراعية",
+      "page": "https://www.rgh.com.sa/%D9%85%D8%B4%D8%A7%D8%AA%D9%84-%D8%B2%D8%B1%D8%A7%D8%B9%D9%8A%D8%A9-%D8%B4%D8%A8%D9%83-%D8%B8%D9%84/",
+      "keyword": "مشاتل زراعية",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "مشاتل زراعية",
+      "page": "https://www.rgh.com.sa/%D9%85%D8%B4%D8%A7%D8%AA%D9%84-%D8%B2%D8%B1%D8%A7%D8%B9%D9%8A%D8%A9-%D8%B4%D8%A8%D9%83-%D8%B8%D9%84/",
+      "keyword": "أقضل مشاتل زراعية",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "بيت محمي",
+      "page": "https://www.rgh.com.sa/%D8%A8%D9%8A%D8%AA-%D9%85%D8%AD%D9%85%D9%8A-%D8%B2%D8%B1%D8%A7%D8%B9%D9%8A/",
+      "keyword": "بيت محمي",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "بيت محمي",
+      "page": "https://www.rgh.com.sa/%D8%A8%D9%8A%D8%AA-%D9%85%D8%AD%D9%85%D9%8A-%D8%B2%D8%B1%D8%A7%D8%B9%D9%8A/",
+      "keyword": "بيت محمي زراعي",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "بيت محمي مكيف",
+      "page": "https://www.rgh.com.sa/%D8%A8%D9%8A%D9%88%D8%AA-%D9%85%D8%AD%D9%85%D9%8A%D8%A9-%D9%85%D9%83%D9%8A%D9%81%D8%A9/",
+      "keyword": "بيت محمي مكيف",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "مراوح بيوت محمية للبيع",
+      "page": "https://www.rgh.com.sa/%D9%85%D8%B1%D8%A7%D9%88%D8%AD-%D8%A8%D9%8A%D9%88%D8%AA-%D9%85%D8%AD%D9%85%D9%8A%D8%A9-%D9%84%D9%84%D8%A8%D9%8A%D8%B9/",
+      "keyword": "مراوح بيوت محمية للبيع",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "شاش زراعي",
+      "page": "https://www.rgh.com.sa/%D8%B4%D8%A7%D8%B4-%D8%B2%D8%B1%D8%A7%D8%B9%D9%8A/",
+      "keyword": "شاش زراعي",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "ملش زراعي",
+      "page": "https://www.rgh.com.sa/%D8%A8%D9%84%D8%A7%D8%B3%D8%AA%D9%8A%D9%83-%D9%85%D9%84%D8%B4-%D8%B2%D8%B1%D8%A7%D8%B9%D9%8A/",
+      "keyword": "ملش زراعي",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "بيت بلاستيكي",
+      "page": "https://www.rgh.com.sa/%D8%A8%D9%8A%D8%AA-%D8%A8%D9%84%D8%A7%D8%B3%D8%AA%D9%8A%D9%83%D9%8A-%D8%B2%D8%B1%D8%A7%D8%B9%D9%8A/",
+      "keyword": "بيت بلاستيكي",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "محميات زراعية",
+      "page": "https://www.rgh.com.sa/%D8%B5%D8%A7%D9%84%D8%A7%D8%AA-%D8%B2%D8%B1%D8%A7%D8%B9%D9%8A%D8%A9-%D9%85%D9%83%D9%8A%D9%81%D8%A9-%D9%84%D9%84%D8%A8%D9%8A%D8%B9/",
+      "keyword": "محميات زراعية",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "تكلفة البيوت المحمية",
+      "page": "https://www.rgh.com.sa/%D8%AA%D9%83%D9%84%D9%81%D8%A9-%D8%A7%D9%84%D8%A8%D9%8A%D9%88%D8%AA-%D8%A7%D9%84%D9%85%D8%AD%D9%85%D9%8A%D8%A9-%D9%81%D9%8A-%D8%A7%D9%84%D8%B3%D8%B9%D9%88%D8%AF%D9%8A%D8%A9/",
+      "keyword": "تكلفة البيوت المحمية",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "تكلفة البيوت المحمية",
+      "page": "https://www.rgh.com.sa/%D8%AA%D9%83%D9%84%D9%81%D8%A9-%D8%A7%D9%84%D8%A8%D9%8A%D9%88%D8%AA-%D8%A7%D9%84%D9%85%D8%AD%D9%85%D9%8A%D8%A9-%D9%81%D9%8A-%D8%A7%D9%84%D8%B3%D8%B9%D9%88%D8%AF%D9%8A%D8%A9/",
+      "keyword": "تكلفة البيوت المحمية في السعودية",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "خلايا تبريد كرتون",
+      "page": "https://www.rgh.com.sa/%D8%AE%D9%84%D8%A7%D9%8A%D8%A7-%D8%AA%D8%A8%D8%B1%D9%8A%D8%AF-%D8%A7%D9%84%D8%A8%D9%8A%D9%88%D8%AA-%D8%A7%D9%84%D9%85%D8%AD%D9%85%D9%8A%D8%A9/",
+      "keyword": "خلايا تبريد كرتون",
+      "sv": "",
+      "article": ""
+    },
+    {
+      "group": "الواح بولى كربونيت",
+      "page": "https://www.rgh.com.sa/%D8%A7%D9%84%D9%88%D8%A7%D8%AD-%D8%A8%D9%88%D9%84%D9%8A-%D9%83%D8%B1%D8%A8%D9%88%D9%86%D9%8A%D8%AA/",
+      "keyword": "الواح بولى كربونيت",
+      "sv": "",
+      "article": ""
+    }
+  ],
+  "dropped": []
+}

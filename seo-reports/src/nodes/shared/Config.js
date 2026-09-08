@@ -133,6 +133,7 @@ return [{ json: {
   mailTo: MAIL_TO, mailCc: MAIL_CC, mailAlert: MAIL_ALERT,
   mailFromDomain: MAIL_FROM_DOMAIN,
   gmailFallback: MAIL_GMAIL_FALLBACK,
+  aiComment: !!CLIENT.aiComment,
   mailExternal: MAIL_EXTERNAL,
   mailToList: to.list, mailCcList: ccList,
   mailAllList: to.list.concat(ccList),
