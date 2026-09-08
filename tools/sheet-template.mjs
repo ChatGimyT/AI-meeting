@@ -17,11 +17,22 @@ const IN = SHEET.in, OUT = SHEET.out;
 const headers = [
   IN.run, IN.status, IN.profile, IN.title, IN.goal, IN.type, IN.market,
   IN.kw, IN.kw_count, IN.kw_secondary, IN.kw_semantic, IN.headings, IN.links,
-  IN.citations, IN.cluster, IN.existing, IN.notes,
+  IN.citations, IN.cluster, IN.existing, IN.notes, IN.recipients, IN.recipients_cc,
   OUT.score, OUT.verdict, OUT.violations, OUT.overall, OUT.rounds, OUT.words,
   OUT.vs_reference, OUT.meta_title, OUT.meta_desc, OUT.article, OUT.audit,
-  OUT.minutes, OUT.sources, OUT.finished_at, OUT.run_id
+  OUT.minutes, OUT.sources, OUT.numbers_verdict, OUT.numbers_detail, OUT.delivery,
+  OUT.finished_at, OUT.run_id
 ].filter((v, i, a) => a.indexOf(v) === i);
+
+/* حارس: أي عمود يُعرَّف في 02b-sheet-config ولا يظهر هنا يوقف التوليد،
+ * فلا يخرج قالب شيت ناقص عمودًا يكتب فيه المحرك. */
+const missing = Object.keys(IN).map((k) => IN[k])
+  .concat(Object.keys(OUT).map((k) => OUT[k]))
+  .filter((label) => headers.indexOf(label) === -1);
+if (missing.length) {
+  console.error('❌ أعمدة معرَّفة في الكود وغائبة عن القالب: ' + missing.join('، '));
+  process.exit(1);
+}
 
 const brief = JSON.parse(fs.readFileSync(path.join(ROOT, 'benchmark', 'briefs', 'google-ads-ar.json'), 'utf8'));
 const nl = (a) => (a || []).join('\n');
@@ -43,7 +54,9 @@ const example = {
   [IN.citations]: nl(brief.mandatory_citations),
   [IN.cluster]: 'Pillar',
   [IN.existing]: '',
-  [IN.notes]: 'صف المعايرة — يقارن مباشرة بالمقال المرجعي'
+  [IN.notes]: 'صف المعايرة — يقارن مباشرة بالمقال المرجعي',
+  [IN.recipients]: 'reports@example.com, someone@gmail.com',
+  [IN.recipients_cc]: ''
 };
 
 const esc = (v) => {
